@@ -1,9 +1,10 @@
 use bevy::{
     prelude::{
-        Assets, Audio, Camera, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter,
-        GlobalTransform, Input, Mesh, MouseButton, Quat, Query, Res, ResMut, StandardMaterial,
-        Transform, Vec3, With,
+        default, Assets, Audio, Camera, Color, Commands, DespawnRecursiveExt, Entity, EventReader,
+        EventWriter, GlobalTransform, Input, MaterialMeshBundle, Mesh, MouseButton, Quat, Query,
+        Res, ResMut, StandardMaterial, Transform, Vec3, With,
     },
+    render::{mesh::VertexAttributeValues, render_resource::PrimitiveTopology},
     window::{PrimaryWindow, Window},
 };
 use bevy_rapier3d::prelude::{Collider, CollisionEvent, Velocity};
@@ -23,7 +24,8 @@ use crate::{
 
 use super::{
     bundles::ProjectileBundle,
-    components::{Flying, Projectile},
+    components::{FlyLine, Flying, Projectile},
+    constants::PROJECTILE_SPEED,
     events::SnapProjectile,
     resources::ProjectileBuffer,
 };
@@ -84,7 +86,8 @@ pub fn aim_projectile(
     cameras: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut projectile: Query<(Entity, &Transform, &mut Velocity, &mut Flying), With<Flying>>,
     mouse: Res<Input<MouseButton>>,
-    // mut lines: ResMut<DebugLines>,
+    mut fly_line_query: Query<(Entity, &FlyLine), With<FlyLine>>,
+    mut meshes: ResMut<Assets<Mesh>>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
 ) {
@@ -103,7 +106,27 @@ pub fn aim_projectile(
         // should use an angle instead
         point.z = point.z.min(transform.translation.z - 5.);
 
-        // lines.line_colored(transform.translation, point, 0.0, Color::GREEN);
+        if let Ok((_, fly_line)) = fly_line_query.get_single_mut() {
+            let fly_line_handle = meshes.get_handle(fly_line.handle_id);
+            if let Some(fly_line_mesh) = meshes.get_mut(&fly_line_handle) {
+                if let Some(vertex_attribute_values) =
+                    fly_line_mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
+                {
+                    if let VertexAttributeValues::Float32x3(mesh_values) = vertex_attribute_values {
+                        if let Some(first) = mesh_values.first_mut() {
+                            first[0] = transform.translation.x;
+                            first[1] = transform.translation.y;
+                            first[2] = transform.translation.z;
+                        }
+                        if let Some(last) = mesh_values.last_mut() {
+                            last[0] = point.x;
+                            last[1] = point.y;
+                            last[2] = point.z;
+                        }
+                    }
+                }
+            }
+        }
 
         if !mouse.just_pressed(MouseButton::Left) {
             return;
@@ -111,7 +134,6 @@ pub fn aim_projectile(
 
         audio.play(audio_assets.flying.clone());
 
-        const PROJECTILE_SPEED: f32 = 30.;
         let aim_direction = (point - transform.translation).normalize();
         vel.linvel = aim_direction * PROJECTILE_SPEED;
 
@@ -183,5 +205,30 @@ pub fn on_projectile_collisions_events(
                 hit_normal: Some(hit_normal),
             });
         }
+    }
+}
+
+pub fn setup_fly_line(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let mut line_list_mesh = Mesh::new(PrimitiveTopology::LineList);
+    line_list_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vec![Vec3::ZERO, Vec3::ZERO]);
+    let handle_mesh = meshes.add(line_list_mesh);
+    let handle_id = handle_mesh.id();
+    commands.spawn((
+        MaterialMeshBundle {
+            mesh: handle_mesh,
+            material: materials.add(StandardMaterial::from(Color::RED)),
+            ..default()
+        },
+        FlyLine { handle_id },
+    ));
+}
+
+pub fn cleanup_fly_line(mut commands: Commands, query: Query<Entity, With<FlyLine>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }

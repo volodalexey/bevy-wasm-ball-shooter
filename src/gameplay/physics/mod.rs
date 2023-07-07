@@ -1,11 +1,6 @@
-use bevy::prelude::{
-    App, Plugin, Vec3,
-};
+use bevy::prelude::{App, Plugin, Vec3};
 
 use bevy_rapier3d::prelude::{NoUserData, RapierConfiguration, RapierPhysicsPlugin};
-
-pub mod components;
-mod systems;
 
 pub struct PhysicsPlugin;
 
