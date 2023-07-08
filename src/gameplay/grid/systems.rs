@@ -6,12 +6,9 @@ use bevy::prelude::{
 };
 use bevy_prototype_debug_lines::DebugLines;
 
-use crate::{
-    gameplay::{
-        ball::{random_species, BallBundle},
-        hex::{rectangle, Coord, Direction},
-    },
-    loading::texture_assets::TextureAssets,
+use crate::gameplay::{
+    ball::{random_species, BallBundle},
+    hex::{rectangle, Coord, Direction},
 };
 
 use super::resources::Grid;
@@ -21,7 +18,6 @@ pub fn move_down_and_spawn(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     grid: &mut Grid,
-    texture_assets: &Res<TextureAssets>,
 ) {
     let mut hash_map: HashMap<Coord, Option<&Entity>> = HashMap::new();
     for (&hex, entity) in grid.storage.iter() {
@@ -53,7 +49,6 @@ pub fn move_down_and_spawn(
                     random_species(),
                     &mut meshes,
                     &mut materials,
-                    texture_assets,
                 ),
                 hex,
             ))
@@ -69,7 +64,6 @@ pub fn generate_grid(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut grid: ResMut<Grid>,
     hexes: Query<Entity, With<Coord>>,
-    texture_assets: Res<TextureAssets>,
 ) {
     for entity in hexes.iter() {
         commands.entity(entity).despawn();
@@ -90,7 +84,6 @@ pub fn generate_grid(
                     random_species(),
                     &mut meshes,
                     &mut materials,
-                    &texture_assets,
                 ),
                 hex,
             ))

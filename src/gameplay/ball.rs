@@ -1,10 +1,8 @@
 use bevy::prelude::{
-    default, shape::Icosphere, AlphaMode, Assets, Bundle, Color, Component, Mesh, PbrBundle, Res,
-    ResMut, StandardMaterial, Transform, Vec3,
+    shape::Icosphere, Assets, Bundle, Color, Component, Mesh, PbrBundle, ResMut, StandardMaterial,
+    Transform, Vec3,
 };
 use bevy_rapier3d::prelude::{ActiveCollisionTypes, Collider};
-
-use crate::loading::texture_assets::TextureAssets;
 
 use super::hex;
 
@@ -60,7 +58,6 @@ impl BallBundle {
         species: Species,
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<StandardMaterial>>,
-        texture_assets: &Res<TextureAssets>,
     ) -> Self {
         Self {
             pbr: PbrBundle {
@@ -71,18 +68,12 @@ impl BallBundle {
                     })
                     .expect("Unable to generate IcoSphere"),
                 ),
-                material: materials.add(StandardMaterial {
-                    base_color: species_to_color(species).into(),
-                    base_color_texture: Some(texture_assets.bevy.clone()),
-                    alpha_mode: AlphaMode::Blend,
-                    unlit: true,
-                    ..default()
-                }),
+                material: materials.add(species_to_color(species).into()),
                 transform: Transform::from_translation(pos),
                 ..Default::default()
             },
             collider: Collider::ball(radius * BALL_RADIUS_COEFF),
-            species: species,
+            species,
             ..Default::default()
         }
     }

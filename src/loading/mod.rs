@@ -2,14 +2,13 @@ use bevy::prelude::{App, Plugin};
 
 use self::{
     audio_assets::AudioAssetsPlugin, font_assets::FontAssetsPlugin, resources::AssetsLoading,
-    systems::check_assets_ready, texture_assets::TextureAssetsPlugin,
+    systems::check_assets_ready,
 };
 
 pub mod audio_assets;
 pub mod font_assets;
 mod resources;
 mod systems;
-pub mod texture_assets;
 
 pub struct LoadingPlugin;
 
@@ -18,7 +17,6 @@ impl Plugin for LoadingPlugin {
         app.init_resource::<AssetsLoading>()
             .add_plugin(AudioAssetsPlugin)
             .add_plugin(FontAssetsPlugin)
-            .add_plugin(TextureAssetsPlugin)
             .add_system(check_assets_ready);
     }
 }

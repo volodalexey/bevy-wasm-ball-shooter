@@ -1,8 +1,8 @@
 use bevy::{
     prelude::{
-        default, Assets, Audio, Camera3dBundle, Color, Commands, DespawnRecursiveExt, Entity,
-        EventReader, EventWriter, Mesh, NextState, PerspectiveProjection, Projection, Query, Res,
-        ResMut, StandardMaterial, TextBundle, Transform, Vec3, With,
+        default, Assets, Audio, Color, Commands, DespawnRecursiveExt, Entity, EventReader,
+        EventWriter, Mesh, NextState, Query, Res, ResMut, StandardMaterial, TextBundle, Transform,
+        Vec3, With,
     },
     text::{Text, TextSection, TextStyle},
 };
@@ -18,12 +18,11 @@ use crate::{
         },
         projectile::utils::clamp_inside_world_bounds,
     },
-    loading::{audio_assets::AudioAssets, font_assets::FontAssets, texture_assets::TextureAssets},
+    loading::{audio_assets::AudioAssets, font_assets::FontAssets},
 };
 
 use super::{
     ball::{Ball, Species},
-    components::MainCamera,
     constants::PLAYER_SPAWN_Z,
     events::BeginTurn,
     grid::resources::Grid,
@@ -51,21 +50,6 @@ pub fn setup_ui(mut commands: Commands, font_assets: Res<FontAssets>, score: Res
         transform: Transform::from_xyz(0.0, 100.0, 0.0),
         ..default()
     });
-}
-
-pub fn setup_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera3dBundle {
-            projection: Projection::Perspective(PerspectiveProjection {
-                fov: 76.0,
-                ..default()
-            }),
-            transform: Transform::from_xyz(0.0, 70.0, 41.0)
-                .looking_at(Vec3::new(0.0, 0.0, PLAYER_SPAWN_Z / 2.), Vec3::Y),
-            ..default()
-        },
-        MainCamera,
-    ));
 }
 
 pub fn setup_gameplay(
@@ -131,7 +115,6 @@ pub fn on_snap_projectile(
     turn_counter: ResMut<TurnCounter>,
     projectile: Query<(Entity, &Transform, &Species), (With<Projectile>, With<Flying>)>,
     balls: Query<&Species, With<Ball>>,
-    texture_assets: Res<TextureAssets>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
 ) {
@@ -184,7 +167,6 @@ pub fn on_snap_projectile(
                     *species,
                     &mut meshes,
                     &mut materials,
-                    &texture_assets,
                 ),
                 hex,
             ))
@@ -225,13 +207,7 @@ pub fn on_snap_projectile(
 
         const MOVE_DOWN_TURN: u32 = 5;
         if turn_counter.0 % MOVE_DOWN_TURN == 0 {
-            move_down_and_spawn(
-                &mut commands,
-                meshes,
-                materials,
-                grid.as_mut(),
-                &texture_assets,
-            );
+            move_down_and_spawn(&mut commands, meshes, materials, grid.as_mut());
         }
 
         // remove floating clusters
@@ -255,11 +231,6 @@ pub fn on_snap_projectile(
     }
 }
 
-pub fn cleanup_gameplay(
-    mut commands: Commands,
-    camera: Query<Entity, With<MainCamera>>,
-    score_text: Query<Entity, With<Text>>,
-) {
-    commands.entity(camera.single()).despawn_recursive();
+pub fn cleanup_gameplay(mut commands: Commands, score_text: Query<Entity, With<Text>>) {
     commands.entity(score_text.single()).despawn_recursive();
 }

@@ -1,13 +1,9 @@
 use bevy::prelude::{
-    default, shape::Icosphere, AlphaMode, Assets, Bundle, Mesh, PbrBundle, Res, ResMut,
-    StandardMaterial, Transform, Vec3,
+    shape::Icosphere, Assets, Bundle, Mesh, PbrBundle, ResMut, StandardMaterial, Transform, Vec3,
 };
 use bevy_rapier3d::prelude::{ActiveEvents, Ccd, Collider, RigidBody, Velocity};
 
-use crate::{
-    gameplay::ball::{species_to_color, Species, BALL_RADIUS_COEFF},
-    loading::texture_assets::TextureAssets,
-};
+use crate::gameplay::ball::{species_to_color, Species, BALL_RADIUS_COEFF};
 
 use super::{
     components::{Flying, Projectile},
@@ -35,7 +31,6 @@ impl ProjectileBundle {
         species: Species,
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<StandardMaterial>>,
-        texture_assets: &Res<TextureAssets>,
     ) -> Self {
         Self {
             pbr: PbrBundle {
@@ -46,13 +41,7 @@ impl ProjectileBundle {
                     })
                     .expect("Unable to generate IcoSphere"),
                 ),
-                material: materials.add(StandardMaterial {
-                    base_color: species_to_color(species).into(),
-                    base_color_texture: Some(texture_assets.bevy.clone()),
-                    alpha_mode: AlphaMode::Blend,
-                    unlit: true,
-                    ..default()
-                }),
+                material: materials.add(species_to_color(species).into()),
                 transform: Transform::from_translation(pos),
                 ..Default::default()
             },

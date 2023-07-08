@@ -8,21 +8,24 @@ use crate::components::AppState;
 use self::{
     events::BeginTurn,
     grid::GridPlugin,
+    main_camera::MainCameraPlugin,
+    main_light::MainLightPlugin,
     physics::PhysicsPlugin,
     projectile::ProjectilePlugin,
     resources::{Score, TurnCounter},
     systems::{
-        check_game_over, cleanup_gameplay, on_begin_turn, on_snap_projectile, setup_camera,
-        setup_gameplay, setup_ui, update_ui,
+        check_game_over, cleanup_gameplay, on_begin_turn, on_snap_projectile, setup_gameplay,
+        setup_ui, update_ui,
     },
 };
 
 mod ball;
-mod components;
 mod constants;
 mod events;
 mod grid;
 pub mod hex;
+mod main_camera;
+mod main_light;
 mod physics;
 mod projectile;
 mod resources;
@@ -33,15 +36,15 @@ pub struct GameplayPlugin;
 
 impl Plugin for GameplayPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(PhysicsPlugin)
+        app.add_plugin(MainCameraPlugin)
+            .add_plugin(MainLightPlugin)
+            .add_plugin(PhysicsPlugin)
             .add_plugin(GridPlugin)
             .add_plugin(ProjectilePlugin)
             .add_event::<BeginTurn>()
             .insert_resource(TurnCounter(0))
             .insert_resource(Score(0))
-            .add_systems(
-                (setup_ui, setup_camera, setup_gameplay).in_schedule(OnEnter(AppState::Gameplay)),
-            )
+            .add_systems((setup_ui, setup_gameplay).in_schedule(OnEnter(AppState::Gameplay)))
             .add_systems(
                 (
                     update_ui,

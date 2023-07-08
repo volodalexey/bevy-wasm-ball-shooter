@@ -12,14 +12,14 @@ use bevy_rapier3d::prelude::{Collider, CollisionEvent, Velocity};
 use crate::{
     gameplay::{
         ball::{random_species, Ball},
-        components::MainCamera,
         constants::PLAYER_SPAWN_Z,
         events::BeginTurn,
         grid::resources::Grid,
+        main_camera::components::MainCamera,
         projectile::utils::clamp_inside_world_bounds,
         utils::{plane_intersection, ray_from_mouse_position},
     },
-    loading::{audio_assets::AudioAssets, texture_assets::TextureAssets},
+    loading::audio_assets::AudioAssets,
 };
 
 use super::{
@@ -56,7 +56,6 @@ pub fn projectile_reload(
     mut buffer: ResMut<ProjectileBuffer>,
     mut begin_turn: EventReader<BeginTurn>,
     grid: Res<Grid>,
-    texture_assets: Res<TextureAssets>,
 ) {
     if begin_turn.is_empty() {
         return;
@@ -75,7 +74,6 @@ pub fn projectile_reload(
         species,
         &mut meshes,
         &mut materials,
-        &texture_assets,
     ));
 
     buffer.0.push(random_species());
