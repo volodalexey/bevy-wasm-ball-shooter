@@ -1,8 +1,9 @@
 use bevy::{
     prelude::{
         default, Assets, Audio, Camera3dBundle, Color, Commands, DespawnRecursiveExt, Entity,
-        EventReader, EventWriter, Mesh, NextState, PerspectiveProjection, Projection, Query, Res,
-        ResMut, StandardMaterial, TextBundle, Transform, Vec3, With,
+        EventReader, EventWriter, Handle, MaterialMeshBundle, Mesh, NextState,
+        PerspectiveProjection, Projection, Query, Res, ResMut, StandardMaterial, TextBundle,
+        Transform, Vec3, Visibility, With,
     },
     text::{Text, TextSection, TextStyle},
 };
@@ -22,11 +23,12 @@ use crate::{
 
 use super::{
     ball::{Ball, Species},
-    components::MainCamera,
+    components::{EndLine, MainCamera},
     constants::PLAYER_SPAWN_Z,
     events::BeginTurn,
     grid::resources::Grid,
     hex::Direction,
+    line_assets::{utils::draw_line, LineAssets},
     projectile::{
         components::{Flying, Projectile},
         events::SnapProjectile,
@@ -97,18 +99,29 @@ pub fn on_begin_turn(
 pub fn check_game_over(
     grid: Res<Grid>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
-    // mut lines: ResMut<DebugLines>,
+    mut end_line_query: Query<
+        (
+            &mut Handle<Mesh>,
+            &mut Handle<StandardMaterial>,
+            &mut Visibility,
+        ),
+        With<EndLine>,
+    >,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let projectile_hex = grid.layout.from_world(Vec3::new(0.0, 0.0, PLAYER_SPAWN_Z));
     let game_over_row = projectile_hex.neighbor(Direction::B).neighbor(Direction::B);
     let row_pos = grid.layout.to_world_y(game_over_row, 0.0);
 
-    // lines.line_colored(
-    //     Vec3::new(grid.bounds.mins.x, 0., row_pos.z),
-    //     Vec3::new(grid.bounds.maxs.x, 0., row_pos.z),
-    //     0.,
-    //     Color::RED,
-    // );
+    draw_line(
+        end_line_query.get_single_mut(),
+        &mut meshes,
+        &mut materials,
+        Vec3::new(grid.bounds.mins.x, 0., row_pos.z),
+        Vec3::new(grid.bounds.maxs.x, 0., row_pos.z),
+        Color::RED,
+    );
 
     for (&hex, _) in grid.storage.iter() {
         let world_pos = grid.layout.to_world_y(hex, 0.0);
@@ -261,4 +274,21 @@ pub fn cleanup_gameplay(
 ) {
     commands.entity(camera.single()).despawn_recursive();
     commands.entity(score_text.single()).despawn_recursive();
+}
+
+pub fn setup_end_line(mut commands: Commands, line_assets: Res<LineAssets>) {
+    commands.spawn((
+        MaterialMeshBundle {
+            mesh: line_assets.mesh.clone_weak(),
+            material: line_assets.material.clone_weak(),
+            ..default()
+        },
+        EndLine {},
+    ));
+}
+
+pub fn cleanup_end_line(mut commands: Commands, query: Query<Entity, With<EndLine>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
 }

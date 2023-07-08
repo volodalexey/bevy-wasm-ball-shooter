@@ -1,10 +1,9 @@
 use bevy::{
     prelude::{
         default, Assets, Audio, Camera, Color, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, GlobalTransform, Input, MaterialMeshBundle, Mesh, MouseButton, Quat, Query,
-        Res, ResMut, StandardMaterial, Transform, Vec3, With,
+        EventWriter, GlobalTransform, Handle, Input, MaterialMeshBundle, Mesh, MouseButton, Quat,
+        Query, Res, ResMut, StandardMaterial, Transform, Vec3, Visibility, With,
     },
-    render::{mesh::VertexAttributeValues, render_resource::PrimitiveTopology},
     window::{PrimaryWindow, Window},
 };
 use bevy_rapier3d::prelude::{Collider, CollisionEvent, Velocity};
@@ -16,6 +15,7 @@ use crate::{
         constants::PLAYER_SPAWN_Z,
         events::BeginTurn,
         grid::resources::Grid,
+        line_assets::{utils::draw_line, LineAssets},
         projectile::utils::clamp_inside_world_bounds,
         utils::{plane_intersection, ray_from_mouse_position},
     },
@@ -86,13 +86,24 @@ pub fn aim_projectile(
     cameras: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut projectile: Query<(Entity, &Transform, &mut Velocity, &mut Flying), With<Flying>>,
     mouse: Res<Input<MouseButton>>,
-    mut fly_line_query: Query<(Entity, &FlyLine), With<FlyLine>>,
+    mut fly_line_query: Query<
+        (
+            &mut Handle<Mesh>,
+            &mut Handle<StandardMaterial>,
+            &mut Visibility,
+        ),
+        With<FlyLine>,
+    >,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
 ) {
     if let Ok((_, transform, mut vel, mut is_flying)) = projectile.get_single_mut() {
         if is_flying.0 {
+            for (_, _, mut visibility) in fly_line_query.iter_mut() {
+                *visibility = Visibility::Hidden;
+            }
             return;
         }
         let (camera, camera_transform) = cameras.single();
@@ -106,27 +117,14 @@ pub fn aim_projectile(
         // should use an angle instead
         point.z = point.z.min(transform.translation.z - 5.);
 
-        if let Ok((_, fly_line)) = fly_line_query.get_single_mut() {
-            let fly_line_handle = meshes.get_handle(fly_line.handle_id);
-            if let Some(fly_line_mesh) = meshes.get_mut(&fly_line_handle) {
-                if let Some(vertex_attribute_values) =
-                    fly_line_mesh.attribute_mut(Mesh::ATTRIBUTE_POSITION)
-                {
-                    if let VertexAttributeValues::Float32x3(mesh_values) = vertex_attribute_values {
-                        if let Some(first) = mesh_values.first_mut() {
-                            first[0] = transform.translation.x;
-                            first[1] = transform.translation.y;
-                            first[2] = transform.translation.z;
-                        }
-                        if let Some(last) = mesh_values.last_mut() {
-                            last[0] = point.x;
-                            last[1] = point.y;
-                            last[2] = point.z;
-                        }
-                    }
-                }
-            }
-        }
+        draw_line(
+            fly_line_query.get_single_mut(),
+            &mut meshes,
+            &mut materials,
+            transform.translation,
+            point,
+            Color::GREEN,
+        );
 
         if !mouse.just_pressed(MouseButton::Left) {
             return;
@@ -208,22 +206,15 @@ pub fn on_projectile_collisions_events(
     }
 }
 
-pub fn setup_fly_line(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let mut line_list_mesh = Mesh::new(PrimitiveTopology::LineList);
-    line_list_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, vec![Vec3::ZERO, Vec3::ZERO]);
-    let handle_mesh = meshes.add(line_list_mesh);
-    let handle_id = handle_mesh.id();
+pub fn setup_fly_line(mut commands: Commands, line_assets: Res<LineAssets>) {
     commands.spawn((
         MaterialMeshBundle {
-            mesh: handle_mesh,
-            material: materials.add(StandardMaterial::from(Color::RED)),
+            mesh: line_assets.mesh.clone_weak(),
+            material: line_assets.material.clone_weak(),
+            visibility: Visibility::Visible,
             ..default()
         },
-        FlyLine { handle_id },
+        FlyLine {},
     ));
 }
 

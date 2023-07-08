@@ -1,4 +1,4 @@
-use bevy::{asset::HandleId, prelude::Component};
+use bevy::prelude::Component;
 
 #[derive(Component, Clone, Default)]
 pub struct Projectile;
@@ -7,6 +7,4 @@ pub struct Projectile;
 pub struct Flying(pub bool);
 
 #[derive(Component)]
-pub struct FlyLine {
-    pub handle_id: HandleId,
-}
+pub struct FlyLine {}
