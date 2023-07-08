@@ -5,6 +5,3 @@ pub struct Projectile;
 
 #[derive(Component)]
 pub struct Flying(pub bool);
-
-#[derive(Component)]
-pub struct FlyLine {}

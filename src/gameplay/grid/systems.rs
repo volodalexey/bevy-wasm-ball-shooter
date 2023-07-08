@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 use bevy::prelude::{
-    Assets, Changed, Commands, Entity, Mesh, Query, Res, ResMut, StandardMaterial, Transform, With,
+    Assets, Changed, Color, Commands, Entity, Mesh, Query, Res, ResMut, StandardMaterial,
+    Transform, Vec3, With,
 };
+use bevy_prototype_debug_lines::DebugLines;
 
 use crate::{
     gameplay::{
@@ -118,23 +120,23 @@ pub fn update_hex_coord_transforms(
     }
 }
 
-// pub fn display_grid_bounds(grid: Res<Grid>, mut lines: ResMut<DebugLines>) {
-//     const Z_LENGTH: f32 = 1000.;
+pub fn display_grid_bounds(grid: Res<Grid>, mut lines: ResMut<DebugLines>) {
+    const Z_LENGTH: f32 = 1000.;
 
-//     lines.line_colored(
-//         Vec3::new(grid.bounds.mins.x, 0., Z_LENGTH),
-//         Vec3::new(grid.bounds.mins.x, 0., -Z_LENGTH),
-//         0.,
-//         Color::GRAY,
-//     );
+    lines.line_colored(
+        Vec3::new(grid.bounds.mins.x, 0., Z_LENGTH),
+        Vec3::new(grid.bounds.mins.x, 0., -Z_LENGTH),
+        0.,
+        Color::GRAY,
+    );
 
-//     lines.line_colored(
-//         Vec3::new(grid.bounds.maxs.x, 0., Z_LENGTH),
-//         Vec3::new(grid.bounds.maxs.x, 0., -Z_LENGTH),
-//         0.,
-//         Color::GRAY,
-//     );
-// }
+    lines.line_colored(
+        Vec3::new(grid.bounds.maxs.x, 0., Z_LENGTH),
+        Vec3::new(grid.bounds.maxs.x, 0., -Z_LENGTH),
+        0.,
+        Color::GRAY,
+    );
+}
 
 pub fn cleanup_grid(
     mut commands: Commands,

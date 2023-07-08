@@ -3,6 +3,7 @@ use bevy::{
     window::{Window, WindowPlugin},
     DefaultPlugins,
 };
+use bevy_prototype_debug_lines::DebugLinesPlugin;
 use components::AppState;
 use gameplay::GameplayPlugin;
 use loading::LoadingPlugin;
@@ -26,6 +27,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugin(DebugLinesPlugin::with_depth_test(true))
         .add_state::<AppState>()
         .add_plugin(LoadingPlugin)
         .add_plugin(StartMenuPlugin)

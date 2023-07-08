@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 bevy = "0.10.1"
+bevy_prototype_debug_lines = { version = "0.10.2", features = ["3d"] }
 bevy_rapier3d = "0.21.0"
 fastrand = "2.0.0"

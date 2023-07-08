@@ -1,10 +1,10 @@
 use bevy::prelude::{
-    default, App, IntoSystemAppConfig, IntoSystemConfig, OnEnter, OnExit, OnUpdate, Plugin, Vec2,
+    default, App, IntoSystemAppConfig, IntoSystemConfigs, OnEnter, OnExit, OnUpdate, Plugin, Vec2,
 };
 
 use self::{
     resources::Grid,
-    systems::{cleanup_grid, generate_grid, update_hex_coord_transforms},
+    systems::{cleanup_grid, display_grid_bounds, generate_grid, update_hex_coord_transforms},
 };
 
 use super::{
@@ -29,7 +29,9 @@ impl Plugin for GridPlugin {
             ..default()
         })
         .add_system(generate_grid.in_schedule(OnEnter(AppState::Gameplay)))
-        .add_system(update_hex_coord_transforms.in_set(OnUpdate(AppState::Gameplay)))
+        .add_systems(
+            (update_hex_coord_transforms, display_grid_bounds).in_set(OnUpdate(AppState::Gameplay)),
+        )
         .add_system(cleanup_grid.in_schedule(OnExit(AppState::Gameplay)));
     }
 }

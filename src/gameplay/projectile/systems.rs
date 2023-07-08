@@ -1,11 +1,12 @@
 use bevy::{
     prelude::{
-        default, Assets, Audio, Camera, Color, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, GlobalTransform, Handle, Input, MaterialMeshBundle, Mesh, MouseButton, Quat,
-        Query, Res, ResMut, StandardMaterial, Transform, Vec3, Visibility, With,
+        Assets, Audio, Camera, Color, Commands, DespawnRecursiveExt, Entity, EventReader,
+        EventWriter, GlobalTransform, Input, Mesh, MouseButton, Quat, Query, Res, ResMut,
+        StandardMaterial, Transform, Vec3, With,
     },
     window::{PrimaryWindow, Window},
 };
+use bevy_prototype_debug_lines::DebugLines;
 use bevy_rapier3d::prelude::{Collider, CollisionEvent, Velocity};
 
 use crate::{
@@ -15,7 +16,6 @@ use crate::{
         constants::PLAYER_SPAWN_Z,
         events::BeginTurn,
         grid::resources::Grid,
-        line_assets::{utils::draw_line, LineAssets},
         projectile::utils::clamp_inside_world_bounds,
         utils::{plane_intersection, ray_from_mouse_position},
     },
@@ -24,7 +24,7 @@ use crate::{
 
 use super::{
     bundles::ProjectileBundle,
-    components::{FlyLine, Flying, Projectile},
+    components::{Flying, Projectile},
     constants::PROJECTILE_SPEED,
     events::SnapProjectile,
     resources::ProjectileBuffer,
@@ -86,24 +86,12 @@ pub fn aim_projectile(
     cameras: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut projectile: Query<(Entity, &Transform, &mut Velocity, &mut Flying), With<Flying>>,
     mouse: Res<Input<MouseButton>>,
-    mut fly_line_query: Query<
-        (
-            &mut Handle<Mesh>,
-            &mut Handle<StandardMaterial>,
-            &mut Visibility,
-        ),
-        With<FlyLine>,
-    >,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut lines: ResMut<DebugLines>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
 ) {
     if let Ok((_, transform, mut vel, mut is_flying)) = projectile.get_single_mut() {
         if is_flying.0 {
-            for (_, _, mut visibility) in fly_line_query.iter_mut() {
-                *visibility = Visibility::Hidden;
-            }
             return;
         }
         let (camera, camera_transform) = cameras.single();
@@ -117,14 +105,7 @@ pub fn aim_projectile(
         // should use an angle instead
         point.z = point.z.min(transform.translation.z - 5.);
 
-        draw_line(
-            fly_line_query.get_single_mut(),
-            &mut meshes,
-            &mut materials,
-            transform.translation,
-            point,
-            Color::GREEN,
-        );
+        lines.line_colored(transform.translation, point, 0.0, Color::GREEN);
 
         if !mouse.just_pressed(MouseButton::Left) {
             return;
@@ -203,23 +184,5 @@ pub fn on_projectile_collisions_events(
                 hit_normal: Some(hit_normal),
             });
         }
-    }
-}
-
-pub fn setup_fly_line(mut commands: Commands, line_assets: Res<LineAssets>) {
-    commands.spawn((
-        MaterialMeshBundle {
-            mesh: line_assets.mesh.clone_weak(),
-            material: line_assets.material.clone_weak(),
-            visibility: Visibility::Visible,
-            ..default()
-        },
-        FlyLine {},
-    ));
-}
-
-pub fn cleanup_fly_line(mut commands: Commands, query: Query<Entity, With<FlyLine>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
     }
 }
