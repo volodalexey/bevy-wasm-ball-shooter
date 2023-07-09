@@ -1,8 +1,8 @@
 use bevy::{
     prelude::{
-        Assets, Audio, Camera, Color, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, GlobalTransform, Input, Mesh, MouseButton, Quat, Query, Res, ResMut,
-        StandardMaterial, Transform, Vec3, With,
+        Assets, Camera, Color, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter,
+        GlobalTransform, Input, Mesh, MouseButton, Quat, Query, Res, ResMut, StandardMaterial,
+        Transform, Vec3, With,
     },
     window::{PrimaryWindow, Window},
 };
@@ -19,7 +19,7 @@ use crate::{
         projectile::utils::clamp_inside_world_bounds,
         utils::{plane_intersection, ray_from_mouse_position},
     },
-    loading::audio_assets::AudioAssets,
+    loading::audio_assets::{events::AudioEvent, AudioAssets},
 };
 
 use super::{
@@ -84,8 +84,8 @@ pub fn aim_projectile(
     mut projectile: Query<(Entity, &Transform, &mut Velocity, &mut Flying), With<Flying>>,
     mouse: Res<Input<MouseButton>>,
     mut lines: ResMut<DebugLines>,
-    audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
+    mut audio_event: EventWriter<AudioEvent>,
 ) {
     if let Ok((_, transform, mut vel, mut is_flying)) = projectile.get_single_mut() {
         if is_flying.0 {
@@ -108,7 +108,9 @@ pub fn aim_projectile(
             return;
         }
 
-        audio.play(audio_assets.flying.clone());
+        audio_event.send(AudioEvent {
+            clip: audio_assets.flying.clone_weak(),
+        });
 
         let aim_direction = (point - transform.translation).normalize();
         vel.linvel = aim_direction * PROJECTILE_SPEED;

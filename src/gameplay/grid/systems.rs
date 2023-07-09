@@ -42,6 +42,8 @@ pub fn move_down_and_spawn(
         .map(|(&hex, &entity)| (hex, entity.unwrap().clone()))
         .collect();
 
+    grid.layout.offset.inverse();
+
     for hex in rectangle(grid.columns(), 1, &grid.layout) {
         let world_pos = grid.layout.to_world_y(hex, 0.0);
         let ball = commands

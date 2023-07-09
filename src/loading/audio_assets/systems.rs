@@ -29,6 +29,7 @@ pub fn on_audio_event(audio: Res<Audio>, mut audio_events: EventReader<AudioEven
     if audio_events.is_empty() {
         return;
     }
+    audio_events.clear();
     for event in audio_events.iter() {
         audio.play(event.clip.clone_weak());
     }
@@ -38,6 +39,7 @@ pub fn on_audio_loop_event(audio: Res<Audio>, mut audio_events: EventReader<Audi
     if audio_events.is_empty() {
         return;
     }
+    audio_events.clear();
     for event in audio_events.iter() {
         audio.play_with_settings(
             event.clip.clone_weak(),

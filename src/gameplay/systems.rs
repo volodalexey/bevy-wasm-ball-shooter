@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
-        Assets, Audio, Color, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter,
-        Mesh, NextState, Query, Res, ResMut, StandardMaterial, Transform, Vec3, With,
+        Assets, Color, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Mesh,
+        NextState, Query, Res, ResMut, StandardMaterial, Transform, Vec3, With,
     },
     text::Text,
 };
@@ -18,7 +18,7 @@ use crate::{
         },
         projectile::utils::clamp_inside_world_bounds,
     },
-    loading::audio_assets::AudioAssets,
+    loading::audio_assets::{events::AudioEvent, AudioAssets},
 };
 
 use super::{
@@ -96,7 +96,7 @@ pub fn on_snap_projectile(
     mut round_turn_counter: ResMut<RoundTurnCounter>,
     projectile: Query<(Entity, &Transform, &Species), (With<Projectile>, With<Flying>)>,
     balls: Query<&Species, With<Ball>>,
-    audio: Res<Audio>,
+    mut audio_event: EventWriter<AudioEvent>,
     audio_assets: Res<AudioAssets>,
 ) {
     if snap_projectile.is_empty() {
@@ -203,7 +203,9 @@ pub fn on_snap_projectile(
             });
 
         if score_add > 0 {
-            audio.play(audio_assets.score.clone());
+            audio_event.send(AudioEvent {
+                clip: audio_assets.score.clone_weak(),
+            });
         }
 
         score.0 += score_add;

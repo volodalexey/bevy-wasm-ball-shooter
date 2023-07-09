@@ -9,7 +9,9 @@ const SQRT_3: f32 = 1.732_f32;
 /// A hex in axial-coordinates.
 #[derive(Component, Debug, Default, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Coord {
+    /// hex col
     pub q: i32,
+    /// hex row
     pub r: i32,
 }
 
@@ -76,7 +78,8 @@ pub enum Direction {
 
 impl Direction {
     /// ```txt
-    ///  (q, r)
+    /// Flat-top orientation
+    /// (q - column, r - row)
     ///                    x Axis
     ///                  __________
     ///                 /          \
@@ -107,6 +110,37 @@ impl Direction {
             Direction::D => Coord::new(-1, 0),
             Direction::E => Coord::new(-1, 1),
             Direction::F => Coord::new(0, 1),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Offset {
+    PointYOddR,
+    PointYEvenR,
+    FlatOddR,
+    FlatEvenR,
+}
+
+impl Offset {
+    pub fn inverse(&mut self) -> Self {
+        *self = match self {
+            Offset::PointYOddR => Offset::PointYEvenR,
+            Offset::PointYEvenR => Offset::PointYOddR,
+            Offset::FlatOddR => Offset::FlatEvenR,
+            Offset::FlatEvenR => Offset::FlatOddR,
+        };
+        *self
+    }
+}
+
+impl Into<f32> for Offset {
+    fn into(self) -> f32 {
+        match self {
+            Offset::PointYOddR => 0.0,
+            Offset::PointYEvenR => -1.0,
+            Offset::FlatOddR => 0.0,
+            Offset::FlatEvenR => 0.0,
         }
     }
 }
@@ -144,6 +178,7 @@ impl Orientation {
 
 #[derive(Debug, Clone)]
 pub struct Layout {
+    pub offset: Offset,
     pub orientation: Orientation,
     pub size: Vec2,
     pub origin: Vec2,
@@ -151,8 +186,9 @@ pub struct Layout {
 
 impl Layout {
     #[allow(dead_code)]
-    pub fn new(orientation: &Orientation, size: Vec2, origin: Vec2) -> Self {
+    pub fn new(offset: &Offset, orientation: &Orientation, size: Vec2, origin: Vec2) -> Self {
         Self {
+            offset: offset.clone(),
             orientation: orientation.clone(),
             size,
             origin,
@@ -171,7 +207,9 @@ impl Layout {
     pub fn from_world(&self, pos: Vec3) -> Coord {
         let pos_2d = Vec2::new(pos.x, pos.z);
         let matrix = self.orientation.inv_matrix;
+        // let offset_x: f32 = self.offset.into();
         let point = (pos_2d - self.origin) / self.size;
+        // inv_matrix: [SQRT_3 / 3.0, -1.0 / 3.0, 0.0, 2.0 / 3.0],
         let x = matrix[0].mul_add(point.x, matrix[1] * point.y);
         let y = matrix[2].mul_add(point.x, matrix[3] * point.y);
         Coord::new(x.round() as i32, y.round() as i32)
@@ -179,6 +217,7 @@ impl Layout {
 
     /// Convert a hex axial-coordinate to world position.
     pub fn to_world(&self, hex: Coord) -> Vec2 {
+        // let offset_x: f32 = self.offset.into();
         let matrix = self.orientation.fwd_matrix;
         let (sx, sy) = self.size.into();
         let (ox, oy) = self.origin.into();
@@ -237,6 +276,7 @@ impl Layout {
 impl Default for Layout {
     fn default() -> Self {
         Self {
+            offset: Offset::PointYOddR,
             orientation: Orientation::pointy().clone(),
             origin: Vec2::new(0.0, 0.0),
             size: Vec2::new(1.0, 1.0),
@@ -253,9 +293,9 @@ pub fn rectangle(w: i32, h: i32, layout: &Layout) -> impl Iterator<Item = Coord>
 }
 
 fn rectangle_pointy(w: i32, h: i32) -> Box<dyn Iterator<Item = Coord>> {
-    Box::new((0..=h).flat_map(move |y| (0 - (y >> 1)..w - (y >> 1)).map(move |x| Coord::new(x, y))))
+    Box::new((0..h).flat_map(move |y| (0 - (y >> 1)..w - (y >> 1)).map(move |x| Coord::new(x, y))))
 }
 
 fn rectangle_flat(w: i32, h: i32) -> Box<dyn Iterator<Item = Coord>> {
-    Box::new((0..=w).flat_map(move |x| (0 - (x >> 1)..h - (x >> 1)).map(move |y| Coord::new(x, y))))
+    Box::new((0..w).flat_map(move |x| (0 - (x >> 1)..h - (x >> 1)).map(move |y| Coord::new(x, y))))
 }
