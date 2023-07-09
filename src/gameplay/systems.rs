@@ -1,10 +1,9 @@
 use bevy::{
     prelude::{
-        default, Assets, Audio, Color, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, Mesh, NextState, Query, Res, ResMut, StandardMaterial, TextBundle, Transform,
-        Vec3, With,
+        Assets, Audio, Color, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter,
+        Mesh, NextState, Query, Res, ResMut, StandardMaterial, Transform, Vec3, With,
     },
-    text::{Text, TextSection, TextStyle},
+    text::Text,
 };
 use bevy_prototype_debug_lines::DebugLines;
 
@@ -12,13 +11,14 @@ use crate::{
     components::AppState,
     gameplay::{
         ball::BallBundle,
+        constants::MOVE_DOWN_TURN,
         grid::{
             systems::move_down_and_spawn,
             utils::{find_cluster, find_floating_clusters},
         },
         projectile::utils::clamp_inside_world_bounds,
     },
-    loading::{audio_assets::AudioAssets, font_assets::FontAssets},
+    loading::audio_assets::AudioAssets,
 };
 
 use super::{
@@ -31,45 +31,24 @@ use super::{
         components::{Flying, Projectile},
         events::SnapProjectile,
     },
-    resources::{Score, TurnCounter},
+    resources::{RoundTurnCounter, Score, TurnCounter},
 };
-
-pub fn setup_ui(mut commands: Commands, font_assets: Res<FontAssets>, score: Res<Score>) {
-    commands.spawn(TextBundle {
-        text: Text {
-            sections: vec![TextSection {
-                value: format!(" Score: {:?} ", score.0).to_string(),
-                style: TextStyle {
-                    font: font_assets.fira_sans_bold.clone_weak(),
-                    font_size: 40.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
-                },
-            }],
-            ..default()
-        },
-        transform: Transform::from_xyz(0.0, 100.0, 0.0),
-        ..default()
-    });
-}
 
 pub fn setup_gameplay(
     mut begin_turn: EventWriter<BeginTurn>,
     mut turn_counter: ResMut<TurnCounter>,
+    mut round_turn_counter: ResMut<RoundTurnCounter>,
     mut score: ResMut<Score>,
 ) {
     score.0 = 0;
     turn_counter.0 = 0;
+    round_turn_counter.0 = 0;
     begin_turn.send(BeginTurn);
-}
-
-pub fn update_ui(score: Res<Score>, mut score_text: Query<&mut Text>) {
-    for mut text in &mut score_text {
-        text.sections[0].value = format!(" Score: {:?} ", score.0);
-    }
 }
 
 pub fn on_begin_turn(
     mut turn_counter: ResMut<TurnCounter>,
+    mut round_turn_counter: ResMut<RoundTurnCounter>,
     mut begin_turn: EventReader<BeginTurn>,
 ) {
     if begin_turn.is_empty() {
@@ -77,6 +56,7 @@ pub fn on_begin_turn(
     }
     begin_turn.clear();
     turn_counter.0 += 1;
+    round_turn_counter.0 += 1;
 }
 
 pub fn check_game_over(
@@ -113,6 +93,7 @@ pub fn on_snap_projectile(
     mut begin_turn: EventWriter<BeginTurn>,
     mut score: ResMut<Score>,
     turn_counter: ResMut<TurnCounter>,
+    mut round_turn_counter: ResMut<RoundTurnCounter>,
     projectile: Query<(Entity, &Transform, &Species), (With<Projectile>, With<Flying>)>,
     balls: Query<&Species, With<Ball>>,
     audio: Res<Audio>,
@@ -205,8 +186,8 @@ pub fn on_snap_projectile(
                 score_add += 1;
             });
 
-        const MOVE_DOWN_TURN: u32 = 5;
         if turn_counter.0 % MOVE_DOWN_TURN == 0 {
+            round_turn_counter.0 = 0;
             move_down_and_spawn(&mut commands, meshes, materials, grid.as_mut());
         }
 

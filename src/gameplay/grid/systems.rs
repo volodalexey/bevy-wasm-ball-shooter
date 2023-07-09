@@ -11,7 +11,10 @@ use crate::gameplay::{
     hex::{rectangle, Coord, Direction},
 };
 
-use super::resources::Grid;
+use super::{
+    constants::{GRID_HEIGHT, GRID_WIDTH},
+    resources::Grid,
+};
 
 pub fn move_down_and_spawn(
     commands: &mut Commands,
@@ -63,18 +66,8 @@ pub fn generate_grid(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut grid: ResMut<Grid>,
-    hexes: Query<Entity, With<Coord>>,
 ) {
-    for entity in hexes.iter() {
-        commands.entity(entity).despawn();
-    }
-
-    grid.clear();
-
-    const WIDTH: i32 = 16;
-    const HEIGHT: i32 = 16;
-
-    for hex in rectangle(WIDTH, HEIGHT, &grid.layout) {
+    for hex in rectangle(GRID_WIDTH, GRID_HEIGHT, &grid.layout) {
         let world_pos = grid.layout.to_world_y(hex, 0.0);
         let entity = commands
             .spawn((

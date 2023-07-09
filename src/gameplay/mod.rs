@@ -1,6 +1,5 @@
 use bevy::prelude::{
-    App, IntoSystemAppConfig, IntoSystemAppConfigs, IntoSystemConfigs, OnEnter, OnExit, OnUpdate,
-    Plugin,
+    App, IntoSystemAppConfig, IntoSystemConfigs, OnEnter, OnExit, OnUpdate, Plugin,
 };
 
 use crate::components::AppState;
@@ -12,11 +11,11 @@ use self::{
     main_light::MainLightPlugin,
     physics::PhysicsPlugin,
     projectile::ProjectilePlugin,
-    resources::{Score, TurnCounter},
+    resources::{RoundTurnCounter, Score, TurnCounter},
     systems::{
         check_game_over, cleanup_gameplay, on_begin_turn, on_snap_projectile, setup_gameplay,
-        setup_ui, update_ui,
     },
+    ui::UIPlugin,
 };
 
 mod ball;
@@ -30,6 +29,7 @@ mod physics;
 mod projectile;
 mod resources;
 mod systems;
+mod ui;
 mod utils;
 
 pub struct GameplayPlugin;
@@ -41,17 +41,14 @@ impl Plugin for GameplayPlugin {
             .add_plugin(PhysicsPlugin)
             .add_plugin(GridPlugin)
             .add_plugin(ProjectilePlugin)
+            .add_plugin(UIPlugin)
             .add_event::<BeginTurn>()
             .insert_resource(TurnCounter(0))
+            .insert_resource(RoundTurnCounter(0))
             .insert_resource(Score(0))
-            .add_systems((setup_ui, setup_gameplay).in_schedule(OnEnter(AppState::Gameplay)))
+            .add_system(setup_gameplay.in_schedule(OnEnter(AppState::Gameplay)))
             .add_systems(
-                (
-                    update_ui,
-                    on_begin_turn,
-                    check_game_over,
-                    on_snap_projectile,
-                )
+                (on_begin_turn, check_game_over, on_snap_projectile)
                     .in_set(OnUpdate(AppState::Gameplay)),
             )
             .add_system(cleanup_gameplay.in_schedule(OnExit(AppState::Gameplay)));

@@ -60,7 +60,6 @@ pub fn projectile_reload(
     if begin_turn.is_empty() {
         return;
     }
-
     begin_turn.clear();
 
     let species = match buffer.0.pop() {

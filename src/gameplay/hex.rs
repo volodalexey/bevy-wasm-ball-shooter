@@ -76,17 +76,18 @@ pub enum Direction {
 
 impl Direction {
     /// ```txt
-    ///            x Axis
-    ///            ___
-    ///           /   \
-    ///       +--+  2  +--+
-    ///      / 3  \___/  1 \
-    ///      \    /   \    /
-    ///       +--+     +--+
-    ///      /    \___/    \
-    ///      \ 4  /   \  0 /
-    ///       +--+  5  +--+   y Axis
-    ///           \___/
+    ///  (q, r)
+    ///                    x Axis
+    ///                  __________
+    ///                 /          \
+    ///       +--------+  C( 0,-1)  +--------+
+    ///      /          \__________/          \
+    ///      \ D(-1, 0) /          \ B( 1,-1) /
+    ///       +--------+            +--------+
+    ///      /          \__________/          \
+    ///      \ E(-1, 1) /          \ A( 1, 0) /
+    ///       +--------+  F( 0, 1)  +--------+   y Axis
+    ///                 \__________/
     /// ```
     pub fn all() -> &'static [Direction; 6] {
         &[
@@ -151,7 +152,7 @@ pub struct Layout {
 impl Layout {
     #[allow(dead_code)]
     pub fn new(orientation: &Orientation, size: Vec2, origin: Vec2) -> Self {
-        Layout {
+        Self {
             orientation: orientation.clone(),
             size,
             origin,

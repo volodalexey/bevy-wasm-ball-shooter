@@ -41,7 +41,7 @@ pub fn on_audio_loop_event(audio: Res<Audio>, mut audio_events: EventReader<Audi
     for event in audio_events.iter() {
         audio.play_with_settings(
             event.clip.clone_weak(),
-            PlaybackSettings::LOOP.with_volume(0.75),
+            PlaybackSettings::LOOP.with_volume(0.5),
         );
     }
 }
