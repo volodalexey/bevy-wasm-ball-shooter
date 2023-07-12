@@ -1,6 +1,4 @@
-use bevy::prelude::{
-    App, IntoSystemAppConfig, IntoSystemConfigs, OnEnter, OnExit, OnUpdate, Plugin,
-};
+use bevy::prelude::{App, IntoSystemAppConfig, IntoSystemConfigs, OnEnter, OnUpdate, Plugin};
 
 use crate::components::AppState;
 
@@ -12,9 +10,7 @@ use self::{
     physics::PhysicsPlugin,
     projectile::ProjectilePlugin,
     resources::{RoundTurnCounter, Score, TurnCounter},
-    systems::{
-        check_game_over, cleanup_gameplay, on_begin_turn, on_snap_projectile, setup_gameplay,
-    },
+    systems::{check_game_over, on_begin_turn, on_snap_projectile, setup_gameplay},
     ui::UIPlugin,
 };
 
@@ -49,7 +45,6 @@ impl Plugin for GameplayPlugin {
             .add_systems(
                 (on_begin_turn, check_game_over, on_snap_projectile)
                     .in_set(OnUpdate(AppState::Gameplay)),
-            )
-            .add_system(cleanup_gameplay.in_schedule(OnExit(AppState::Gameplay)));
+            );
     }
 }

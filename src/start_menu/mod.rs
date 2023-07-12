@@ -10,6 +10,7 @@ use self::{
     systems::{cleanup_menu, click_play_button, setup_menu, start_audio},
 };
 
+mod components;
 mod resources;
 mod systems;
 

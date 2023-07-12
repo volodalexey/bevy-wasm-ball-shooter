@@ -1,9 +1,6 @@
-use bevy::{
-    prelude::{
-        Assets, Color, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Mesh,
-        NextState, Query, Res, ResMut, StandardMaterial, Transform, Vec2, Vec3, With,
-    },
-    text::Text,
+use bevy::prelude::{
+    Assets, Color, Commands, Entity, EventReader, EventWriter, Mesh, NextState, Query, Res, ResMut,
+    StandardMaterial, Transform, Vec2, Vec3, With,
 };
 use bevy_prototype_debug_lines::DebugLines;
 use hexx::{Direction, Hex};
@@ -203,34 +200,30 @@ pub fn on_snap_projectile(
                 score_add += 1;
             });
 
-        if turn_counter.0 % MOVE_DOWN_TURN == 0 {
-            round_turn_counter.0 = 0;
-            move_down_and_spawn.send(MoveDownAndSpawn);
-        }
-
-        // remove floating clusters
-        // let floating_clusters = find_floating_clusters(&grid);
-        // floating_clusters
-        //     .iter()
-        //     .flat_map(|e| e.iter())
-        //     .for_each(|&hex| {
-        //         commands.entity(*grid.get(hex).unwrap()).despawn();
-        //         grid.set(hex, None);
-        //         score_add += 1;
-        //     });
-
         if score_add > 0 {
             audio_event.send(AudioEvent {
                 clip: audio_assets.score.clone_weak(),
             });
         }
 
+        if turn_counter.0 % MOVE_DOWN_TURN == 0 {
+            round_turn_counter.0 = 0;
+            move_down_and_spawn.send(MoveDownAndSpawn);
+        }
+
+        // remove floating clusters
+        let floating_clusters = find_floating_clusters(&grid);
+        floating_clusters
+            .iter()
+            .flat_map(|e| e.iter())
+            .for_each(|&hex| {
+                commands.entity(*grid.get(hex).unwrap()).despawn();
+                grid.set(hex, None);
+                score_add += 1;
+            });
+
         score.0 += score_add;
 
         begin_turn.send(BeginTurn);
     }
-}
-
-pub fn cleanup_gameplay(mut commands: Commands, score_text: Query<Entity, With<Text>>) {
-    commands.entity(score_text.single()).despawn_recursive();
 }

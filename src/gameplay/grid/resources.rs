@@ -160,6 +160,7 @@ impl Grid {
 
     pub fn clear(&mut self) {
         self.storage.clear();
+        self.layout.origin = Vec2::ZERO;
         self.update_bounds();
     }
 

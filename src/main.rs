@@ -5,12 +5,14 @@ use bevy::{
 };
 use bevy_prototype_debug_lines::DebugLinesPlugin;
 use components::AppState;
+use game_over_menu::GameOverMenuPlugin;
 use gameplay::GameplayPlugin;
 use loading::LoadingPlugin;
 use start_menu::StartMenuPlugin;
 use systems::exit_game;
 
 mod components;
+mod game_over_menu;
 mod gameplay;
 mod loading;
 mod start_menu;
@@ -32,6 +34,7 @@ fn main() {
         .add_plugin(LoadingPlugin)
         .add_plugin(StartMenuPlugin)
         .add_plugin(GameplayPlugin)
+        .add_plugin(GameOverMenuPlugin)
         .add_system(exit_game)
         .run();
 }
