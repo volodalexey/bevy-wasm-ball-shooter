@@ -69,7 +69,7 @@ pub fn projectile_reload(
 
     commands.spawn(ProjectileBundle::new(
         Vec3::new(0.0, 0.0, PLAYER_SPAWN_Z),
-        grid.layout.size.x,
+        grid.layout.hex_size.x,
         species,
         &mut meshes,
         &mut materials,

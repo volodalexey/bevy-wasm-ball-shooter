@@ -1,6 +1,7 @@
 use bevy::prelude::{Entity, Vec3};
+use hexx::Hex;
 
-use crate::gameplay::{ball::Species, hex::Coord};
+use crate::gameplay::ball::Species;
 
 pub struct SnapProjectile {
     /// Entity of the ball if any were hit.
@@ -10,6 +11,6 @@ pub struct SnapProjectile {
 }
 
 pub struct SpawnedBall {
-    pub hex: Coord,
+    pub hex: Hex,
     pub species: Species,
 }

@@ -4,9 +4,8 @@ use bevy::prelude::{
 };
 use bevy_rapier3d::prelude::{ActiveCollisionTypes, Collider};
 
-use super::hex;
-
-pub const BALL_RADIUS_COEFF: f32 = hex::INNER_RADIUS_COEFF * 0.85;
+pub const INNER_RADIUS_COEFF: f32 = 0.866025404;
+pub const BALL_RADIUS_COEFF: f32 = INNER_RADIUS_COEFF * 0.85;
 
 #[derive(Component)]
 pub struct Ball;

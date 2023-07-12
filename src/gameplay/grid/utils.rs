@@ -1,21 +1,16 @@
 use bevy::{prelude::Entity, utils::HashSet};
-
-use crate::gameplay::hex::Coord;
+use hexx::Hex;
 
 use super::resources::Grid;
 
 #[inline(always)]
-pub fn find_cluster<'a, P>(
-    grid: &Grid,
-    origin: Coord,
-    is_cluster: P,
-) -> (Vec<Coord>, HashSet<Coord>)
+pub fn find_cluster<'a, P>(grid: &Grid, origin: Hex, is_cluster: P) -> (Vec<Hex>, HashSet<Hex>)
 where
     P: Fn(&Entity) -> bool,
 {
-    let mut processed = HashSet::<Coord>::new();
+    let mut processed = HashSet::<Hex>::new();
     let mut to_process = vec![origin];
-    let mut cluster: Vec<Coord> = vec![];
+    let mut cluster: Vec<Hex> = vec![];
 
     processed.insert(origin);
 
@@ -41,9 +36,9 @@ where
 }
 
 #[inline(always)]
-pub fn find_floating_clusters(grid: &Grid) -> Vec<Vec<Coord>> {
-    let mut processed = HashSet::<Coord>::new();
-    let mut floating_clusters: Vec<Vec<Coord>> = vec![];
+pub fn find_floating_clusters(grid: &Grid) -> Vec<Vec<Hex>> {
+    let mut processed = HashSet::<Hex>::new();
+    let mut floating_clusters: Vec<Vec<Hex>> = vec![];
 
     for (hex, _) in grid.storage.iter() {
         if processed.contains(hex) {
@@ -61,7 +56,7 @@ pub fn find_floating_clusters(grid: &Grid) -> Vec<Vec<Coord>> {
         let mut floating = true;
         for hex in cluster.iter() {
             // TODO(pyrbin): we have to find a better way check if ball is top row
-            if hex.r == 0 {
+            if hex.y == 0 {
                 floating = false;
                 break;
             }

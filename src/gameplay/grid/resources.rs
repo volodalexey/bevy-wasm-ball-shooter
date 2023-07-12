@@ -1,26 +1,77 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter, Result},
+};
 
-use bevy::prelude::{Entity, Resource, Vec2};
+use bevy::prelude::{info, Component, Entity, Resource, Vec2};
+use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
 
-use crate::gameplay::hex::{Bounds, Coord, Layout};
+#[derive(Default, Debug, Copy, Clone)]
+pub struct Bound {
+    pub x: f32,
+    pub y: f32,
+    pub q: i32,
+    pub r: i32,
+}
 
-#[derive(Resource, Default)]
-pub struct Grid {
-    pub layout: Layout,
-    pub storage: HashMap<Coord, Entity>,
-    /// World bounds. Updated by calling [update_bounds].
-    pub bounds: Bounds,
-    /// True if bounds haven't been updated since last modification.
+#[derive(Default, Debug, Copy, Clone)]
+pub struct Bounds {
+    pub mins: Bound,
+    pub maxs: Bound,
+    pub cols: i32,
+    pub rows: i32,
     pub dirty: bool,
 }
 
+impl Display for Bounds {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(
+            f,
+            "Bounds {}<x>{} {}<y>{} {}<q({})>{} {}<r({})>{}",
+            self.mins.x,
+            self.maxs.x,
+            self.mins.y,
+            self.maxs.y,
+            self.mins.q,
+            self.cols,
+            self.maxs.q,
+            self.mins.r,
+            self.rows,
+            self.maxs.r
+        )
+    }
+}
+
+#[derive(Resource)]
+pub struct Grid {
+    pub layout: HexLayout,
+    pub offset_type: OffsetHexMode,
+    pub storage: HashMap<Hex, Entity>,
+    pub bounds: Bounds,
+}
+
+impl Default for Grid {
+    fn default() -> Self {
+        Self {
+            layout: HexLayout {
+                orientation: HexOrientation::Pointy,
+                hex_size: Vec2::ONE,
+                ..Default::default()
+            },
+            offset_type: OffsetHexMode::OddRows,
+            storage: Default::default(),
+            bounds: Default::default(),
+        }
+    }
+}
+
 impl Grid {
-    pub fn get(&self, hex: Coord) -> Option<&Entity> {
+    pub fn get(&self, hex: Hex) -> Option<&Entity> {
         self.storage.get(&hex)
     }
 
-    pub fn set(&mut self, hex: Coord, entity: Option<Entity>) -> Option<Entity> {
-        self.dirty = true;
+    pub fn set(&mut self, hex: Hex, entity: Option<Entity>) -> Option<Entity> {
+        self.bounds.dirty = true;
         match entity {
             Some(entity) => self.storage.insert(hex.clone(), entity),
             None => self.storage.remove(&hex),
@@ -36,48 +87,74 @@ impl Grid {
 
     pub fn columns(&self) -> i32 {
         let (w, _) = self.dim();
-        let (hw, _) = self.layout.hex_size();
+        let (hw, _) = self.layout.hex_size.into();
         (w / hw / 2.).round() as i32
     }
 
-    #[allow(dead_code)]
     pub fn rows(&self) -> i32 {
         let (_, h) = self.dim();
-        let (_, hh) = self.layout.hex_size();
+        let (_, hh) = self.layout.hex_size.into();
         (h / hh / 2.).round() as i32
     }
 
-    pub fn neighbors(&self, hex: Coord) -> Vec<(Coord, &Entity)> {
-        hex.neighbors()
+    pub fn neighbors(&self, hex: Hex) -> Vec<(Hex, &Entity)> {
+        hex.all_neighbors()
             .iter()
             .filter_map(|&hex| match self.get(hex) {
                 Some(entity) => Some((hex, entity)),
                 None => None,
             })
-            .collect::<Vec<(Coord, &Entity)>>()
+            .collect::<Vec<(Hex, &Entity)>>()
     }
 
-    // TODO: this is not that efficient, but should be fine for now.
     #[inline]
     pub fn update_bounds(&mut self) {
+        // q
+        let mut max_q = i32::MIN;
+        let mut min_q = i32::MAX;
+        // r
+        let mut max_r = i32::MIN;
+        let mut min_r = i32::MAX;
+        // x
         let mut max_x = f32::MIN;
-        let mut max_y = f32::MIN;
         let mut min_x = f32::MAX;
+        // y
+        let mut max_y = f32::MIN;
         let mut min_y = f32::MAX;
         for (&hex, _) in self.storage.iter() {
-            let pos = self.layout.to_world(hex);
-            max_x = max_x.max(pos.x);
-            max_y = max_y.max(pos.y);
+            let pos = self.layout.hex_to_world_pos(hex);
+            // q
+            min_q = min_q.min(hex.x);
+            max_q = max_q.max(hex.x);
+            // r
+            min_r = min_r.min(hex.y);
+            max_r = max_r.max(hex.y);
+            // x
             min_x = min_x.min(pos.x);
+            max_x = max_x.max(pos.x);
+            // y
             min_y = min_y.min(pos.y);
+            max_y = max_y.max(pos.y);
         }
 
-        let (sx, sy) = self.layout.hex_size();
+        let (sx, sy) = self.layout.hex_size.into();
 
-        self.dirty = false;
         self.bounds = Bounds {
-            mins: Vec2::new(min_x - sx, min_y - sy),
-            maxs: Vec2::new(max_x + sx, max_y + sy),
+            mins: Bound {
+                x: min_x - sx,
+                y: min_y - sy,
+                q: min_q,
+                r: min_r,
+            },
+            maxs: Bound {
+                x: max_x + sx,
+                y: max_y + sy,
+                q: max_q,
+                r: max_r,
+            },
+            cols: self.columns(),
+            rows: self.rows(),
+            dirty: false,
         }
     }
 
@@ -85,4 +162,50 @@ impl Grid {
         self.storage.clear();
         self.update_bounds();
     }
+
+    #[allow(dead_code)]
+    pub fn inverse_offset(&mut self) {
+        self.offset_type = match self.offset_type {
+            OffsetHexMode::EvenColumns => OffsetHexMode::OddColumns,
+            OffsetHexMode::OddColumns => OffsetHexMode::EvenColumns,
+            OffsetHexMode::EvenRows => OffsetHexMode::OddRows,
+            OffsetHexMode::OddRows => OffsetHexMode::EvenRows,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn print_sorted(&mut self) {
+        let mut s: Vec<(i32, Hex)> = Vec::new();
+        let replaced: String = self
+            .bounds
+            .cols
+            .to_string()
+            .chars()
+            .map(|x| match x {
+                _ => '0',
+            })
+            .collect();
+        let y_mul_factor: i32 = format!("1{}", replaced).parse().unwrap();
+        for (&hex, _) in self.storage.iter() {
+            let hex_offset = hex.to_offset_coordinates(self.offset_type);
+            let sort_value = hex_offset[1].abs() * y_mul_factor + hex_offset[0].abs();
+            s.push((sort_value, hex));
+        }
+        s.sort_by(|x, y| x.0.cmp(&y.0));
+        info!("Grid sorted----");
+        for (_, hex) in s.iter() {
+            let pos = self.layout.hex_to_world_pos(*hex);
+            let hex_offet = hex.to_offset_coordinates(self.offset_type);
+            info!(
+                "offset(x={}, y={}) axial(x={}, y={})  pos(x={}, y={}) ",
+                hex_offet[0], hex_offet[1], hex.x, hex.y, pos.x, pos.y,
+            );
+        }
+        info!("----Grid sorted");
+    }
+}
+
+#[derive(Component)]
+pub struct HexComponent {
+    pub hex: Hex,
 }

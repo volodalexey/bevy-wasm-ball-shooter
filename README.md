@@ -21,5 +21,5 @@ cargo install wasm-bindgen-cli
 ### Run build script
 
 ```sh
-./utils/wasm/build.sh
+./wasm/build.sh
 ```

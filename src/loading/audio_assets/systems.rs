@@ -29,21 +29,24 @@ pub fn on_audio_event(audio: Res<Audio>, mut audio_events: EventReader<AudioEven
     if audio_events.is_empty() {
         return;
     }
-    audio_events.clear();
-    for event in audio_events.iter() {
-        audio.play(event.clip.clone_weak());
+    if let Some(event) = audio_events.iter().nth(0) {
+        audio.play_with_settings(
+            event.clip.clone_weak(),
+            PlaybackSettings::ONCE.with_volume(0.2),
+        );
     }
+    audio_events.clear();
 }
 
 pub fn on_audio_loop_event(audio: Res<Audio>, mut audio_events: EventReader<AudioLoopEvent>) {
     if audio_events.is_empty() {
         return;
     }
-    audio_events.clear();
-    for event in audio_events.iter() {
+    if let Some(event) = audio_events.iter().nth(0) {
         audio.play_with_settings(
             event.clip.clone_weak(),
-            PlaybackSettings::LOOP.with_volume(0.5),
+            PlaybackSettings::LOOP.with_volume(0.1),
         );
     }
+    audio_events.clear();
 }

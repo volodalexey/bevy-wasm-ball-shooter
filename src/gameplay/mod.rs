@@ -22,7 +22,6 @@ mod ball;
 mod constants;
 mod events;
 mod grid;
-pub mod hex;
 mod main_camera;
 mod main_light;
 mod physics;

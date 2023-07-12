@@ -1,6 +1,6 @@
 use bevy::prelude::Vec3;
 
-use crate::gameplay::hex::Bounds;
+use crate::gameplay::grid::resources::Bounds;
 
 pub fn clamp_inside_world_bounds(
     mut pos: Vec3,
