@@ -1,6 +1,4 @@
-use bevy::prelude::{
-    App, IntoSystemAppConfig, IntoSystemConfig, OnEnter, OnExit, OnUpdate, Plugin,
-};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
 
 use crate::components::AppState;
 
@@ -14,8 +12,8 @@ pub struct UIPlugin;
 
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(setup_ui.in_schedule(OnEnter(AppState::Gameplay)))
-            .add_system(update_ui.in_set(OnUpdate(AppState::Gameplay)))
-            .add_system(cleanup_ui.in_schedule(OnExit(AppState::Gameplay)));
+        app.add_systems(OnEnter(AppState::Gameplay), setup_ui)
+            .add_systems(Update, update_ui.run_if(in_state(AppState::Gameplay)))
+            .add_systems(OnExit(AppState::Gameplay), cleanup_ui);
     }
 }

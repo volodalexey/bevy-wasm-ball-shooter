@@ -1,13 +1,10 @@
-use bevy::prelude::{
-    App, IntoSystemAppConfig, IntoSystemAppConfigs, IntoSystemConfig, OnEnter, OnExit, OnUpdate,
-    Plugin,
-};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
 
 use crate::components::AppState;
 
 use self::{
     resources::ButtonColors,
-    systems::{cleanup_menu, click_play_button, setup_menu, start_audio},
+    systems::{cleanup_audio, cleanup_menu, click_play_button, setup_menu, start_audio},
 };
 
 mod components;
@@ -19,8 +16,11 @@ pub struct StartMenuPlugin;
 impl Plugin for StartMenuPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ButtonColors>()
-            .add_systems((setup_menu, start_audio).in_schedule(OnEnter(AppState::StartMenu)))
-            .add_system(click_play_button.in_set(OnUpdate(AppState::StartMenu)))
-            .add_system(cleanup_menu.in_schedule(OnExit(AppState::StartMenu)));
+            .add_systems(OnEnter(AppState::StartMenu), (setup_menu, start_audio))
+            .add_systems(
+                Update,
+                click_play_button.run_if(in_state(AppState::StartMenu)),
+            )
+            .add_systems(OnExit(AppState::StartMenu), (cleanup_menu, cleanup_audio));
     }
 }

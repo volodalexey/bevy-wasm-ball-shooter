@@ -1,6 +1,4 @@
-use bevy::prelude::{
-    App, IntoSystemAppConfig, IntoSystemConfig, OnEnter, OnExit, OnUpdate, Plugin,
-};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
 
 use crate::components::AppState;
 
@@ -13,9 +11,11 @@ pub struct MainCameraPlugin;
 
 impl Plugin for MainCameraPlugin {
     fn build(&self, app: &mut App) {
-        // Bevy Plugins
-        app.add_system(setup_main_camera.in_schedule(OnEnter(AppState::Gameplay)))
-            .add_system(control_camera_position.in_set(OnUpdate(AppState::Gameplay)))
-            .add_system(cleanup_main_camera.in_schedule(OnExit(AppState::Gameplay)));
+        app.add_systems(OnEnter(AppState::Gameplay), setup_main_camera)
+            .add_systems(
+                Update,
+                control_camera_position.run_if(in_state(AppState::Gameplay)),
+            )
+            .add_systems(OnExit(AppState::Gameplay), cleanup_main_camera);
     }
 }

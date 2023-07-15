@@ -4,7 +4,7 @@ use bevy::{
         DespawnRecursiveExt, Entity, NextState, NodeBundle, Query, Res, ResMut, TextBundle, With,
     },
     text::{Text, TextSection, TextStyle},
-    ui::{AlignItems, BackgroundColor, Interaction, JustifyContent, Size, Style, UiRect, Val},
+    ui::{AlignItems, BackgroundColor, Interaction, JustifyContent, Style, UiRect, Val},
 };
 
 use crate::{components::AppState, loading::font_assets::FontAssets};
@@ -40,7 +40,8 @@ pub fn setup_menu(
             parent
                 .spawn(ButtonBundle {
                     style: Style {
-                        size: Size::new(Val::Px(120.0), Val::Px(50.0)),
+                        width: Val::Px(120.),
+                        height: Val::Px(50.),
                         margin: UiRect::all(Val::Auto),
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
@@ -78,7 +79,7 @@ pub fn click_play_button(
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
-            Interaction::Clicked => {
+            Interaction::Pressed => {
                 app_state_next_state.set(AppState::Gameplay);
             }
             Interaction::Hovered => {

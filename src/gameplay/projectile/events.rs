@@ -1,8 +1,9 @@
-use bevy::prelude::{Entity, Vec3};
+use bevy::prelude::{Entity, Event, Vec3};
 use hexx::Hex;
 
 use crate::gameplay::ball::Species;
 
+#[derive(Event)]
 pub struct SnapProjectile {
     /// Entity of the ball if any were hit.
     pub entity: Option<Entity>,
@@ -10,6 +11,7 @@ pub struct SnapProjectile {
     pub hit_normal: Option<Vec3>,
 }
 
+#[derive(Event)]
 pub struct SpawnedBall {
     pub hex: Hex,
     pub species: Species,

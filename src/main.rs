@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{default, App, PluginGroup},
+    prelude::{default, App, PluginGroup, Update},
     window::{Window, WindowPlugin},
     DefaultPlugins,
 };
@@ -19,22 +19,24 @@ mod start_menu;
 mod systems;
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Bevy+WASM Ball Shooter".into(),
-                resolution: (1000., 1000.).into(),
-                fit_canvas_to_parent: true,
-                prevent_default_event_handling: false,
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "Bevy+WASM Ball Shooter".into(),
+                    resolution: (1000., 1000.).into(),
+                    fit_canvas_to_parent: true,
+                    prevent_default_event_handling: false,
+                    ..default()
+                }),
                 ..default()
             }),
-            ..default()
-        }))
-        .add_plugin(DebugLinesPlugin::with_depth_test(true))
+            DebugLinesPlugin::with_depth_test(true),
+            LoadingPlugin,
+            StartMenuPlugin,
+            GameplayPlugin,
+            GameOverMenuPlugin,
+        ))
         .add_state::<AppState>()
-        .add_plugin(LoadingPlugin)
-        .add_plugin(StartMenuPlugin)
-        .add_plugin(GameplayPlugin)
-        .add_plugin(GameOverMenuPlugin)
-        .add_system(exit_game)
+        .add_systems(Update, exit_game)
         .run();
 }

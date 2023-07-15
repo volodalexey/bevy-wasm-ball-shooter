@@ -1,6 +1,4 @@
-use bevy::prelude::{
-    App, IntoSystemAppConfig, IntoSystemConfigs, OnEnter, OnExit, OnUpdate, Plugin,
-};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
 
 use self::{
     events::{MoveDownAndSpawn, UpdatePositions},
@@ -13,6 +11,7 @@ use self::{
 
 use super::AppState;
 
+pub mod components;
 mod constants;
 pub mod events;
 pub mod resources;
@@ -26,15 +25,16 @@ impl Plugin for GridPlugin {
         app.init_resource::<Grid>()
             .add_event::<UpdatePositions>()
             .add_event::<MoveDownAndSpawn>()
-            .add_system(generate_grid.in_schedule(OnEnter(AppState::Gameplay)))
+            .add_systems(OnEnter(AppState::Gameplay), generate_grid)
             .add_systems(
+                Update,
                 (
                     update_hex_coord_transforms,
                     display_grid_bounds,
                     move_down_and_spawn,
                 )
-                    .in_set(OnUpdate(AppState::Gameplay)),
+                    .run_if(in_state(AppState::Gameplay)),
             )
-            .add_system(cleanup_grid.in_schedule(OnExit(AppState::Gameplay)));
+            .add_systems(OnExit(AppState::Gameplay), cleanup_grid);
     }
 }

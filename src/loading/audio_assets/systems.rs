@@ -1,11 +1,8 @@
-use bevy::prelude::{AssetServer, Audio, Commands, EventReader, PlaybackSettings, Res, ResMut};
+use bevy::prelude::{AssetServer, Commands, ResMut};
 
 use crate::loading::resources::AssetsLoading;
 
-use super::{
-    events::{AudioEvent, AudioLoopEvent},
-    AudioAssets,
-};
+use super::AudioAssets;
 
 pub fn load_assets(
     mut commands: Commands,
@@ -23,30 +20,4 @@ pub fn load_assets(
     loading.0.push(assets.score.clone_weak_untyped());
 
     commands.insert_resource(assets);
-}
-
-pub fn on_audio_event(audio: Res<Audio>, mut audio_events: EventReader<AudioEvent>) {
-    if audio_events.is_empty() {
-        return;
-    }
-    if let Some(event) = audio_events.iter().nth(0) {
-        audio.play_with_settings(
-            event.clip.clone_weak(),
-            PlaybackSettings::ONCE.with_volume(0.2),
-        );
-    }
-    audio_events.clear();
-}
-
-pub fn on_audio_loop_event(audio: Res<Audio>, mut audio_events: EventReader<AudioLoopEvent>) {
-    if audio_events.is_empty() {
-        return;
-    }
-    if let Some(event) = audio_events.iter().nth(0) {
-        audio.play_with_settings(
-            event.clip.clone_weak(),
-            PlaybackSettings::LOOP.with_volume(0.1),
-        );
-    }
-    audio_events.clear();
 }

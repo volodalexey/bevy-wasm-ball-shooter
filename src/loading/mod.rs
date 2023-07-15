@@ -1,4 +1,4 @@
-use bevy::prelude::{App, Plugin};
+use bevy::prelude::{App, Plugin, Update};
 
 use self::{
     audio_assets::AudioAssetsPlugin, font_assets::FontAssetsPlugin, resources::AssetsLoading,
@@ -15,8 +15,7 @@ pub struct LoadingPlugin;
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetsLoading>()
-            .add_plugin(AudioAssetsPlugin)
-            .add_plugin(FontAssetsPlugin)
-            .add_system(check_assets_ready);
+            .add_plugins((AudioAssetsPlugin, FontAssetsPlugin))
+            .add_systems(Update, check_assets_ready);
     }
 }

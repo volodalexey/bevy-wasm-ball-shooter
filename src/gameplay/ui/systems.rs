@@ -4,7 +4,7 @@ use bevy::{
         TextBundle, With, Without,
     },
     text::{Text, TextSection},
-    ui::{AlignItems, Display, FlexDirection, JustifyContent, Size, Style, Val},
+    ui::{AlignItems, Display, FlexDirection, JustifyContent, Style, Val},
 };
 
 use crate::{
@@ -30,7 +30,8 @@ pub fn setup_ui(mut commands: Commands, font_assets: Res<FontAssets>) {
                     flex_direction: FlexDirection::Row,
                     justify_content: JustifyContent::SpaceAround,
                     align_items: AlignItems::FlexStart,
-                    size: Size::new(Val::Percent(100.0), Val::Auto),
+                    width: Val::Percent(100.0),
+                    height: Val::Auto,
                     ..default()
                 },
                 ..default()

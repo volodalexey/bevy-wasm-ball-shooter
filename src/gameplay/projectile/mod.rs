@@ -1,4 +1,4 @@
-use bevy::prelude::{App, IntoSystemAppConfig, IntoSystemConfigs, OnExit, OnUpdate, Plugin};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnExit, Plugin, Update};
 
 use crate::components::AppState;
 
@@ -28,14 +28,16 @@ impl Plugin for ProjectilePlugin {
             .add_event::<SpawnedBall>()
             .insert_resource(ProjectileBuffer(vec![random_species()]))
             .add_systems(
+                Update,
                 (rotate_projectile, projectile_reload, aim_projectile)
-                    .in_set(OnUpdate(AppState::Gameplay)),
+                    .run_if(in_state(AppState::Gameplay)),
             )
             .add_systems(
+                Update,
                 (bounce_on_world_bounds, on_projectile_collisions_events)
                     .chain()
-                    .in_set(OnUpdate(AppState::Gameplay)),
+                    .run_if(in_state(AppState::Gameplay)),
             )
-            .add_system(cleanup_projectile.in_schedule(OnExit(AppState::Gameplay)));
+            .add_systems(OnExit(AppState::Gameplay), cleanup_projectile);
     }
 }

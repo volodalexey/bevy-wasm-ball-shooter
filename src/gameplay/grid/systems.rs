@@ -8,9 +8,10 @@ use hexx::{shapes, Hex};
 use crate::gameplay::ball::{random_species, BallBundle};
 
 use super::{
+    components::HexComponent,
     constants::{GRID_HEIGHT, GRID_WIDTH},
     events::{MoveDownAndSpawn, UpdatePositions},
-    resources::{Grid, HexComponent},
+    resources::Grid,
 };
 
 pub fn generate_grid(

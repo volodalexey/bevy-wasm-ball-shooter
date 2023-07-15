@@ -1,6 +1,6 @@
 use bevy::prelude::{
-    Assets, Color, Commands, Entity, EventReader, EventWriter, Mesh, NextState, Query, Res, ResMut,
-    StandardMaterial, Transform, Vec2, Vec3, With,
+    default, Assets, AudioBundle, Color, Commands, Entity, EventReader, EventWriter, Mesh,
+    NextState, PlaybackSettings, Query, Res, ResMut, StandardMaterial, Transform, Vec3, With,
 };
 use bevy_prototype_debug_lines::DebugLines;
 use hexx::{Direction, Hex};
@@ -11,13 +11,13 @@ use crate::{
         ball::BallBundle,
         constants::MOVE_DOWN_TURN,
         grid::{
+            components::HexComponent,
             events::MoveDownAndSpawn,
-            resources::HexComponent,
             utils::{find_cluster, find_floating_clusters},
         },
         projectile::utils::clamp_inside_world_bounds,
     },
-    loading::audio_assets::{events::AudioEvent, AudioAssets},
+    loading::audio_assets::AudioAssets,
 };
 
 use super::{
@@ -62,7 +62,7 @@ pub fn check_game_over(
     mut app_state_next_state: ResMut<NextState<AppState>>,
     mut lines: ResMut<DebugLines>,
 ) {
-    let projectile_hex = grid.layout.world_pos_to_hex(Vec2 {
+    let projectile_hex = grid.layout.world_pos_to_hex(hexx::Vec2 {
         x: 0.0,
         y: PLAYER_SPAWN_Z,
     });
@@ -103,7 +103,6 @@ pub fn on_snap_projectile(
     mut round_turn_counter: ResMut<RoundTurnCounter>,
     projectile: Query<(Entity, &Transform, &Species), (With<Projectile>, With<Flying>)>,
     balls: Query<&Species, With<Ball>>,
-    mut audio_event: EventWriter<AudioEvent>,
     audio_assets: Res<AudioAssets>,
     mut move_down_and_spawn: EventWriter<MoveDownAndSpawn>,
 ) {
@@ -121,7 +120,7 @@ pub fn on_snap_projectile(
 
         let mut hex = grid
             .layout
-            .world_pos_to_hex(Vec2::new(translation.x, translation.z));
+            .world_pos_to_hex(hexx::Vec2::new(translation.x, translation.z));
 
         // hard check to make sure the projectile is inside the grid bounds.
         let (hex_radius, _) = grid.layout.hex_size.into();
@@ -132,7 +131,7 @@ pub fn on_snap_projectile(
         if was_clamped {
             hex = grid
                 .layout
-                .world_pos_to_hex(Vec2::new(clamped.x, clamped.z));
+                .world_pos_to_hex(hexx::Vec2::new(clamped.x, clamped.z));
         }
 
         // Dumb iterative check to make sure chosen hex is not occupied.
@@ -145,7 +144,7 @@ pub fn on_snap_projectile(
 
             hex = grid
                 .layout
-                .world_pos_to_hex(Vec2::new(translation.x, translation.z));
+                .world_pos_to_hex(hexx::Vec2::new(translation.x, translation.z));
 
             iter += 1;
             if iter >= MAX_ITER {
@@ -201,9 +200,11 @@ pub fn on_snap_projectile(
             });
 
         if score_add > 0 {
-            audio_event.send(AudioEvent {
-                clip: audio_assets.score.clone_weak(),
-            });
+            commands.spawn((AudioBundle {
+                source: audio_assets.score.clone_weak(),
+                settings: PlaybackSettings::DESPAWN,
+                ..default()
+            },));
         }
 
         if turn_counter.0 % MOVE_DOWN_TURN == 0 {

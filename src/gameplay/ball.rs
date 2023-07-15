@@ -42,7 +42,7 @@ pub fn random_species() -> Species {
 
 #[derive(Bundle)]
 pub struct BallBundle {
-    #[bundle]
+    #[bundle()]
     pub pbr: PbrBundle,
     pub ball: Ball,
     pub collider: Collider,

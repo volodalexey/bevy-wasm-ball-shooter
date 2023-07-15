@@ -6,7 +6,7 @@ pub struct PhysicsPlugin;
 
 impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+        app.add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
             .insert_resource(RapierConfiguration {
                 gravity: Vec3::ZERO,
                 ..Default::default()

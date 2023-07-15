@@ -1,22 +1,20 @@
 use bevy::{
     prelude::{
-        default, BuildChildren, Button, ButtonBundle, Camera2dBundle, Changed, Color, Commands,
-        DespawnRecursiveExt, Entity, EventWriter, NextState, Query, Res, ResMut, TextBundle, With,
+        default, AudioBundle, BuildChildren, Button, ButtonBundle, Camera2dBundle, Changed, Color,
+        Commands, DespawnRecursiveExt, Entity, NextState, PlaybackSettings, Query, Res, ResMut,
+        TextBundle, With,
     },
     text::{Text, TextSection, TextStyle},
-    ui::{AlignItems, BackgroundColor, Interaction, JustifyContent, Size, Style, UiRect, Val},
+    ui::{AlignItems, BackgroundColor, Interaction, JustifyContent, Style, UiRect, Val},
 };
 
 use crate::{
     components::AppState,
-    loading::{
-        audio_assets::{events::AudioLoopEvent, AudioAssets},
-        font_assets::FontAssets,
-    },
+    loading::{audio_assets::AudioAssets, font_assets::FontAssets},
 };
 
 use super::{
-    components::{StartMenu, StartMenuCamera},
+    components::{MainSoundtrack, StartMenu, StartMenuCamera},
     resources::ButtonColors,
 };
 
@@ -30,7 +28,8 @@ pub fn setup_menu(
         .spawn((
             ButtonBundle {
                 style: Style {
-                    size: Size::new(Val::Px(120.0), Val::Px(50.0)),
+                    width: Val::Px(120.0),
+                    height: Val::Px(50.0),
                     margin: UiRect::all(Val::Auto),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
@@ -59,10 +58,15 @@ pub fn setup_menu(
         });
 }
 
-pub fn start_audio(audio_assets: Res<AudioAssets>, mut audio_event: EventWriter<AudioLoopEvent>) {
-    audio_event.send(AudioLoopEvent {
-        clip: audio_assets.soundtrack.clone_weak(),
-    });
+pub fn start_audio(mut commands: Commands, audio_assets: Res<AudioAssets>) {
+    commands.spawn((
+        AudioBundle {
+            source: audio_assets.soundtrack.clone_weak(),
+            settings: PlaybackSettings::LOOP,
+            ..default()
+        },
+        MainSoundtrack {},
+    ));
 }
 
 pub fn click_play_button(
@@ -75,7 +79,7 @@ pub fn click_play_button(
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
-            Interaction::Clicked => {
+            Interaction::Pressed => {
                 app_state_next_state.set(AppState::Gameplay);
             }
             Interaction::Hovered => {
@@ -95,4 +99,13 @@ pub fn cleanup_menu(
 ) {
     commands.entity(camera_query.single()).despawn_recursive();
     commands.entity(node_query.single()).despawn_recursive();
+}
+
+pub fn cleanup_audio(
+    mut commands: Commands,
+    soundtrack_query: Query<Entity, With<MainSoundtrack>>,
+) {
+    commands
+        .entity(soundtrack_query.single())
+        .despawn_recursive();
 }

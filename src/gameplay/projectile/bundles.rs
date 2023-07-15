@@ -12,7 +12,7 @@ use super::{
 
 #[derive(Bundle)]
 pub struct ProjectileBundle {
-    #[bundle]
+    #[bundle()]
     pub pbr: PbrBundle,
     pub rigid_body: RigidBody,
     pub ccd: Ccd,

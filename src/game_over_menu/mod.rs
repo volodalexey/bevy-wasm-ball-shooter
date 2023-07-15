@@ -1,6 +1,4 @@
-use bevy::prelude::{
-    App, IntoSystemAppConfig, IntoSystemConfig, OnEnter, OnExit, OnUpdate, Plugin,
-};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
 
 use crate::components::AppState;
 
@@ -18,8 +16,11 @@ pub struct GameOverMenuPlugin;
 impl Plugin for GameOverMenuPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ButtonColors>()
-            .add_system(setup_menu.in_schedule(OnEnter(AppState::GameOver)))
-            .add_system(click_play_button.in_set(OnUpdate(AppState::GameOver)))
-            .add_system(cleanup_menu.in_schedule(OnExit(AppState::GameOver)));
+            .add_systems(OnEnter(AppState::GameOver), setup_menu)
+            .add_systems(
+                Update,
+                click_play_button.run_if(in_state(AppState::GameOver)),
+            )
+            .add_systems(OnExit(AppState::GameOver), cleanup_menu);
     }
 }

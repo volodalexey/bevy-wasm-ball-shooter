@@ -1,6 +1,6 @@
 mod resources;
 
-use bevy::prelude::{App, AssetServer, Commands, Plugin, ResMut};
+use bevy::prelude::{App, AssetServer, Commands, Plugin, ResMut, Startup};
 
 pub use self::resources::FontAssets;
 
@@ -11,7 +11,7 @@ pub struct FontAssetsPlugin;
 impl Plugin for FontAssetsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FontAssets>()
-            .add_startup_system(load_assets);
+            .add_systems(Startup, load_assets);
     }
 }
 

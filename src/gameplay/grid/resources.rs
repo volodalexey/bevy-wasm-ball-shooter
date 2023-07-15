@@ -3,7 +3,7 @@ use std::{
     fmt::{Display, Formatter, Result},
 };
 
-use bevy::prelude::{info, Component, Entity, Resource, Vec2};
+use bevy::prelude::{info, Entity, Resource};
 use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
 
 #[derive(Default, Debug, Copy, Clone)]
@@ -55,7 +55,7 @@ impl Default for Grid {
         Self {
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,
-                hex_size: Vec2::ONE,
+                hex_size: hexx::Vec2::ONE,
                 ..Default::default()
             },
             offset_type: OffsetHexMode::OddRows,
@@ -160,7 +160,7 @@ impl Grid {
 
     pub fn clear(&mut self) {
         self.storage.clear();
-        self.layout.origin = Vec2::ZERO;
+        self.layout.origin = hexx::Vec2::ZERO;
         self.update_bounds();
     }
 
@@ -204,9 +204,4 @@ impl Grid {
         }
         info!("----Grid sorted");
     }
-}
-
-#[derive(Component)]
-pub struct HexComponent {
-    pub hex: Hex,
 }
