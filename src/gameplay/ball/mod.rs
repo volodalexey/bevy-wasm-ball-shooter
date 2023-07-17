@@ -3,20 +3,20 @@ use bevy::prelude::{in_state, App, IntoSystemConfigs, OnExit, Plugin, Update};
 use crate::components::AppState;
 
 use self::{
+    components::Species,
     events::{SnapProjectile, SpawnedBall},
     resources::ProjectileBuffer,
     systems::{
-        aim_projectile, bounce_on_world_bounds, cleanup_projectile,
-        on_projectile_collisions_events, projectile_reload, rotate_projectile,
+        aim_projectile, cleanup_projectile, on_projectile_collisions_events, projectile_reload,
+        rotate_projectile,
     },
 };
 
-use super::ball::random_species;
-
-mod bundles;
 pub mod components;
-mod constants;
+pub mod constants;
 pub mod events;
+pub mod grid_ball_bundle;
+pub mod projectile_ball_bundle;
 mod resources;
 mod systems;
 pub mod utils;
@@ -26,7 +26,7 @@ impl Plugin for ProjectilePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SnapProjectile>()
             .add_event::<SpawnedBall>()
-            .insert_resource(ProjectileBuffer(vec![random_species()]))
+            .insert_resource(ProjectileBuffer(vec![Species::random_species()]))
             .add_systems(
                 Update,
                 (rotate_projectile, projectile_reload, aim_projectile)
@@ -34,7 +34,7 @@ impl Plugin for ProjectilePlugin {
             )
             .add_systems(
                 Update,
-                (bounce_on_world_bounds, on_projectile_collisions_events)
+                (on_projectile_collisions_events)
                     .chain()
                     .run_if(in_state(AppState::Gameplay)),
             )

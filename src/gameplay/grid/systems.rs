@@ -1,56 +1,62 @@
 use bevy::prelude::{
-    Assets, Color, Commands, Entity, EventReader, EventWriter, Mesh, Query, Res, ResMut,
-    StandardMaterial, Transform, Vec3, With,
+    Color, Commands, Entity, EventReader, EventWriter, Query, Res, ResMut, Transform, Vec3, With,
 };
 use bevy_prototype_debug_lines::DebugLines;
 use hexx::{shapes, Hex};
 
-use crate::gameplay::ball::{random_species, BallBundle};
+use crate::gameplay::{
+    ball::{components::Species, grid_ball_bundle::GridBallBundle},
+    materials::resources::GameplayMaterials,
+    meshes::resources::GameplayMeshes,
+};
 
 use super::{
     components::HexComponent,
-    constants::{GRID_HEIGHT, GRID_WIDTH},
     events::{MoveDownAndSpawn, UpdatePositions},
     resources::Grid,
 };
 
 pub fn generate_grid(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    gameplay_meshes: Option<Res<GameplayMeshes>>,
+    gameplay_materials: Option<Res<GameplayMaterials>>,
     mut grid: ResMut<Grid>,
     mut update_positions: EventWriter<UpdatePositions>,
 ) {
-    for hex in shapes::pointy_rectangle([0, GRID_WIDTH - 1, 0, GRID_HEIGHT - 1]) {
-        let (x, z) = grid.layout.hex_to_world_pos(hex).into();
+    if let Some(gameplay_meshes) = gameplay_meshes {
+        if let Some(gameplay_materials) = gameplay_materials {
+            for hex in shapes::pointy_rectangle([0, grid.init_width - 1, 0, grid.init_height - 1]) {
+                let (x, z) = grid.layout.hex_to_world_pos(hex).into();
 
-        let entity = commands
-            .spawn((
-                BallBundle::new(
-                    Vec3::new(x, 0.0, z),
-                    grid.layout.hex_size.x,
-                    random_species(),
-                    &mut meshes,
-                    &mut materials,
-                ),
-                HexComponent { hex },
-            ))
-            .id();
+                let entity = commands
+                    .spawn((
+                        GridBallBundle::new(
+                            Vec3::new(x, 0.0, z),
+                            grid.layout.hex_size.x,
+                            Species::random_species(),
+                            &gameplay_meshes,
+                            &gameplay_materials,
+                        ),
+                        HexComponent { hex },
+                    ))
+                    .id();
 
-        grid.set(hex, Some(entity));
+                grid.set(hex, Some(entity));
+            }
+
+            // Center grid on x-axis.
+            grid.update_bounds();
+            let (width, _) = grid.dim();
+            grid.layout.origin.x = -width / 2. + grid.layout.hex_size.x;
+            update_positions.send(UpdatePositions);
+        }
     }
-
-    // Center grid on x-axis.
-    grid.update_bounds();
-    let (width, _) = grid.dim();
-    grid.layout.origin.x = -width / 2. + grid.layout.hex_size.x;
-    update_positions.send(UpdatePositions);
 }
 
 pub fn move_down_and_spawn(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    gameplay_meshes: Res<GameplayMeshes>,
+    gameplay_materials: Res<GameplayMaterials>,
     mut grid: ResMut<Grid>,
     mut update_positions: EventWriter<UpdatePositions>,
     mut move_down_and_spawn: EventReader<MoveDownAndSpawn>,
@@ -61,7 +67,7 @@ pub fn move_down_and_spawn(
     move_down_and_spawn.clear();
 
     grid.update_bounds();
-    for x in 0..GRID_WIDTH {
+    for x in 0..grid.init_width {
         let hex = Hex {
             x: x + ((grid.bounds.mins.r.abs() + 1) as f32 * 0.5).round() as i32,
             y: grid.bounds.mins.r - 1,
@@ -69,12 +75,12 @@ pub fn move_down_and_spawn(
         let (x, z) = grid.layout.hex_to_world_pos(hex).into();
         let ball = commands
             .spawn((
-                BallBundle::new(
+                GridBallBundle::new(
                     Vec3::new(x, 0.0, z),
                     grid.layout.hex_size.x,
-                    random_species(),
-                    &mut meshes,
-                    &mut materials,
+                    Species::random_species(),
+                    &gameplay_meshes,
+                    &gameplay_materials,
                 ),
                 HexComponent { hex },
             ))

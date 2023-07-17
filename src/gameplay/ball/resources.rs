@@ -1,6 +1,6 @@
 use bevy::prelude::Resource;
 
-use crate::gameplay::ball::Species;
+use super::components::Species;
 
 #[derive(Resource)]
 pub struct ProjectileBuffer(pub Vec<Species>);

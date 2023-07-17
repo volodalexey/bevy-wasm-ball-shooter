@@ -1,6 +1,6 @@
 use bevy::prelude::{
-    default, Assets, AudioBundle, Color, Commands, Entity, EventReader, EventWriter, Mesh,
-    NextState, PlaybackSettings, Query, Res, ResMut, StandardMaterial, Transform, Vec3, With,
+    default, AudioBundle, Color, Commands, Entity, EventReader, EventWriter, NextState,
+    PlaybackSettings, Query, Res, ResMut, Transform, Vec3, With,
 };
 use bevy_prototype_debug_lines::DebugLines;
 use hexx::{Direction, Hex};
@@ -8,27 +8,27 @@ use hexx::{Direction, Hex};
 use crate::{
     components::AppState,
     gameplay::{
-        ball::BallBundle,
+        ball::{grid_ball_bundle::GridBallBundle, utils::clamp_inside_world_bounds},
         constants::MOVE_DOWN_TURN,
         grid::{
             components::HexComponent,
             events::MoveDownAndSpawn,
             utils::{find_cluster, find_floating_clusters},
         },
-        projectile::utils::clamp_inside_world_bounds,
     },
     loading::audio_assets::AudioAssets,
 };
 
 use super::{
-    ball::{Ball, Species},
+    ball::{
+        components::{GridBall, ProjectileBall, Species},
+        events::SnapProjectile,
+    },
     constants::PLAYER_SPAWN_Z,
     events::BeginTurn,
     grid::resources::Grid,
-    projectile::{
-        components::{Flying, Projectile},
-        events::SnapProjectile,
-    },
+    materials::resources::GameplayMaterials,
+    meshes::resources::GameplayMeshes,
     resources::{RoundTurnCounter, Score, TurnCounter},
 };
 
@@ -94,15 +94,15 @@ pub fn check_game_over(
 pub fn on_snap_projectile(
     mut snap_projectile: EventReader<SnapProjectile>,
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    gameplay_meshes: Res<GameplayMeshes>,
+    gameplay_materials: Res<GameplayMaterials>,
     mut grid: ResMut<Grid>,
     mut begin_turn: EventWriter<BeginTurn>,
     mut score: ResMut<Score>,
     turn_counter: ResMut<TurnCounter>,
     mut round_turn_counter: ResMut<RoundTurnCounter>,
-    projectile: Query<(Entity, &Transform, &Species), (With<Projectile>, With<Flying>)>,
-    balls: Query<&Species, With<Ball>>,
+    projectile_query: Query<(Entity, &Transform, &Species), With<ProjectileBall>>,
+    balls_query: Query<&Species, With<GridBall>>,
     audio_assets: Res<AudioAssets>,
     mut move_down_and_spawn: EventWriter<MoveDownAndSpawn>,
 ) {
@@ -113,7 +113,7 @@ pub fn on_snap_projectile(
     // We really only care about the first ball hit event
     snap_projectile.clear();
 
-    if let Ok((entity, tr, species)) = projectile.get_single() {
+    if let Ok((entity, tr, species)) = projectile_query.get_single() {
         commands.entity(entity).despawn();
 
         let mut translation = tr.translation;
@@ -155,12 +155,12 @@ pub fn on_snap_projectile(
         let (x, z) = grid.layout.hex_to_world_pos(hex).into();
         let ball = commands
             .spawn((
-                BallBundle::new(
+                GridBallBundle::new(
                     Vec3::new(x, translation.y, z),
                     grid.layout.hex_size.x,
                     *species,
-                    &mut meshes,
-                    &mut materials,
+                    &gameplay_meshes,
+                    &gameplay_materials,
                 ),
                 HexComponent { hex },
             ))
@@ -170,7 +170,7 @@ pub fn on_snap_projectile(
 
         let (cluster, _) = find_cluster(&grid, hex, |&e| {
             e == ball
-                || match balls.get(e) {
+                || match balls_query.get(e) {
                     Ok(other) => *other == *species,
                     Err(_) => false,
                 }

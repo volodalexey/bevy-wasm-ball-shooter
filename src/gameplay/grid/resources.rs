@@ -44,6 +44,8 @@ impl Display for Bounds {
 
 #[derive(Resource)]
 pub struct Grid {
+    pub init_width: i32,
+    pub init_height: i32,
     pub layout: HexLayout,
     pub offset_type: OffsetHexMode,
     pub storage: HashMap<Hex, Entity>,
@@ -53,6 +55,8 @@ pub struct Grid {
 impl Default for Grid {
     fn default() -> Self {
         Self {
+            init_width: 2,
+            init_height: 2,
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,
                 hex_size: hexx::Vec2::ONE,

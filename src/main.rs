@@ -30,7 +30,7 @@ fn main() {
                 }),
                 ..default()
             }),
-            DebugLinesPlugin::with_depth_test(true),
+            DebugLinesPlugin::default(),
             LoadingPlugin,
             StartMenuPlugin,
             GameplayPlugin,

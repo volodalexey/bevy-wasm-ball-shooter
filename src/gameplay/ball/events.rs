@@ -1,7 +1,7 @@
 use bevy::prelude::{Entity, Event, Vec3};
 use hexx::Hex;
 
-use crate::gameplay::ball::Species;
+use super::components::Species;
 
 #[derive(Event)]
 pub struct SnapProjectile {

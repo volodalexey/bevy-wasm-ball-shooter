@@ -1,8 +1,8 @@
 use bevy::{
     prelude::{
         default, AudioBundle, BuildChildren, Button, ButtonBundle, Camera2dBundle, Changed, Color,
-        Commands, DespawnRecursiveExt, Entity, NextState, PlaybackSettings, Query, Res, ResMut,
-        TextBundle, With,
+        Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, PlaybackSettings, Query,
+        Res, ResMut, TextBundle, With,
     },
     text::{Text, TextSection, TextStyle},
     ui::{AlignItems, BackgroundColor, Interaction, JustifyContent, Style, UiRect, Val},
@@ -108,4 +108,13 @@ pub fn cleanup_audio(
     commands
         .entity(soundtrack_query.single())
         .despawn_recursive();
+}
+
+pub fn keydown_detect(
+    mut app_state_next_state: ResMut<NextState<AppState>>,
+    keyboard_input_key_code: Res<Input<KeyCode>>,
+) {
+    if keyboard_input_key_code.any_pressed([KeyCode::Space]) {
+        app_state_next_state.set(AppState::Gameplay);
+    }
 }
