@@ -1,12 +1,11 @@
 use bevy::{
     prelude::{
-        default, Assets, AudioBundle, Camera, Color, Commands, DespawnRecursiveExt, Entity,
-        EventReader, EventWriter, GlobalTransform, Input, Mesh, MouseButton, PlaybackSettings,
-        Query, Res, ResMut, Transform, Vec3, With,
+        default, Assets, AudioBundle, Camera, Commands, DespawnRecursiveExt, Entity, EventReader,
+        EventWriter, GlobalTransform, Input, Mesh, MouseButton, PlaybackSettings, Query, Res,
+        ResMut, Touches, Transform, Vec2, Vec3, Visibility, With, Without,
     },
     window::{PrimaryWindow, Window},
 };
-use bevy_prototype_debug_lines::DebugLines;
 use bevy_rapier3d::prelude::{CollisionEvent, Velocity};
 
 use crate::{
@@ -20,6 +19,7 @@ use crate::{
         utils::{plane_intersection, ray_from_mouse_position},
     },
     loading::audio_assets::AudioAssets,
+    resources::PointerCooldown,
 };
 
 use super::{
@@ -30,16 +30,6 @@ use super::{
     projectile_ball_bundle::ProjectileBallBundle,
     resources::ProjectileBuffer,
 };
-
-pub fn rotate_projectile(
-    mut query: Query<(&mut Transform, &ProjectileBall), With<ProjectileBall>>,
-) {
-    for (mut _transform, projectile_ball) in query.iter_mut() {
-        if projectile_ball.is_flying {
-            // transform.rotation *= Quat::from_rotation_z(0.1);
-        }
-    }
-}
 
 pub fn cleanup_projectile_ball(
     mut commands: Commands,
@@ -79,49 +69,88 @@ pub fn projectile_reload(
     buffer.0.push(Species::random_species());
 }
 
-pub fn aim_projectile(
+pub fn shoot_projectile(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    cameras: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
-    mut projectile: Query<
-        (Entity, &Transform, &mut Velocity, &mut ProjectileBall),
-        With<ProjectileBall>,
+    camera_query: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
+    mut projectile_ball_query: Query<
+        (&Transform, &mut Velocity, &mut ProjectileBall),
+        (With<ProjectileBall>, Without<ProjectileArrow>),
     >,
-    mouse: Res<Input<MouseButton>>,
-    mut lines: ResMut<DebugLines>,
+    mouse_button_input: Res<Input<MouseButton>>,
     audio_assets: Res<AudioAssets>,
+    mut projectile_arrow_query: Query<
+        (&mut Transform, &mut Visibility),
+        (With<ProjectileArrow>, Without<ProjectileBall>),
+    >,
+    touches: Res<Touches>,
+    pointer_cooldown: Res<PointerCooldown>,
 ) {
-    if let Ok((_, transform, mut vel, mut projectile_ball)) = projectile.get_single_mut() {
-        if projectile_ball.is_flying {
-            return;
+    if pointer_cooldown.started {
+        return;
+    }
+    let window = window_query.single();
+    let mut pointer_position = Vec2::ZERO;
+
+    if mouse_button_input.pressed(MouseButton::Left)
+        || mouse_button_input.just_released(MouseButton::Left)
+    {
+        if let Some(cursor_position) = window.cursor_position() {
+            pointer_position = Vec2::new(cursor_position.x, window.height() - cursor_position.y)
         }
-        let (camera, camera_transform) = cameras.single();
-        let (ray_pos, ray_dir) =
-            ray_from_mouse_position(window_query.get_single().unwrap(), camera, camera_transform);
-        let (plane_pos, plane_normal) = (Vec3::new(0., transform.translation.y, 0.), Vec3::Y);
+    }
+    if let Some(touch) = touches.iter().next() {
+        let touch_position = touch.position();
+        pointer_position = Vec2::new(touch_position.x, window.height() - touch_position.y);
+    } else if let Some(touch) = touches.iter_just_released().next() {
+        let touch_position = touch.position();
+        pointer_position = Vec2::new(touch_position.x, window.height() - touch_position.y);
+    }
+    if let Ok((mut arrow_transform, mut visibility)) = projectile_arrow_query.get_single_mut() {
+        if let Ok((ball_transform, mut vel, mut projectile_ball)) =
+            projectile_ball_query.get_single_mut()
+        {
+            if pointer_position.length() > Vec2::ZERO.length() && !projectile_ball.is_flying {
+                *visibility = Visibility::Visible;
 
-        let mut point = plane_intersection(ray_pos, ray_dir, plane_pos, plane_normal);
-        point.y = 0.0;
+                let (camera, camera_transform) = camera_query.single();
 
-        // should use an angle instead
-        point.z = point.z.min(transform.translation.z - 5.);
+                let (ray_pos, ray_dir) = ray_from_mouse_position(
+                    window.width(),
+                    window.height(),
+                    pointer_position,
+                    camera,
+                    camera_transform,
+                );
+                let (plane_pos, plane_normal) =
+                    (Vec3::new(0., ball_transform.translation.y, 0.), Vec3::Y);
 
-        lines.line_colored(transform.translation, point, 0.0, Color::GREEN);
+                let mut point = plane_intersection(ray_pos, ray_dir, plane_pos, plane_normal);
+                point.y = 0.0;
 
-        if !mouse.just_pressed(MouseButton::Left) {
-            return;
+                // lines.line_colored(transform.translation, point, 0.0, Color::GREEN);
+                arrow_transform.translation = point;
+
+                if !(mouse_button_input.just_released(MouseButton::Left)
+                    || touches.any_just_released())
+                {
+                    return;
+                }
+
+                commands.spawn((AudioBundle {
+                    source: audio_assets.flying.clone_weak(),
+                    settings: PlaybackSettings::DESPAWN,
+                    ..default()
+                },));
+
+                let aim_direction = (point - ball_transform.translation).normalize();
+                vel.linvel = aim_direction * PROJECTILE_SPEED;
+
+                projectile_ball.is_flying = true;
+            } else {
+                *visibility = Visibility::Hidden;
+            }
         }
-
-        commands.spawn((AudioBundle {
-            source: audio_assets.flying.clone_weak(),
-            settings: PlaybackSettings::DESPAWN,
-            ..default()
-        },));
-
-        let aim_direction = (point - transform.translation).normalize();
-        vel.linvel = aim_direction * PROJECTILE_SPEED;
-
-        projectile_ball.is_flying = true;
     }
 }
 
@@ -161,7 +190,7 @@ pub fn setup_projectile_arrow(
     gameplay_materials: Res<GameplayMaterials>,
 ) {
     commands.spawn(ProjectileArrowBundle::new(
-        Vec3::new(0.0, 0.0, PLAYER_SPAWN_Z),
+        Vec3::new(0.0, 0.0, PLAYER_SPAWN_Z / 2.0),
         &mut meshes,
         &gameplay_materials,
     ));

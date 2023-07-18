@@ -9,9 +9,8 @@ use self::{
     events::{SnapProjectile, SpawnedBall},
     resources::ProjectileBuffer,
     systems::{
-        aim_projectile, cleanup_projectile_arrow, cleanup_projectile_ball,
-        on_projectile_collisions_events, projectile_reload, rotate_projectile,
-        setup_projectile_arrow,
+        cleanup_projectile_arrow, cleanup_projectile_ball, on_projectile_collisions_events,
+        projectile_reload, setup_projectile_arrow, shoot_projectile,
     },
 };
 
@@ -38,9 +37,8 @@ impl Plugin for ProjectilePlugin {
             .add_systems(
                 Update,
                 (
-                    rotate_projectile,
                     projectile_reload,
-                    aim_projectile,
+                    shoot_projectile,
                     on_projectile_collisions_events,
                 )
                     .run_if(in_state(AppState::Gameplay)),

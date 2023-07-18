@@ -12,6 +12,7 @@ use bevy::{
 use crate::{
     components::AppState,
     loading::{audio_assets::AudioAssets, font_assets::FontAssets},
+    resources::PointerCooldown,
 };
 
 use super::{
@@ -77,10 +78,12 @@ pub fn click_play_button(
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
+    mut pointer_cooldown: ResMut<PointerCooldown>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
+                pointer_cooldown.started = true;
                 app_state_next_state.set(AppState::Gameplay);
             }
             Interaction::Hovered => {

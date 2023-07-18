@@ -36,7 +36,7 @@ impl GridBallBundle {
             ball: GridBall,
             species,
             collider: Collider::ball(radius * INNER_RADIUS_COEFF),
-            rigid_body: RigidBody::Dynamic,
+            rigid_body: RigidBody::Fixed,
             locked_axes: LockedAxes::TRANSLATION_LOCKED_Z,
         }
     }

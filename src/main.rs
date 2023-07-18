@@ -3,18 +3,19 @@ use bevy::{
     window::{Window, WindowPlugin},
     DefaultPlugins,
 };
-use bevy_prototype_debug_lines::DebugLinesPlugin;
 use components::AppState;
 use game_over_menu::GameOverMenuPlugin;
 use gameplay::GameplayPlugin;
 use loading::LoadingPlugin;
+use resources::PointerCooldown;
 use start_menu::StartMenuPlugin;
-use systems::exit_game;
+use systems::{exit_game, tick_pointer_cooldown_timer};
 
 mod components;
 mod game_over_menu;
 mod gameplay;
 mod loading;
+mod resources;
 mod start_menu;
 mod systems;
 fn main() {
@@ -30,13 +31,13 @@ fn main() {
                 }),
                 ..default()
             }),
-            DebugLinesPlugin::default(),
             LoadingPlugin,
             StartMenuPlugin,
             GameplayPlugin,
             GameOverMenuPlugin,
         ))
         .add_state::<AppState>()
-        .add_systems(Update, exit_game)
+        .init_resource::<PointerCooldown>()
+        .add_systems(Update, (exit_game, tick_pointer_cooldown_timer))
         .run();
 }

@@ -1,7 +1,4 @@
-use bevy::{
-    prelude::{Camera, GlobalTransform, Vec2, Vec3},
-    window::Window,
-};
+use bevy::prelude::{Camera, GlobalTransform, Vec2, Vec3};
 
 /// Calculate the intersection point of a vector and a plane defined as a point and normal vector
 /// where `pv` is the vector point, `dv` is the vector direction,
@@ -14,14 +11,14 @@ pub fn plane_intersection(pv: Vec3, dv: Vec3, pp: Vec3, np: Vec3) -> Vec3 {
 
 /// Calculates origin and direction of a ray from cursor to world space.
 pub fn ray_from_mouse_position(
-    window: &Window,
+    window_width: f32,
+    window_height: f32,
+    pointer_position: Vec2,
     camera: &Camera,
     camera_transform: &GlobalTransform,
 ) -> (Vec3, Vec3) {
-    let mouse_position = window.cursor_position().unwrap_or(Vec2::new(0.0, 0.0));
-
-    let x = 2.0 * (mouse_position.x / window.width()) - 1.0;
-    let y = 2.0 * (mouse_position.y / window.height()) - 1.0;
+    let x = 2.0 * (pointer_position.x / window_width) - 1.0;
+    let y = 2.0 * (pointer_position.y / window_height) - 1.0;
 
     let camera_inverse_matrix =
         camera_transform.compute_matrix() * camera.projection_matrix().inverse();

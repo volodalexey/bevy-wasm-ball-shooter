@@ -1,8 +1,10 @@
-use bevy::prelude::{shape, Assets, Bundle, Mesh, PbrBundle, Res, ResMut, Transform, Vec3};
+use bevy::prelude::{
+    shape, Assets, Bundle, Mesh, PbrBundle, Quat, Res, ResMut, Transform, Vec3, Visibility,
+};
 
 use crate::gameplay::materials::resources::GameplayMaterials;
 
-use super::components::ProjectileArrow;
+use super::{components::ProjectileArrow, constants::INNER_RADIUS_COEFF};
 
 #[derive(Bundle)]
 pub struct ProjectileArrowBundle {
@@ -18,14 +20,13 @@ impl ProjectileArrowBundle {
     ) -> Self {
         Self {
             pbr: PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cylinder {
-                    radius: 1.0,
-                    height: 10.0,
-                    resolution: 10,
-                    segments: 10,
-                })),
+                mesh: meshes
+                    .add(shape::Circle::new(INNER_RADIUS_COEFF).into())
+                    .into(),
                 material: gameplay_materials.arrow.clone(),
-                transform: Transform::from_translation(pos),
+                transform: Transform::from_translation(pos)
+                    .with_rotation(Quat::from_rotation_x(-core::f32::consts::PI / 2.0)),
+                visibility: Visibility::Hidden,
                 ..Default::default()
             },
             arrow: ProjectileArrow,
