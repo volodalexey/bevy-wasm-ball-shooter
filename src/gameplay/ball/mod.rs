@@ -1,11 +1,11 @@
 use bevy::prelude::{
-    in_state, run_once, App, Condition, IntoSystemConfigs, OnExit, Plugin, Update,
+    any_with_component, in_state, not, App, Condition, IntoSystemConfigs, OnExit, Plugin, Update,
 };
 
 use crate::components::AppState;
 
 use self::{
-    components::Species,
+    components::{ProjectileArrow, Species},
     events::{SnapProjectile, SpawnedBall},
     resources::ProjectileBuffer,
     systems::{
@@ -32,7 +32,10 @@ impl Plugin for ProjectilePlugin {
             .insert_resource(ProjectileBuffer(vec![Species::random_species()]))
             .add_systems(
                 Update,
-                setup_projectile_arrow.run_if(in_state(AppState::Gameplay).and_then(run_once())),
+                setup_projectile_arrow.run_if(
+                    in_state(AppState::Gameplay)
+                        .and_then(not(any_with_component::<ProjectileArrow>())),
+                ),
             )
             .add_systems(
                 Update,

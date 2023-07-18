@@ -1,6 +1,6 @@
 use bevy::prelude::{
-    default, AudioBundle, Commands, Entity, EventReader, EventWriter, NextState, PlaybackSettings,
-    Query, Res, ResMut, Transform, Vec3, With,
+    default, AudioBundle, Commands, Entity, EventReader, EventWriter, Input, KeyCode, NextState,
+    PlaybackSettings, Query, Res, ResMut, Transform, Vec3, With,
 };
 use hexx::{Direction, Hex};
 
@@ -214,5 +214,14 @@ pub fn on_snap_projectile(
         score.0 += score_add;
 
         begin_turn.send(BeginTurn);
+    }
+}
+
+pub fn keydown_detect(
+    mut app_state_next_state: ResMut<NextState<AppState>>,
+    keyboard_input_key_code: Res<Input<KeyCode>>,
+) {
+    if keyboard_input_key_code.any_pressed([KeyCode::Return]) {
+        app_state_next_state.set(AppState::GameOver);
     }
 }

@@ -12,7 +12,7 @@ use self::{
     meshes::MeshesPlugin,
     physics::PhysicsPlugin,
     resources::{RoundTurnCounter, Score, TurnCounter},
-    systems::{check_game_over, on_begin_turn, on_snap_projectile, setup_gameplay},
+    systems::{check_game_over, keydown_detect, on_begin_turn, on_snap_projectile, setup_gameplay},
     ui::UIPlugin,
     walls::WallsPlugin,
 };
@@ -55,7 +55,12 @@ impl Plugin for GameplayPlugin {
         .add_systems(OnEnter(AppState::Gameplay), setup_gameplay)
         .add_systems(
             Update,
-            (on_begin_turn, check_game_over, on_snap_projectile)
+            (
+                on_begin_turn,
+                check_game_over,
+                on_snap_projectile,
+                keydown_detect,
+            )
                 .run_if(in_state(AppState::Gameplay)),
         );
     }

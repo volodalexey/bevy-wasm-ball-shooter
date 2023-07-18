@@ -4,7 +4,7 @@ use crate::components::AppState;
 
 use self::{
     resources::ButtonColors,
-    systems::{cleanup_menu, click_play_button, setup_menu},
+    systems::{cleanup_menu, click_play_button, keydown_detect, setup_menu},
 };
 
 mod components;
@@ -19,7 +19,7 @@ impl Plugin for GameOverMenuPlugin {
             .add_systems(OnEnter(AppState::GameOver), setup_menu)
             .add_systems(
                 Update,
-                click_play_button.run_if(in_state(AppState::GameOver)),
+                (click_play_button, keydown_detect).run_if(in_state(AppState::GameOver)),
             )
             .add_systems(OnExit(AppState::GameOver), cleanup_menu);
     }

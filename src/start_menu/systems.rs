@@ -2,11 +2,13 @@ use bevy::{
     audio::{Volume, VolumeLevel},
     prelude::{
         default, AudioBundle, BuildChildren, Button, ButtonBundle, Camera2dBundle, Changed, Color,
-        Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, PlaybackSettings, Query,
-        Res, ResMut, TextBundle, With,
+        Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle,
+        PlaybackSettings, Query, Res, ResMut, TextBundle, With,
     },
     text::{Text, TextSection, TextStyle},
-    ui::{AlignItems, BackgroundColor, Interaction, JustifyContent, Style, UiRect, Val},
+    ui::{
+        AlignItems, BackgroundColor, FlexDirection, Interaction, JustifyContent, Style, UiRect, Val,
+    },
 };
 
 use crate::{
@@ -28,35 +30,73 @@ pub fn setup_menu(
     commands.spawn((Camera2dBundle::default(), StartMenuCamera {}));
     commands
         .spawn((
-            ButtonBundle {
+            NodeBundle {
                 style: Style {
-                    width: Val::Px(120.0),
-                    height: Val::Px(50.0),
-                    margin: UiRect::all(Val::Auto),
+                    flex_direction: FlexDirection::Column,
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    column_gap: Val::Px(10.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
-                    ..Default::default()
+                    ..default()
                 },
-                background_color: button_colors.normal.into(),
-                ..Default::default()
+                ..default()
             },
             StartMenu {},
         ))
         .with_children(|parent| {
+            let text_style = TextStyle {
+                font: font_assets.fira_sans_bold.clone_weak(),
+                font_size: 40.0,
+                color: Color::rgb(0.9, 0.9, 0.9),
+            };
             parent.spawn(TextBundle {
                 text: Text {
-                    sections: vec![TextSection {
-                        value: "Play".to_string(),
-                        style: TextStyle {
-                            font: font_assets.fira_sans_bold.clone_weak(),
-                            font_size: 40.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
+                    sections: vec![
+                        TextSection {
+                            value: "Шарики".to_string(),
+                            style: text_style.clone(),
                         },
-                    }],
+                        TextSection {
+                            value: " ".to_string(),
+                            style: text_style.clone(),
+                        },
+                        TextSection {
+                            value: "веселяшки".to_string(),
+                            style: text_style,
+                        },
+                    ],
                     ..default()
                 },
                 ..default()
             });
+            parent
+                .spawn(ButtonBundle {
+                    style: Style {
+                        padding: UiRect::all(Val::Px(10.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..Default::default()
+                    },
+                    background_color: button_colors.normal.into(),
+                    ..Default::default()
+                })
+                .with_children(|parent| {
+                    parent.spawn(TextBundle {
+                        text: Text {
+                            sections: vec![TextSection {
+                                value: "Играть".to_string(),
+                                style: TextStyle {
+                                    font: font_assets.fira_sans_bold.clone_weak(),
+                                    font_size: 40.0,
+                                    color: Color::rgb(0.9, 0.9, 0.9),
+                                },
+                            }],
+                            ..default()
+                        },
+                        ..default()
+                    });
+                });
         });
 }
 

@@ -1,13 +1,17 @@
 use bevy::{
     prelude::{
         default, BuildChildren, Button, ButtonBundle, Camera2dBundle, Changed, Color, Commands,
-        DespawnRecursiveExt, Entity, NextState, NodeBundle, Query, Res, ResMut, TextBundle, With,
+        DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle, Query, Res, ResMut,
+        TextBundle, With,
     },
     text::{Text, TextSection, TextStyle},
-    ui::{AlignItems, BackgroundColor, Interaction, JustifyContent, Style, UiRect, Val},
+    ui::{
+        AlignItems, BackgroundColor, Display, FlexDirection, Interaction, JustifyContent, Style,
+        UiRect, Val,
+    },
 };
 
-use crate::{components::AppState, loading::font_assets::FontAssets};
+use crate::{components::AppState, loading::font_assets::FontAssets, resources::PointerCooldown};
 
 use super::{
     components::{GameOverMenu, GameOverMenuCamera},
@@ -21,12 +25,27 @@ pub fn setup_menu(
 ) {
     commands.spawn((Camera2dBundle::default(), GameOverMenuCamera {}));
     commands
-        .spawn((NodeBundle::default(), GameOverMenu {}))
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    display: Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    column_gap: Val::Px(10.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                ..default()
+            },
+            GameOverMenu {},
+        ))
         .with_children(|parent| {
             parent.spawn(TextBundle {
                 text: Text {
                     sections: vec![TextSection {
-                        value: "Game over".to_string(),
+                        value: "Игра окончена".to_string(),
                         style: TextStyle {
                             font: font_assets.fira_sans_bold.clone_weak(),
                             font_size: 40.0,
@@ -40,9 +59,7 @@ pub fn setup_menu(
             parent
                 .spawn(ButtonBundle {
                     style: Style {
-                        width: Val::Px(120.),
-                        height: Val::Px(50.),
-                        margin: UiRect::all(Val::Auto),
+                        padding: UiRect::all(Val::Px(10.0)),
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
                         ..Default::default()
@@ -54,7 +71,7 @@ pub fn setup_menu(
                     parent.spawn(TextBundle {
                         text: Text {
                             sections: vec![TextSection {
-                                value: "Play".to_string(),
+                                value: "Заново".to_string(),
                                 style: TextStyle {
                                     font: font_assets.fira_sans_bold.clone_weak(),
                                     font_size: 40.0,
@@ -76,10 +93,12 @@ pub fn click_play_button(
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
+    mut pointer_cooldown: ResMut<PointerCooldown>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
+                pointer_cooldown.started = true;
                 app_state_next_state.set(AppState::Gameplay);
             }
             Interaction::Hovered => {
@@ -99,4 +118,13 @@ pub fn cleanup_menu(
 ) {
     commands.entity(camera_query.single()).despawn_recursive();
     commands.entity(node_query.single()).despawn_recursive();
+}
+
+pub fn keydown_detect(
+    mut app_state_next_state: ResMut<NextState<AppState>>,
+    keyboard_input_key_code: Res<Input<KeyCode>>,
+) {
+    if keyboard_input_key_code.any_pressed([KeyCode::Space]) {
+        app_state_next_state.set(AppState::Gameplay);
+    }
 }
