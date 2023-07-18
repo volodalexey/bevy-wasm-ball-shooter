@@ -1,8 +1,8 @@
 use bevy::{
     prelude::{
-        default, AudioBundle, Camera, Color, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, GlobalTransform, Input, MouseButton, PlaybackSettings, Query, Res, ResMut,
-        Transform, Vec3, With,
+        default, Assets, AudioBundle, Camera, Color, Commands, DespawnRecursiveExt, Entity,
+        EventReader, EventWriter, GlobalTransform, Input, Mesh, MouseButton, PlaybackSettings,
+        Query, Res, ResMut, Transform, Vec3, With,
     },
     window::{PrimaryWindow, Window},
 };
@@ -23,9 +23,10 @@ use crate::{
 };
 
 use super::{
-    components::{GridBall, ProjectileBall, Species},
+    components::{GridBall, ProjectileArrow, ProjectileBall, Species},
     constants::PROJECTILE_SPEED,
     events::SnapProjectile,
+    projectile_arrow_bundle::ProjectileArrowBundle,
     projectile_ball_bundle::ProjectileBallBundle,
     resources::ProjectileBuffer,
 };
@@ -40,7 +41,7 @@ pub fn rotate_projectile(
     }
 }
 
-pub fn cleanup_projectile(
+pub fn cleanup_projectile_ball(
     mut commands: Commands,
     projectile_query: Query<Entity, With<ProjectileBall>>,
 ) {
@@ -151,5 +152,26 @@ pub fn on_projectile_collisions_events(
                 hit_normal: Some(hit_normal),
             });
         }
+    }
+}
+
+pub fn setup_projectile_arrow(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    gameplay_materials: Res<GameplayMaterials>,
+) {
+    commands.spawn(ProjectileArrowBundle::new(
+        Vec3::new(0.0, 0.0, PLAYER_SPAWN_Z),
+        &mut meshes,
+        &gameplay_materials,
+    ));
+}
+
+pub fn cleanup_projectile_arrow(
+    mut commands: Commands,
+    projectile_query: Query<Entity, With<ProjectileArrow>>,
+) {
+    for projectile_entity in projectile_query.iter() {
+        commands.entity(projectile_entity).despawn_recursive();
     }
 }

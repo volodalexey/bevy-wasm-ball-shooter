@@ -10,6 +10,7 @@ pub struct GameplayMaterials {
     pub yellow: Handle<StandardMaterial>,
     pub white: Handle<StandardMaterial>,
     pub wall: Handle<StandardMaterial>,
+    pub arrow: Handle<StandardMaterial>,
 }
 
 impl GameplayMaterials {

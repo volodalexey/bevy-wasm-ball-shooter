@@ -1,4 +1,5 @@
 use bevy::{
+    audio::{Volume, VolumeLevel},
     prelude::{
         default, AudioBundle, BuildChildren, Button, ButtonBundle, Camera2dBundle, Changed, Color,
         Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, PlaybackSettings, Query,
@@ -62,7 +63,7 @@ pub fn start_audio(mut commands: Commands, audio_assets: Res<AudioAssets>) {
     commands.spawn((
         AudioBundle {
             source: audio_assets.soundtrack.clone_weak(),
-            settings: PlaybackSettings::LOOP,
+            settings: PlaybackSettings::LOOP.with_volume(Volume::Relative(VolumeLevel::new(0.1))),
             ..default()
         },
         MainSoundtrack {},

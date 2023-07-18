@@ -1,8 +1,7 @@
 use bevy::prelude::{
-    default, AudioBundle, Color, Commands, Entity, EventReader, EventWriter, NextState,
-    PlaybackSettings, Query, Res, ResMut, Transform, Vec3, With,
+    default, AudioBundle, Commands, Entity, EventReader, EventWriter, NextState, PlaybackSettings,
+    Query, Res, ResMut, Transform, Vec3, With,
 };
-use bevy_prototype_debug_lines::DebugLines;
 use hexx::{Direction, Hex};
 
 use crate::{
@@ -57,11 +56,7 @@ pub fn on_begin_turn(
     round_turn_counter.0 += 1;
 }
 
-pub fn check_game_over(
-    grid: Res<Grid>,
-    mut app_state_next_state: ResMut<NextState<AppState>>,
-    mut lines: ResMut<DebugLines>,
-) {
+pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextState<AppState>>) {
     let projectile_hex = grid.layout.world_pos_to_hex(hexx::Vec2 {
         x: 0.0,
         y: PLAYER_SPAWN_Z,
@@ -74,13 +69,6 @@ pub fn check_game_over(
         .layout
         .hex_to_world_pos(Hex::new(0, game_over_row.y))
         .into();
-
-    lines.line_colored(
-        Vec3::new(grid.bounds.mins.x, 0., z),
-        Vec3::new(grid.bounds.maxs.x, 0., z),
-        0.,
-        Color::RED,
-    );
 
     for (&hex, _) in grid.storage.iter() {
         let world_pos = grid.layout.hex_to_world_pos(hex);

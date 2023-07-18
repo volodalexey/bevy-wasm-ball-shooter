@@ -1,11 +1,13 @@
 use bevy::prelude::{Bundle, PbrBundle, Res, Transform, Vec3};
-use bevy_rapier3d::prelude::{ActiveEvents, Collider, LockedAxes, RigidBody, Velocity};
+use bevy_rapier3d::prelude::{
+    ActiveEvents, Collider, LockedAxes, Restitution, RigidBody, Velocity,
+};
 
 use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources::GameplayMeshes};
 
 use super::{
     components::{ProjectileBall, Species},
-    constants::BALL_RADIUS_COEFF,
+    constants::INNER_RADIUS_COEFF,
 };
 
 #[derive(Bundle)]
@@ -16,6 +18,7 @@ pub struct ProjectileBallBundle {
     pub collider: Collider,
     pub rigid_body: RigidBody,
     pub locked_axes: LockedAxes,
+    pub restitution: Restitution,
     pub velocity: Velocity,
     pub collision_events: ActiveEvents,
 }
@@ -37,9 +40,10 @@ impl ProjectileBallBundle {
             },
             ball: ProjectileBall { is_flying: false },
             species,
-            collider: Collider::ball(radius * BALL_RADIUS_COEFF),
+            collider: Collider::ball(radius * INNER_RADIUS_COEFF),
             rigid_body: RigidBody::Dynamic,
             locked_axes: LockedAxes::TRANSLATION_LOCKED_Z,
+            restitution: Restitution::coefficient(1.0),
             velocity: Velocity::default(),
             collision_events: ActiveEvents::COLLISION_EVENTS,
         }

@@ -1,6 +1,10 @@
-use bevy::prelude::{
-    default, Camera3dBundle, Commands, DespawnRecursiveExt, Entity, Input, KeyCode,
-    PerspectiveProjection, Projection, Query, Res, Transform, Vec3, With,
+use bevy::{
+    input::mouse::{MouseMotion, MouseWheel},
+    prelude::{
+        default, Camera3dBundle, Commands, DespawnRecursiveExt, Entity, EventReader, Input,
+        KeyCode, MouseButton, PerspectiveProjection, Projection, Quat, Query, Res, Transform, Vec3,
+        With,
+    },
 };
 
 use crate::gameplay::constants::PLAYER_SPAWN_Z;
@@ -31,6 +35,9 @@ pub fn cleanup_main_camera(mut commands: Commands, query: Query<Entity, With<Mai
 pub fn control_camera_position(
     keyboard_input_key_code: Res<Input<KeyCode>>,
     mut camera_query: Query<&mut Transform, With<MainCamera>>,
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mouse_button_input: Res<Input<MouseButton>>,
+    mut motion_motion_events: EventReader<MouseMotion>,
 ) {
     let mut camera_transform = camera_query.single_mut();
     if keyboard_input_key_code.any_pressed([KeyCode::A, KeyCode::Left]) {
@@ -44,5 +51,19 @@ pub fn control_camera_position(
     }
     if keyboard_input_key_code.any_pressed([KeyCode::S, KeyCode::Down]) {
         camera_transform.translation += Vec3::new(0.0, 0.0, 0.5);
+    }
+    for ev in mouse_wheel_events.iter() {
+        camera_transform.translation += Vec3::new(0.0, -ev.y, 0.0);
+    }
+    if mouse_button_input.pressed(MouseButton::Middle) {
+        for ev in motion_motion_events.iter() {
+            let rotation = ev.delta.x / 10.0;
+            // camera_transform.rotate_x(rotation);
+            if rotation >= 0.0 {
+                camera_transform.rotation *= Quat::from_rotation_x(rotation);
+            } else {
+                camera_transform.rotation *= Quat::from_rotation_x(rotation);
+            }
+        }
     }
 }

@@ -48,3 +48,6 @@ impl Species {
         }
     }
 }
+
+#[derive(Component)]
+pub struct ProjectileArrow;

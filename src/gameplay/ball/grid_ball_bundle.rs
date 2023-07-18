@@ -5,7 +5,7 @@ use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources
 
 use super::{
     components::{GridBall, Species},
-    constants::BALL_RADIUS_COEFF,
+    constants::INNER_RADIUS_COEFF,
 };
 
 #[derive(Bundle)]
@@ -35,7 +35,7 @@ impl GridBallBundle {
             },
             ball: GridBall,
             species,
-            collider: Collider::ball(radius * BALL_RADIUS_COEFF),
+            collider: Collider::ball(radius * INNER_RADIUS_COEFF),
             rigid_body: RigidBody::Dynamic,
             locked_axes: LockedAxes::TRANSLATION_LOCKED_Z,
         }
