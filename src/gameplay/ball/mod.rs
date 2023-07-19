@@ -9,8 +9,9 @@ use self::{
     events::{SnapProjectile, SpawnedBall},
     resources::ProjectileBuffer,
     systems::{
-        cleanup_projectile_arrow, cleanup_projectile_ball, on_projectile_collisions_events,
-        projectile_reload, setup_projectile_arrow, shoot_projectile,
+        cleanup_projectile_arrow, cleanup_projectile_ball, cleanup_projectile_line,
+        on_projectile_collisions_events, projectile_reload, setup_projectile_arrow,
+        setup_projectile_line, shoot_projectile,
     },
 };
 
@@ -20,6 +21,7 @@ pub mod events;
 pub mod grid_ball_bundle;
 pub mod projectile_arrow_bundle;
 pub mod projectile_ball_bundle;
+pub mod projectile_line_bundle;
 mod resources;
 mod systems;
 pub mod utils;
@@ -32,7 +34,7 @@ impl Plugin for ProjectilePlugin {
             .insert_resource(ProjectileBuffer(vec![Species::random_species()]))
             .add_systems(
                 Update,
-                setup_projectile_arrow.run_if(
+                (setup_projectile_arrow, setup_projectile_line).run_if(
                     in_state(AppState::Gameplay)
                         .and_then(not(any_with_component::<ProjectileArrow>())),
                 ),
@@ -48,7 +50,11 @@ impl Plugin for ProjectilePlugin {
             )
             .add_systems(
                 OnExit(AppState::Gameplay),
-                (cleanup_projectile_ball, cleanup_projectile_arrow),
+                (
+                    cleanup_projectile_ball,
+                    cleanup_projectile_arrow,
+                    cleanup_projectile_line,
+                ),
             );
     }
 }

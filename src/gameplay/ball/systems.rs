@@ -1,8 +1,8 @@
 use bevy::{
     prelude::{
-        default, Assets, AudioBundle, Camera, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, GlobalTransform, Input, Mesh, MouseButton, PlaybackSettings, Query, Res,
-        ResMut, Touches, Transform, Vec2, Vec3, Visibility, With, Without,
+        default, Assets, AudioBundle, BuildChildren, Camera, Commands, DespawnRecursiveExt, Entity,
+        EventReader, EventWriter, GlobalTransform, Input, Mesh, MouseButton, PlaybackSettings,
+        Query, Res, ResMut, Touches, Transform, Vec2, Vec3, Visibility, With, Without,
     },
     window::{PrimaryWindow, Window},
 };
@@ -23,11 +23,14 @@ use crate::{
 };
 
 use super::{
-    components::{GridBall, ProjectileArrow, ProjectileBall, Species},
-    constants::PROJECTILE_SPEED,
+    components::{
+        GridBall, ProjectileArrow, ProjectileBall, ProjectileLine, ProjectileLineParent, Species,
+    },
+    constants::{INNER_RADIUS_COEFF, PROJECTILE_SPEED},
     events::SnapProjectile,
     projectile_arrow_bundle::ProjectileArrowBundle,
     projectile_ball_bundle::ProjectileBallBundle,
+    projectile_line_bundle::ProjectileLineBundle,
     resources::ProjectileBuffer,
 };
 
@@ -75,13 +78,40 @@ pub fn shoot_projectile(
     camera_query: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut projectile_ball_query: Query<
         (&Transform, &mut Velocity, &mut ProjectileBall),
-        (With<ProjectileBall>, Without<ProjectileArrow>),
+        (
+            With<ProjectileBall>,
+            Without<ProjectileArrow>,
+            Without<ProjectileLine>,
+        ),
     >,
     mouse_button_input: Res<Input<MouseButton>>,
     audio_assets: Res<AudioAssets>,
     mut projectile_arrow_query: Query<
         (&mut Transform, &mut Visibility),
-        (With<ProjectileArrow>, Without<ProjectileBall>),
+        (
+            With<ProjectileArrow>,
+            Without<ProjectileBall>,
+            Without<ProjectileLineParent>,
+            Without<ProjectileLine>,
+        ),
+    >,
+    mut projectile_line_parent_query: Query<
+        (&mut Transform, &mut Visibility),
+        (
+            With<ProjectileLineParent>,
+            Without<ProjectileBall>,
+            Without<ProjectileArrow>,
+            Without<ProjectileLine>,
+        ),
+    >,
+    mut projectile_line_query: Query<
+        &mut Transform,
+        (
+            With<ProjectileLine>,
+            Without<ProjectileBall>,
+            Without<ProjectileArrow>,
+            Without<ProjectileLineParent>,
+        ),
     >,
     touches: Res<Touches>,
     pointer_cooldown: Res<PointerCooldown>,
@@ -106,49 +136,76 @@ pub fn shoot_projectile(
         let touch_position = touch.position();
         pointer_position = Vec2::new(touch_position.x, window.height() - touch_position.y);
     }
-    if let Ok((mut arrow_transform, mut visibility)) = projectile_arrow_query.get_single_mut() {
-        if let Ok((ball_transform, mut vel, mut projectile_ball)) =
-            projectile_ball_query.get_single_mut()
+    if let Ok((mut arrow_transform, mut arrow_visibility)) = projectile_arrow_query.get_single_mut()
+    {
+        if let Ok((mut line_parent_transform, mut line_visibility)) =
+            projectile_line_parent_query.get_single_mut()
         {
-            if pointer_position.length() > Vec2::ZERO.length() && !projectile_ball.is_flying {
-                *visibility = Visibility::Visible;
-
-                let (camera, camera_transform) = camera_query.single();
-
-                let (ray_pos, ray_dir) = ray_from_mouse_position(
-                    window.width(),
-                    window.height(),
-                    pointer_position,
-                    camera,
-                    camera_transform,
-                );
-                let (plane_pos, plane_normal) =
-                    (Vec3::new(0., ball_transform.translation.y, 0.), Vec3::Y);
-
-                let mut point = plane_intersection(ray_pos, ray_dir, plane_pos, plane_normal);
-                point.y = 0.0;
-
-                // lines.line_colored(transform.translation, point, 0.0, Color::GREEN);
-                arrow_transform.translation = point;
-
-                if !(mouse_button_input.just_released(MouseButton::Left)
-                    || touches.any_just_released())
+            if let Ok(mut line_transform) = projectile_line_query.get_single_mut() {
+                if let Ok((ball_transform, mut vel, mut projectile_ball)) =
+                    projectile_ball_query.get_single_mut()
                 {
-                    return;
+                    if pointer_position.length() > Vec2::ZERO.length() && !projectile_ball.is_flying
+                    {
+                        *arrow_visibility = Visibility::Visible;
+                        *line_visibility = Visibility::Visible;
+
+                        let (camera, camera_transform) = camera_query.single();
+
+                        let (ray_pos, ray_dir) = ray_from_mouse_position(
+                            window.width(),
+                            window.height(),
+                            pointer_position,
+                            camera,
+                            camera_transform,
+                        );
+                        let (plane_pos, plane_normal) =
+                            (Vec3::new(0., ball_transform.translation.y, 0.), Vec3::Y);
+
+                        let mut point =
+                            plane_intersection(ray_pos, ray_dir, plane_pos, plane_normal);
+                        point.y = 0.0;
+
+                        arrow_transform.translation = point;
+
+                        line_parent_transform.translation.x =
+                            (point.x - ball_transform.translation.x) / 2.0;
+                        line_parent_transform.translation.z =
+                            point.z + (ball_transform.translation.z - point.z) / 2.0;
+
+                        // let look = line_transform.looking_at(point, Vec3::Z);
+                        // println!(
+                        //     "x {} y {} z {}",
+                        //     look.rotation.x, look.rotation.y, look.rotation.z
+                        // );
+                        // line_transform.rotation.y = 1.0;
+                        line_transform.scale.y = ball_transform
+                            .translation
+                            .distance(arrow_transform.translation)
+                            - INNER_RADIUS_COEFF * 2.0;
+                        line_parent_transform.look_at(point, Vec3::Z);
+
+                        if !(mouse_button_input.just_released(MouseButton::Left)
+                            || touches.any_just_released())
+                        {
+                            return;
+                        }
+
+                        commands.spawn((AudioBundle {
+                            source: audio_assets.flying.clone_weak(),
+                            settings: PlaybackSettings::DESPAWN,
+                            ..default()
+                        },));
+
+                        let aim_direction = (point - ball_transform.translation).normalize();
+                        vel.linvel = aim_direction * PROJECTILE_SPEED;
+
+                        projectile_ball.is_flying = true;
+                    } else {
+                        *arrow_visibility = Visibility::Hidden;
+                        *line_visibility = Visibility::Hidden;
+                    }
                 }
-
-                commands.spawn((AudioBundle {
-                    source: audio_assets.flying.clone_weak(),
-                    settings: PlaybackSettings::DESPAWN,
-                    ..default()
-                },));
-
-                let aim_direction = (point - ball_transform.translation).normalize();
-                vel.linvel = aim_direction * PROJECTILE_SPEED;
-
-                projectile_ball.is_flying = true;
-            } else {
-                *visibility = Visibility::Hidden;
             }
         }
     }
@@ -199,6 +256,35 @@ pub fn setup_projectile_arrow(
 pub fn cleanup_projectile_arrow(
     mut commands: Commands,
     projectile_query: Query<Entity, With<ProjectileArrow>>,
+) {
+    for projectile_entity in projectile_query.iter() {
+        commands.entity(projectile_entity).despawn_recursive();
+    }
+}
+
+pub fn setup_projectile_line(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    gameplay_materials: Res<GameplayMaterials>,
+) {
+    commands
+        .spawn(ProjectileLineBundle::new_parent(Vec3::new(
+            0.0,
+            0.0,
+            PLAYER_SPAWN_Z / 2.0,
+        )))
+        .with_children(|parent| {
+            parent.spawn(ProjectileLineBundle::new_child(
+                Vec3::ZERO,
+                &mut meshes,
+                &gameplay_materials,
+            ));
+        });
+}
+
+pub fn cleanup_projectile_line(
+    mut commands: Commands,
+    projectile_query: Query<Entity, With<ProjectileLineParent>>,
 ) {
     for projectile_entity in projectile_query.iter() {
         commands.entity(projectile_entity).despawn_recursive();

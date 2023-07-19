@@ -6,6 +6,12 @@ pub struct ProjectileBall {
 }
 
 #[derive(Component)]
+pub struct ProjectileLine;
+
+#[derive(Component)]
+pub struct ProjectileLineParent;
+
+#[derive(Component)]
 pub struct GridBall;
 
 #[derive(Component, PartialEq, Clone, Copy)]

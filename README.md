@@ -23,3 +23,6 @@ cargo install wasm-bindgen-cli
 ```sh
 ./wasm/build.sh
 ```
+
+TODO
+3 burn at first shoot

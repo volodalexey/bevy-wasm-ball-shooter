@@ -1,5 +1,5 @@
 use bevy::prelude::{
-    shape, Assets, Bundle, Mesh, PbrBundle, Quat, Res, ResMut, Transform, Vec3, Visibility,
+    shape, Assets, Bundle, Mesh, PbrBundle, Res, ResMut, Transform, Vec3, Visibility,
 };
 
 use crate::gameplay::materials::resources::GameplayMaterials;
@@ -20,12 +20,16 @@ impl ProjectileArrowBundle {
     ) -> Self {
         Self {
             pbr: PbrBundle {
-                mesh: meshes
-                    .add(shape::Circle::new(INNER_RADIUS_COEFF).into())
+                mesh: meshes.add(
+                    Mesh::try_from(shape::Icosphere {
+                        radius: INNER_RADIUS_COEFF,
+                        subdivisions: 1,
+                    })
+                    .expect("Unable to generate IcoSphere")
                     .into(),
-                material: gameplay_materials.arrow.clone(),
-                transform: Transform::from_translation(pos)
-                    .with_rotation(Quat::from_rotation_x(-core::f32::consts::PI / 2.0)),
+                ),
+                material: gameplay_materials.arrow_end.clone(),
+                transform: Transform::from_translation(pos),
                 visibility: Visibility::Hidden,
                 ..Default::default()
             },
