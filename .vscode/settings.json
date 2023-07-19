@@ -1,6 +1,0 @@
-{
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "rust-lang.rust-analyzer",
-    "rust-analyzer.showUnlinkedFileNotification": false,
-    "liveServer.settings.port": 7877
-}
