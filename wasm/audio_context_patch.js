@@ -30,10 +30,10 @@ let customKey = Symbol.for('custom-key');
 const audioContextList = [];
 
 objectPatch(globalThis, 'AudioContext', undefined, (thisArg) => {
+    thisArg[customKey] = { state: '' };
     audioContextList.push(thisArg);
 });
 objectPatch(AudioContext.prototype, 'createBufferSource', undefined, (audioContext, thisArg) => {
-    audioContext[customKey] = { state: '' };
     let descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Object.getPrototypeOf(thisArg)), 'onended');
     Object.defineProperty(thisArg, 'onended', {
         configurable: true,
@@ -42,18 +42,18 @@ objectPatch(AudioContext.prototype, 'createBufferSource', undefined, (audioConte
         },
         set: function (originalOnended) {
             return descriptor.set.call(this, () => {
-                thisArg[customKey].state = 'ended';
+                audioContext[customKey].state = 'ended';
                 return originalOnended();
             });
         }
     })
 });
 objectPatch(AudioBufferSourceNode.prototype, 'stop', (thisArg) => {
-    thisArg[customKey].state = 'ended';
+    thisArg.context[customKey].state = 'ended';
 });
 objectPatch(AudioBufferSourceNode.prototype, 'start', (thisArg) => {
-    if (thisArg[customKey].state !== 'started') {
-        thisArg[customKey].state = 'started';
+    if (thisArg.context[customKey].state !== 'started') {
+        thisArg.context[customKey].state = 'started';
         return false;
     }
     return true; // skip play() call
