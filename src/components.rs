@@ -5,6 +5,7 @@ pub enum AppState {
     #[default]
     Loading,
     StartMenu,
+    GameplayInit,
     Gameplay,
     GameOver,
 }

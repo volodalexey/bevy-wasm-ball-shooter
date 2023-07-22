@@ -124,7 +124,7 @@ pub fn click_play_button(
         match *interaction {
             Interaction::Pressed => {
                 pointer_cooldown.started = true;
-                app_state_next_state.set(AppState::Gameplay);
+                app_state_next_state.set(AppState::GameplayInit);
             }
             Interaction::Hovered => {
                 *color = button_colors.hovered.into();
@@ -159,6 +159,6 @@ pub fn keydown_detect(
     keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
     if keyboard_input_key_code.any_pressed([KeyCode::Space]) {
-        app_state_next_state.set(AppState::Gameplay);
+        app_state_next_state.set(AppState::GameplayInit);
     }
 }

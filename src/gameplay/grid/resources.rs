@@ -55,8 +55,8 @@ pub struct Grid {
 impl Default for Grid {
     fn default() -> Self {
         Self {
-            init_cols: 2,
-            init_rows: 2,
+            init_cols: 8,
+            init_rows: 20,
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,
                 hex_size: hexx::Vec2::ONE,
@@ -74,12 +74,14 @@ impl Grid {
         self.storage.get(&hex)
     }
 
-    pub fn set(&mut self, hex: Hex, entity: Option<Entity>) -> Option<Entity> {
+    pub fn set(&mut self, hex: Hex, entity: Entity) {
         self.bounds.dirty = true;
-        match entity {
-            Some(entity) => self.storage.insert(hex.clone(), entity),
-            None => self.storage.remove(&hex),
-        }
+        self.storage.insert(hex.clone(), entity);
+    }
+
+    pub fn remove(&mut self, hex: &Hex) {
+        self.bounds.dirty = true;
+        self.storage.remove(hex);
     }
 
     pub fn dim(&self) -> (f32, f32) {
@@ -114,17 +116,17 @@ impl Grid {
     #[inline]
     pub fn update_bounds(&mut self) {
         // q
-        let mut max_q = i32::MIN;
-        let mut min_q = i32::MAX;
+        let mut max_q: i32 = 0;
+        let mut min_q: i32 = 0;
         // r
-        let mut max_r = i32::MIN;
-        let mut min_r = i32::MAX;
+        let mut max_r: i32 = 0;
+        let mut min_r: i32 = 0;
         // x
-        let mut max_x = f32::MIN;
-        let mut min_x = f32::MAX;
+        let mut max_x: f32 = 0.0;
+        let mut min_x: f32 = 0.0;
         // y
-        let mut max_y = f32::MIN;
-        let mut min_y = f32::MAX;
+        let mut max_y: f32 = 0.0;
+        let mut min_y: f32 = 0.0;
         for (&hex, _) in self.storage.iter() {
             let pos = self.layout.hex_to_world_pos(hex);
             // q

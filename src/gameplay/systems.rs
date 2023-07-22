@@ -1,6 +1,6 @@
 use bevy::prelude::{
-    default, AudioBundle, Commands, Entity, EventReader, EventWriter, Input, KeyCode, NextState,
-    PlaybackSettings, Query, Res, ResMut, Transform, Vec3, With,
+    default, AudioBundle, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Input,
+    KeyCode, NextState, PlaybackSettings, Query, Res, ResMut, Transform, Vec3, With,
 };
 use hexx::{Direction, Hex};
 
@@ -8,7 +8,7 @@ use crate::{
     components::AppState,
     gameplay::{
         ball::{grid_ball_bundle::GridBallBundle, utils::clamp_inside_world_bounds},
-        constants::MOVE_DOWN_TURN,
+        constants::{MIN_CLUSTER_SIZE, MOVE_DOWN_TURN},
         grid::{
             components::HexComponent,
             events::MoveDownAndSpawn,
@@ -154,7 +154,7 @@ pub fn on_snap_projectile(
             ))
             .id();
 
-        grid.set(hex, Some(ball));
+        grid.set(hex, ball); // add snapped projectile ball as grid ball
 
         let (cluster, _) = find_cluster(&grid, hex, |&e| {
             e == ball
@@ -167,11 +167,10 @@ pub fn on_snap_projectile(
         let mut score_add = 0;
 
         // remove matching clusters
-        const MIN_CLUSTER_SIZE: usize = 3;
         if cluster.len() >= MIN_CLUSTER_SIZE {
             cluster.iter().for_each(|&hex| {
-                commands.entity(*grid.get(hex).unwrap()).despawn();
-                grid.set(hex, None);
+                commands.entity(*grid.get(hex).unwrap()).despawn_recursive();
+                grid.remove(&hex);
                 score_add += 1;
             });
         }
@@ -183,9 +182,14 @@ pub fn on_snap_projectile(
             .flat_map(|e| e.iter())
             .for_each(|&hex| {
                 commands.entity(*grid.get(hex).unwrap()).despawn();
-                grid.set(hex, None);
+                grid.remove(&hex);
                 score_add += 1;
             });
+
+        if turn_counter.0 % MOVE_DOWN_TURN == 0 {
+            round_turn_counter.0 = 0;
+            move_down_and_spawn.send(MoveDownAndSpawn);
+        }
 
         if score_add > 0 {
             commands.spawn((AudioBundle {
@@ -194,22 +198,6 @@ pub fn on_snap_projectile(
                 ..default()
             },));
         }
-
-        if turn_counter.0 % MOVE_DOWN_TURN == 0 {
-            round_turn_counter.0 = 0;
-            move_down_and_spawn.send(MoveDownAndSpawn);
-        }
-
-        // remove floating clusters
-        let floating_clusters = find_floating_clusters(&grid);
-        floating_clusters
-            .iter()
-            .flat_map(|e| e.iter())
-            .for_each(|&hex| {
-                commands.entity(*grid.get(hex).unwrap()).despawn();
-                grid.set(hex, None);
-                score_add += 1;
-            });
 
         score.0 += score_add;
 

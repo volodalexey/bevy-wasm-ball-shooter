@@ -11,7 +11,7 @@ pub struct MeshesPlugin;
 
 impl Plugin for MeshesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Gameplay), setup_resources)
+        app.add_systems(OnEnter(AppState::GameplayInit), setup_resources)
             .add_systems(OnExit(AppState::Gameplay), cleanup_resources);
     }
 }

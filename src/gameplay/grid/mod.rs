@@ -1,9 +1,6 @@
-use bevy::prelude::{
-    any_with_component, in_state, not, App, Condition, IntoSystemConfigs, OnExit, Plugin, Update,
-};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
 
 use self::{
-    components::HexComponent,
     events::{MoveDownAndSpawn, UpdatePositions},
     resources::Grid,
     systems::{cleanup_grid, generate_grid, move_down_and_spawn, update_hex_coord_transforms},
@@ -24,13 +21,7 @@ impl Plugin for GridPlugin {
         app.init_resource::<Grid>()
             .add_event::<UpdatePositions>()
             .add_event::<MoveDownAndSpawn>()
-            .add_systems(
-                Update,
-                generate_grid.run_if(
-                    in_state(AppState::Gameplay)
-                        .and_then(not(any_with_component::<HexComponent>())),
-                ),
-            )
+            .add_systems(OnEnter(AppState::Gameplay), generate_grid)
             .add_systems(
                 Update,
                 (update_hex_coord_transforms, move_down_and_spawn)

@@ -1,5 +1,5 @@
 use bevy::prelude::{Bundle, PbrBundle, Res, Transform, Vec3};
-use bevy_rapier3d::prelude::{Collider, LockedAxes, RigidBody};
+use bevy_rapier3d::prelude::{Collider, RigidBody};
 
 use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources::GameplayMeshes};
 
@@ -15,7 +15,6 @@ pub struct GridBallBundle {
     pub species: Species,
     pub collider: Collider,
     pub rigid_body: RigidBody,
-    pub locked_axes: LockedAxes,
 }
 
 impl GridBallBundle {
@@ -37,7 +36,6 @@ impl GridBallBundle {
             species,
             collider: Collider::ball(radius * INNER_RADIUS_COEFF),
             rigid_body: RigidBody::Fixed,
-            locked_axes: LockedAxes::TRANSLATION_LOCKED_Z,
         }
     }
 }

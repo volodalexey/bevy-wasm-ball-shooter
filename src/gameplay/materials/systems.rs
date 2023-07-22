@@ -1,10 +1,14 @@
-use bevy::prelude::{Assets, Color, Commands, ResMut, StandardMaterial};
+use bevy::prelude::{Assets, Color, Commands, NextState, ResMut, StandardMaterial};
 
-use crate::gameplay::ball::components::Species;
+use crate::{components::AppState, gameplay::ball::components::Species};
 
 use super::resources::GameplayMaterials;
 
-pub fn setup_resources(mut commands: Commands, mut materials: ResMut<Assets<StandardMaterial>>) {
+pub fn setup_resources(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut app_state_next_state: ResMut<NextState<AppState>>,
+) {
     commands.insert_resource(GameplayMaterials {
         red: materials.add(Species::Red.into()),
         blue: materials.add(Species::Blue.into()),
@@ -14,7 +18,9 @@ pub fn setup_resources(mut commands: Commands, mut materials: ResMut<Assets<Stan
         wall: materials.add(Color::AZURE.with_a(0.2).into()),
         arrow_end: materials.add(Color::INDIGO.with_a(0.5).into()),
         arrow_line: materials.add(Color::INDIGO.with_a(0.5).into()),
-    })
+    });
+
+    app_state_next_state.set(AppState::Gameplay);
 }
 
 pub fn cleanup_resources(mut commands: Commands) {

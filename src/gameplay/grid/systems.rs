@@ -40,7 +40,7 @@ pub fn generate_grid(
                     ))
                     .id();
 
-                grid.set(hex, Some(entity));
+                grid.set(hex, entity);
             }
 
             // Center grid on x-axis.
@@ -58,12 +58,12 @@ pub fn move_down_and_spawn(
     gameplay_materials: Res<GameplayMaterials>,
     mut grid: ResMut<Grid>,
     mut update_positions: EventWriter<UpdatePositions>,
-    mut move_down_and_spawn: EventReader<MoveDownAndSpawn>,
+    mut down_and_spawn_query: EventReader<MoveDownAndSpawn>,
 ) {
-    if move_down_and_spawn.is_empty() {
+    if down_and_spawn_query.is_empty() {
         return;
     }
-    move_down_and_spawn.clear();
+    down_and_spawn_query.clear();
 
     grid.update_bounds();
     for x in 0..grid.init_cols {
@@ -85,7 +85,7 @@ pub fn move_down_and_spawn(
             ))
             .id();
 
-        grid.set(hex, Some(ball));
+        grid.set(hex, ball);
     }
 
     update_positions.send(UpdatePositions);
@@ -108,7 +108,7 @@ pub fn update_hex_coord_transforms(
 
     for (entity, mut transform, HexComponent { hex }) in hexes.iter_mut() {
         let hex = *hex;
-        grid.set(hex, Some(entity));
+        grid.set(hex, entity);
         let (x, z) = grid.layout.hex_to_world_pos(hex).into();
         transform.translation.x = x;
         transform.translation.z = z;
