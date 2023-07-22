@@ -1,6 +1,6 @@
 use bevy::prelude::{Bundle, PbrBundle, Res, Transform, Vec3};
 use bevy_rapier3d::prelude::{
-    ActiveEvents, Collider, LockedAxes, Restitution, RigidBody, Velocity,
+    ActiveEvents, Ccd, Collider, LockedAxes, Restitution, RigidBody, Sleeping, Velocity,
 };
 
 use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources::GameplayMeshes};
@@ -21,6 +21,8 @@ pub struct ProjectileBallBundle {
     pub restitution: Restitution,
     pub velocity: Velocity,
     pub collision_events: ActiveEvents,
+    pub ccd: Ccd,
+    pub sleeping: Sleeping,
 }
 
 impl ProjectileBallBundle {
@@ -46,6 +48,8 @@ impl ProjectileBallBundle {
             restitution: Restitution::coefficient(1.0),
             velocity: Velocity::default(),
             collision_events: ActiveEvents::COLLISION_EVENTS,
+            ccd: Ccd::enabled(),
+            sleeping: Sleeping::disabled(),
         }
     }
 }

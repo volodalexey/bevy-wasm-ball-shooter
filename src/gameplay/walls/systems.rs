@@ -3,6 +3,7 @@ use bevy::prelude::{
 };
 
 use crate::gameplay::ball::constants::INNER_RADIUS_COEFF;
+use crate::gameplay::constants::PLAYER_SPAWN_Z;
 use crate::gameplay::grid::resources::Grid;
 use crate::gameplay::materials::resources::GameplayMaterials;
 
@@ -16,20 +17,23 @@ pub fn setup_level_walls(
     gameplay_materials: Option<Res<GameplayMaterials>>,
 ) {
     if let Some(gameplay_materials) = gameplay_materials {
-        let side_x = grid.init_cols as f32 * grid.layout.hex_size.x * INNER_RADIUS_COEFF
-            + grid.layout.hex_size.x * INNER_RADIUS_COEFF * 0.5
-            + WALL_X_WIDTH * 0.5;
+        let inner_width = grid.init_cols as f32 * grid.layout.hex_size.x * INNER_RADIUS_COEFF
+            + grid.layout.hex_size.x * INNER_RADIUS_COEFF * 0.5;
+        let side_x = inner_width + WALL_X_WIDTH * 0.5;
+        let bottom = PLAYER_SPAWN_Z + grid.layout.hex_size.y;
         commands.spawn(WallBundle::new(
             Vec3::new(side_x, 0.0, 0.0),
             WallType::Left,
             &mut meshes,
             &gameplay_materials,
+            bottom * 2.0,
         ));
         commands.spawn(WallBundle::new(
             Vec3::new(-side_x, 0.0, 0.0),
             WallType::Right,
             &mut meshes,
             &gameplay_materials,
+            bottom * 2.0,
         ));
     }
 }

@@ -6,7 +6,7 @@ use crate::components::AppState;
 
 use self::{
     components::{ProjectileArrow, Species},
-    events::{SnapProjectile, SpawnedBall},
+    events::SnapProjectile,
     resources::ProjectileBuffer,
     systems::{
         cleanup_projectile_arrow, cleanup_projectile_ball, cleanup_projectile_line,
@@ -30,7 +30,6 @@ pub struct ProjectilePlugin;
 impl Plugin for ProjectilePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SnapProjectile>()
-            .add_event::<SpawnedBall>()
             .insert_resource(ProjectileBuffer(vec![Species::random_species()]))
             .add_systems(
                 Update,

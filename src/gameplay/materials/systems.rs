@@ -11,7 +11,7 @@ pub fn setup_resources(mut commands: Commands, mut materials: ResMut<Assets<Stan
         green: materials.add(Species::Green.into()),
         yellow: materials.add(Species::Yellow.into()),
         white: materials.add(Species::White.into()),
-        wall: materials.add(Color::AZURE.into()),
+        wall: materials.add(Color::AZURE.with_a(0.2).into()),
         arrow_end: materials.add(Color::INDIGO.with_a(0.5).into()),
         arrow_line: materials.add(Color::INDIGO.with_a(0.5).into()),
     })

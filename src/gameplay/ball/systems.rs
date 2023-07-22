@@ -165,6 +165,9 @@ pub fn shoot_projectile(
                         let mut point =
                             plane_intersection(ray_pos, ray_dir, plane_pos, plane_normal);
                         point.y = 0.0;
+                        if point.z > PLAYER_SPAWN_Z - 2.0 {
+                            point.z = PLAYER_SPAWN_Z - 2.0;
+                        }
 
                         arrow_transform.translation = point;
 
@@ -173,12 +176,6 @@ pub fn shoot_projectile(
                         line_parent_transform.translation.z =
                             point.z + (ball_transform.translation.z - point.z) / 2.0;
 
-                        // let look = line_transform.looking_at(point, Vec3::Z);
-                        // println!(
-                        //     "x {} y {} z {}",
-                        //     look.rotation.x, look.rotation.y, look.rotation.z
-                        // );
-                        // line_transform.rotation.y = 1.0;
                         line_transform.scale.y = ball_transform
                             .translation
                             .distance(arrow_transform.translation)
@@ -220,16 +217,16 @@ pub fn on_projectile_collisions_events(
     >,
     balls_query: Query<(Entity, &Transform), With<GridBall>>,
 ) {
-    for (d1, d2, _) in collision_events.iter().filter_map(|e| match e {
-        CollisionEvent::Started(a, b, f) => Some((a, b, f)),
+    for (entity_a, entity_b) in collision_events.iter().filter_map(|e| match e {
+        CollisionEvent::Started(a, b, _) => Some((a, b)),
         CollisionEvent::Stopped(_, _, _) => None,
     }) {
-        let mut p1 = projectile_query.get_mut(*d1);
-        if p1.is_err() {
-            p1 = projectile_query.get_mut(*d2);
-        }
+        if let Ok((entity, otr)) = balls_query.get(*entity_a).or(balls_query.get(*entity_b)) {
+            let mut p1 = projectile_query.get_mut(*entity_a);
+            if p1.is_err() {
+                p1 = projectile_query.get_mut(*entity_b);
+            }
 
-        if let Ok((entity, otr)) = balls_query.get(*d1).or(balls_query.get(*d2)) {
             let (_, mut vel, tr, _) = p1.unwrap();
             let hit_normal = (otr.translation - tr.translation).normalize();
             vel.linvel = Vec3::ZERO;
