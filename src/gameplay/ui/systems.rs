@@ -7,17 +7,11 @@ use bevy::{
     ui::{AlignItems, Display, FlexDirection, JustifyContent, Style, Val},
 };
 
-use crate::{
-    gameplay::{
-        constants::MOVE_DOWN_TURN,
-        resources::{RoundTurnCounter, Score},
-        ui::components::StatusBar,
-    },
-    loading::font_assets::FontAssets,
-};
+use crate::{gameplay::ui::components::StatusBar, loading::font_assets::FontAssets};
 
 use super::{
-    components::{ScoreText, TurnText},
+    components::{LevelText, ScoreText, TurnText},
+    resources::{LevelCounter, ScoreCounter, TurnCounter},
     utils::get_text_style,
 };
 
@@ -65,20 +59,44 @@ pub fn setup_ui(mut commands: Commands, font_assets: Res<FontAssets>) {
                 },
                 TurnText {},
             ));
+            parent.spawn((
+                TextBundle {
+                    text: Text {
+                        sections: vec![TextSection {
+                            value: "".to_string(),
+                            style: get_text_style(&font_assets),
+                        }],
+                        ..default()
+                    },
+                    ..default()
+                },
+                LevelText {},
+            ));
         });
 }
 
 pub fn update_ui(
-    score: Res<Score>,
-    mut score_text_query: Query<&mut Text, (With<ScoreText>, Without<TurnText>)>,
-    round_turn_counter: Res<RoundTurnCounter>,
-    mut turn_text_query: Query<&mut Text, (With<TurnText>, Without<ScoreText>)>,
+    score_counter: Res<ScoreCounter>,
+    mut score_text_query: Query<
+        &mut Text,
+        (With<ScoreText>, Without<TurnText>, Without<LevelText>),
+    >,
+    turn_counter: Res<TurnCounter>,
+    mut turn_text_query: Query<&mut Text, (With<TurnText>, Without<ScoreText>, Without<LevelText>)>,
+    level_counter: Res<LevelCounter>,
+    mut level_text_query: Query<
+        &mut Text,
+        (With<LevelText>, Without<ScoreText>, Without<TurnText>),
+    >,
 ) {
     for mut score_text in &mut score_text_query {
-        score_text.sections[0].value = format!("Score: {:?} ", score.0);
+        score_text.sections[0].value = format!("Очки: {:?} ", score_counter.0);
     }
     for mut turn_text in &mut turn_text_query {
-        turn_text.sections[0].value = format!("Turn: {}/{}", round_turn_counter.0, MOVE_DOWN_TURN);
+        turn_text.sections[0].value = format!("Ходов: {}", turn_counter.0);
+    }
+    for mut level_text in &mut level_text_query {
+        level_text.sections[0].value = format!("Уровень: {}", level_counter.0);
     }
 }
 

@@ -1,7 +1,7 @@
 use bevy::prelude::{
     Commands, Entity, EventReader, EventWriter, Query, Res, ResMut, Transform, Vec3, With,
 };
-use hexx::{shapes, Hex};
+use hexx::shapes;
 
 use crate::gameplay::{
     ball::{components::Species, grid_ball_bundle::GridBallBundle},
@@ -9,11 +9,7 @@ use crate::gameplay::{
     meshes::resources::GameplayMeshes,
 };
 
-use super::{
-    components::HexComponent,
-    events::{MoveDownAndSpawn, UpdatePositions},
-    resources::Grid,
-};
+use super::{components::HexComponent, events::UpdatePositions, resources::Grid};
 
 pub fn generate_grid(
     mut commands: Commands,
@@ -50,45 +46,6 @@ pub fn generate_grid(
             update_positions.send(UpdatePositions);
         }
     }
-}
-
-pub fn move_down_and_spawn(
-    mut commands: Commands,
-    gameplay_meshes: Res<GameplayMeshes>,
-    gameplay_materials: Res<GameplayMaterials>,
-    mut grid: ResMut<Grid>,
-    mut update_positions: EventWriter<UpdatePositions>,
-    mut down_and_spawn_query: EventReader<MoveDownAndSpawn>,
-) {
-    if down_and_spawn_query.is_empty() {
-        return;
-    }
-    down_and_spawn_query.clear();
-
-    grid.update_bounds();
-    for x in 0..grid.init_cols {
-        let hex = Hex {
-            x: x + ((grid.bounds.mins.r.abs() + 1) as f32 * 0.5).round() as i32,
-            y: grid.bounds.mins.r - 1,
-        };
-        let (x, z) = grid.layout.hex_to_world_pos(hex).into();
-        let ball = commands
-            .spawn((
-                GridBallBundle::new(
-                    Vec3::new(x, 0.0, z),
-                    grid.layout.hex_size.x,
-                    Species::random_species(),
-                    &gameplay_meshes,
-                    &gameplay_materials,
-                ),
-                HexComponent { hex },
-            ))
-            .id();
-
-        grid.set(hex, ball);
-    }
-
-    update_positions.send(UpdatePositions);
 }
 
 pub fn update_hex_coord_transforms(

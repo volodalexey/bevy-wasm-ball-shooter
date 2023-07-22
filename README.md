@@ -25,4 +25,7 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
+move down grid
+win menu
+level increment
 3 burn at first shoot

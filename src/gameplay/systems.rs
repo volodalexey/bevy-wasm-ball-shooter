@@ -8,10 +8,9 @@ use crate::{
     components::AppState,
     gameplay::{
         ball::{grid_ball_bundle::GridBallBundle, utils::clamp_inside_world_bounds},
-        constants::{MIN_CLUSTER_SIZE, MOVE_DOWN_TURN},
+        constants::MIN_CLUSTER_SIZE,
         grid::{
             components::HexComponent,
-            events::MoveDownAndSpawn,
             utils::{find_cluster, find_floating_clusters},
         },
     },
@@ -28,32 +27,24 @@ use super::{
     grid::resources::Grid,
     materials::resources::GameplayMaterials,
     meshes::resources::GameplayMeshes,
-    resources::{RoundTurnCounter, Score, TurnCounter},
+    ui::resources::{ScoreCounter, TurnCounter},
 };
 
 pub fn setup_gameplay(
     mut begin_turn: EventWriter<BeginTurn>,
     mut turn_counter: ResMut<TurnCounter>,
-    mut round_turn_counter: ResMut<RoundTurnCounter>,
-    mut score: ResMut<Score>,
+    mut score: ResMut<ScoreCounter>,
 ) {
     score.0 = 0;
     turn_counter.0 = 0;
-    round_turn_counter.0 = 0;
     begin_turn.send(BeginTurn);
 }
 
-pub fn on_begin_turn(
-    mut turn_counter: ResMut<TurnCounter>,
-    mut round_turn_counter: ResMut<RoundTurnCounter>,
-    mut begin_turn: EventReader<BeginTurn>,
-) {
+pub fn on_begin_turn(mut begin_turn: EventReader<BeginTurn>) {
     if begin_turn.is_empty() {
         return;
     }
     begin_turn.clear();
-    turn_counter.0 += 1;
-    round_turn_counter.0 += 1;
 }
 
 pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextState<AppState>>) {
@@ -86,13 +77,11 @@ pub fn on_snap_projectile(
     gameplay_materials: Res<GameplayMaterials>,
     mut grid: ResMut<Grid>,
     mut begin_turn: EventWriter<BeginTurn>,
-    mut score: ResMut<Score>,
-    turn_counter: ResMut<TurnCounter>,
-    mut round_turn_counter: ResMut<RoundTurnCounter>,
+    mut score: ResMut<ScoreCounter>,
+    mut turn_counter: ResMut<TurnCounter>,
     projectile_query: Query<(Entity, &Transform, &Species), With<ProjectileBall>>,
     balls_query: Query<&Species, With<GridBall>>,
     audio_assets: Res<AudioAssets>,
-    mut move_down_and_spawn: EventWriter<MoveDownAndSpawn>,
 ) {
     if snap_projectile.is_empty() {
         return;
@@ -186,11 +175,6 @@ pub fn on_snap_projectile(
                 score_add += 1;
             });
 
-        if turn_counter.0 % MOVE_DOWN_TURN == 0 {
-            round_turn_counter.0 = 0;
-            move_down_and_spawn.send(MoveDownAndSpawn);
-        }
-
         if score_add > 0 {
             commands.spawn((AudioBundle {
                 source: audio_assets.score.clone_weak(),
@@ -200,6 +184,7 @@ pub fn on_snap_projectile(
         }
 
         score.0 += score_add;
+        turn_counter.0 += 1;
 
         begin_turn.send(BeginTurn);
     }

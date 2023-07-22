@@ -2,9 +2,13 @@ use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, U
 
 use crate::components::AppState;
 
-use self::systems::{cleanup_ui, setup_ui, update_ui};
+use self::{
+    resources::{LevelCounter, ScoreCounter, TurnCounter},
+    systems::{cleanup_ui, setup_ui, update_ui},
+};
 
 mod components;
+pub mod resources;
 mod systems;
 mod utils;
 
@@ -12,7 +16,10 @@ pub struct UIPlugin;
 
 impl Plugin for UIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(AppState::Gameplay), setup_ui)
+        app.insert_resource(TurnCounter(0))
+            .insert_resource(ScoreCounter(0))
+            .insert_resource(LevelCounter(0))
+            .add_systems(OnEnter(AppState::Gameplay), setup_ui)
             .add_systems(Update, update_ui.run_if(in_state(AppState::Gameplay)))
             .add_systems(OnExit(AppState::Gameplay), cleanup_ui);
     }

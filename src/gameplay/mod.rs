@@ -11,7 +11,6 @@ use self::{
     materials::MaterialsPlugin,
     meshes::MeshesPlugin,
     physics::PhysicsPlugin,
-    resources::{RoundTurnCounter, Score, TurnCounter},
     systems::{check_game_over, keydown_detect, on_begin_turn, on_snap_projectile, setup_gameplay},
     ui::UIPlugin,
     walls::WallsPlugin,
@@ -26,7 +25,6 @@ mod main_light;
 mod materials;
 mod meshes;
 mod physics;
-mod resources;
 mod systems;
 mod ui;
 mod utils;
@@ -49,9 +47,6 @@ impl Plugin for GameplayPlugin {
         ))
         .add_event::<BeginTurn>()
         .insert_resource(Msaa::Off)
-        .insert_resource(TurnCounter(0))
-        .insert_resource(RoundTurnCounter(0))
-        .insert_resource(Score(0))
         .add_systems(OnEnter(AppState::Gameplay), setup_gameplay)
         .add_systems(
             Update,
