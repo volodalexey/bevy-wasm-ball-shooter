@@ -47,7 +47,6 @@ pub struct Grid {
     pub init_cols: i32,
     pub init_rows: i32,
     pub layout: HexLayout,
-    pub offset_type: OffsetHexMode,
     pub storage: HashMap<Hex, Entity>,
     pub bounds: Bounds,
 }
@@ -62,7 +61,6 @@ impl Default for Grid {
                 hex_size: hexx::Vec2::ONE,
                 ..Default::default()
             },
-            offset_type: OffsetHexMode::OddRows,
             storage: Default::default(),
             bounds: Default::default(),
         }
@@ -171,16 +169,6 @@ impl Grid {
     }
 
     #[allow(dead_code)]
-    pub fn inverse_offset(&mut self) {
-        self.offset_type = match self.offset_type {
-            OffsetHexMode::EvenColumns => OffsetHexMode::OddColumns,
-            OffsetHexMode::OddColumns => OffsetHexMode::EvenColumns,
-            OffsetHexMode::EvenRows => OffsetHexMode::OddRows,
-            OffsetHexMode::OddRows => OffsetHexMode::EvenRows,
-        }
-    }
-
-    #[allow(dead_code)]
     pub fn print_sorted(&mut self) {
         let mut s: Vec<(i32, Hex)> = Vec::new();
         let replaced: String = self
@@ -194,7 +182,7 @@ impl Grid {
             .collect();
         let y_mul_factor: i32 = format!("1{}", replaced).parse().unwrap();
         for (&hex, _) in self.storage.iter() {
-            let hex_offset = hex.to_offset_coordinates(self.offset_type);
+            let hex_offset = hex.to_offset_coordinates(OffsetHexMode::OddRows);
             let sort_value = hex_offset[1].abs() * y_mul_factor + hex_offset[0].abs();
             s.push((sort_value, hex));
         }
@@ -202,7 +190,7 @@ impl Grid {
         info!("Grid sorted----");
         for (_, hex) in s.iter() {
             let pos = self.layout.hex_to_world_pos(*hex);
-            let hex_offet = hex.to_offset_coordinates(self.offset_type);
+            let hex_offet = hex.to_offset_coordinates(OffsetHexMode::OddRows);
             info!(
                 "offset(x={}, y={}) axial(x={}, y={})  pos(x={}, y={}) ",
                 hex_offet[0], hex_offet[1], hex.x, hex.y, pos.x, pos.y,

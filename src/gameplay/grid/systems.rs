@@ -7,6 +7,7 @@ use crate::gameplay::{
     ball::{components::Species, grid_ball_bundle::GridBallBundle},
     materials::resources::GameplayMaterials,
     meshes::resources::GameplayMeshes,
+    ui::resources::MoveCounter,
 };
 
 use super::{components::HexComponent, events::UpdatePositions, resources::Grid};
@@ -48,20 +49,24 @@ pub fn generate_grid(
     }
 }
 
+pub const VISIBLE_ROWS: f32 = 5.0;
+
 pub fn update_hex_coord_transforms(
     mut hexes: Query<(Entity, &mut Transform, &HexComponent), With<HexComponent>>,
     mut grid: ResMut<Grid>,
     mut event_query: EventReader<UpdatePositions>,
+    move_counter: Res<MoveCounter>,
 ) {
     if event_query.is_empty() {
         return;
     }
     event_query.clear();
 
+    let row_height = 1.5 * grid.layout.hex_size.y;
+    let init_layout_y = -grid.init_rows as f32 * row_height + VISIBLE_ROWS * row_height;
+    let move_layout_y = move_counter.0 as f32 * row_height;
+    grid.layout.origin.y = init_layout_y + move_layout_y;
     grid.update_bounds();
-    if grid.bounds.mins.y.abs() > grid.layout.hex_size.y.abs() {
-        grid.layout.origin.y += grid.bounds.mins.y.abs() - grid.layout.hex_size.y.abs();
-    }
 
     for (entity, mut transform, HexComponent { hex }) in hexes.iter_mut() {
         let hex = *hex;

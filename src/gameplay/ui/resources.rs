@@ -4,6 +4,9 @@ use bevy::prelude::Resource;
 pub struct TurnCounter(pub u32);
 
 #[derive(Resource)]
+pub struct MoveCounter(pub u32);
+
+#[derive(Resource)]
 pub struct ScoreCounter(pub u32);
 
 #[derive(Resource)]

@@ -24,27 +24,26 @@ use super::{
     },
     constants::PLAYER_SPAWN_Z,
     events::BeginTurn,
-    grid::resources::Grid,
+    grid::{events::UpdatePositions, resources::Grid},
     materials::resources::GameplayMaterials,
     meshes::resources::GameplayMeshes,
-    ui::resources::{ScoreCounter, TurnCounter},
+    ui::resources::{MoveCounter, ScoreCounter, TurnCounter},
 };
 
-pub fn setup_gameplay(
-    mut begin_turn: EventWriter<BeginTurn>,
-    mut turn_counter: ResMut<TurnCounter>,
-    mut score: ResMut<ScoreCounter>,
-) {
-    score.0 = 0;
-    turn_counter.0 = 0;
+pub fn setup_gameplay(mut begin_turn: EventWriter<BeginTurn>) {
     begin_turn.send(BeginTurn);
 }
 
-pub fn on_begin_turn(mut begin_turn: EventReader<BeginTurn>) {
+pub fn on_begin_turn(
+    mut begin_turn: EventReader<BeginTurn>,
+    mut update_positions: EventWriter<UpdatePositions>,
+) {
     if begin_turn.is_empty() {
         return;
     }
     begin_turn.clear();
+
+    update_positions.send(UpdatePositions);
 }
 
 pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextState<AppState>>) {
@@ -77,8 +76,9 @@ pub fn on_snap_projectile(
     gameplay_materials: Res<GameplayMaterials>,
     mut grid: ResMut<Grid>,
     mut begin_turn: EventWriter<BeginTurn>,
-    mut score: ResMut<ScoreCounter>,
+    mut score_counter: ResMut<ScoreCounter>,
     mut turn_counter: ResMut<TurnCounter>,
+    mut move_counter: ResMut<MoveCounter>,
     projectile_query: Query<(Entity, &Transform, &Species), With<ProjectileBall>>,
     balls_query: Query<&Species, With<GridBall>>,
     audio_assets: Res<AudioAssets>,
@@ -161,6 +161,7 @@ pub fn on_snap_projectile(
                 commands.entity(*grid.get(hex).unwrap()).despawn_recursive();
                 grid.remove(&hex);
                 score_add += 1;
+                println!("score add cluster");
             });
         }
 
@@ -173,6 +174,7 @@ pub fn on_snap_projectile(
                 commands.entity(*grid.get(hex).unwrap()).despawn();
                 grid.remove(&hex);
                 score_add += 1;
+                println!("score add floating cluster");
             });
 
         if score_add > 0 {
@@ -183,8 +185,12 @@ pub fn on_snap_projectile(
             },));
         }
 
-        score.0 += score_add;
+        score_counter.0 += score_add;
         turn_counter.0 += 1;
+        if score_add == 0 {
+            move_counter.0 += 1;
+        }
+        println!("score {} turn {}", score_counter.0, turn_counter.0);
 
         begin_turn.send(BeginTurn);
     }

@@ -28,4 +28,4 @@ TODO
 move down grid
 win menu
 level increment
-3 burn at first shoot
+animation for removed balls clusters

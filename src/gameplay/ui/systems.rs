@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
         default, BuildChildren, Commands, DespawnRecursiveExt, Entity, NodeBundle, Query, Res,
-        TextBundle, With, Without,
+        ResMut, TextBundle, With, Without,
     },
     text::{Text, TextSection},
     ui::{AlignItems, Display, FlexDirection, JustifyContent, Style, Val},
@@ -11,9 +11,19 @@ use crate::{gameplay::ui::components::StatusBar, loading::font_assets::FontAsset
 
 use super::{
     components::{LevelText, ScoreText, TurnText},
-    resources::{LevelCounter, ScoreCounter, TurnCounter},
+    resources::{LevelCounter, MoveCounter, ScoreCounter, TurnCounter},
     utils::get_text_style,
 };
+
+pub fn setup_resources(
+    mut turn_counter: ResMut<TurnCounter>,
+    mut move_counter: ResMut<MoveCounter>,
+    mut score_counter: ResMut<ScoreCounter>,
+) {
+    turn_counter.0 = 0;
+    move_counter.0 = 0;
+    score_counter.0 = 0;
+}
 
 pub fn setup_ui(mut commands: Commands, font_assets: Res<FontAssets>) {
     commands
@@ -82,6 +92,7 @@ pub fn update_ui(
         (With<ScoreText>, Without<TurnText>, Without<LevelText>),
     >,
     turn_counter: Res<TurnCounter>,
+    move_counter: Res<MoveCounter>,
     mut turn_text_query: Query<&mut Text, (With<TurnText>, Without<ScoreText>, Without<LevelText>)>,
     level_counter: Res<LevelCounter>,
     mut level_text_query: Query<
@@ -93,7 +104,7 @@ pub fn update_ui(
         score_text.sections[0].value = format!("Очки: {:?} ", score_counter.0);
     }
     for mut turn_text in &mut turn_text_query {
-        turn_text.sections[0].value = format!("Ходов: {}", turn_counter.0);
+        turn_text.sections[0].value = format!("Ходов: {} ({})", turn_counter.0, move_counter.0);
     }
     for mut level_text in &mut level_text_query {
         level_text.sections[0].value = format!("Уровень: {}", level_counter.0);
