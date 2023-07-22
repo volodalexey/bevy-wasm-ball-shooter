@@ -19,7 +19,7 @@ use crate::{
         utils::{plane_intersection, ray_from_mouse_position},
     },
     loading::audio_assets::AudioAssets,
-    resources::PointerCooldown,
+    resources::{LevelCounter, PointerCooldown},
 };
 
 use super::{
@@ -50,6 +50,7 @@ pub fn projectile_reload(
     mut buffer: ResMut<ProjectileBuffer>,
     mut begin_turn: EventReader<BeginTurn>,
     grid: Res<Grid>,
+    level_counter: Res<LevelCounter>,
 ) {
     if begin_turn.is_empty() {
         return;
@@ -58,7 +59,7 @@ pub fn projectile_reload(
 
     let species = match buffer.0.pop() {
         Some(species) => species,
-        None => Species::random_species(),
+        None => Species::random_species(&level_counter),
     };
 
     commands.spawn(ProjectileBallBundle::new(
@@ -69,7 +70,7 @@ pub fn projectile_reload(
         &gameplay_materials,
     ));
 
-    buffer.0.push(Species::random_species());
+    buffer.0.push(Species::random_species(&level_counter));
 }
 
 pub fn shoot_projectile(

@@ -8,6 +8,3 @@ pub struct MoveCounter(pub u32);
 
 #[derive(Resource)]
 pub struct ScoreCounter(pub u32);
-
-#[derive(Resource)]
-pub struct LevelCounter(pub u32);

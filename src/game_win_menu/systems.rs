@@ -11,19 +11,23 @@ use bevy::{
     },
 };
 
-use crate::{components::AppState, loading::font_assets::FontAssets, resources::PointerCooldown};
+use crate::{
+    components::AppState,
+    loading::font_assets::FontAssets,
+    resources::{LevelCounter, PointerCooldown},
+};
 
 use super::{
-    components::{GameOverMenu, GameOverMenuCamera},
-    resources::GameOverButtonColors,
+    components::{GameWinMenu, GameWinMenuCamera},
+    resources::GameWinButtonColors,
 };
 
 pub fn setup_menu(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
-    button_colors: Res<GameOverButtonColors>,
+    button_colors: Res<GameWinButtonColors>,
 ) {
-    commands.spawn((Camera2dBundle::default(), GameOverMenuCamera {}));
+    commands.spawn((Camera2dBundle::default(), GameWinMenuCamera {}));
     commands
         .spawn((
             NodeBundle {
@@ -39,13 +43,13 @@ pub fn setup_menu(
                 },
                 ..default()
             },
-            GameOverMenu {},
+            GameWinMenu {},
         ))
         .with_children(|parent| {
             parent.spawn(TextBundle {
                 text: Text {
                     sections: vec![TextSection {
-                        value: "Игра окончена".to_string(),
+                        value: "Поздравляем!".to_string(),
                         style: TextStyle {
                             font: font_assets.fira_sans_bold.clone_weak(),
                             font_size: 40.0,
@@ -71,7 +75,7 @@ pub fn setup_menu(
                     parent.spawn(TextBundle {
                         text: Text {
                             sections: vec![TextSection {
-                                value: "Заново".to_string(),
+                                value: "Далее".to_string(),
                                 style: TextStyle {
                                     font: font_assets.fira_sans_bold.clone_weak(),
                                     font_size: 40.0,
@@ -87,18 +91,20 @@ pub fn setup_menu(
 }
 
 pub fn click_play_button(
-    button_colors: Res<GameOverButtonColors>,
+    button_colors: Res<GameWinButtonColors>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
     mut interaction_query: Query<
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
     mut pointer_cooldown: ResMut<PointerCooldown>,
+    mut level_counter: ResMut<LevelCounter>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
                 pointer_cooldown.started = true;
+                level_counter.0 += 1;
                 app_state_next_state.set(AppState::GameplayInit);
             }
             Interaction::Hovered => {
@@ -113,8 +119,8 @@ pub fn click_play_button(
 
 pub fn cleanup_menu(
     mut commands: Commands,
-    camera_query: Query<Entity, With<GameOverMenuCamera>>,
-    node_query: Query<Entity, With<GameOverMenu>>,
+    camera_query: Query<Entity, With<GameWinMenuCamera>>,
+    node_query: Query<Entity, With<GameWinMenu>>,
 ) {
     commands.entity(camera_query.single()).despawn_recursive();
     commands.entity(node_query.single()).despawn_recursive();

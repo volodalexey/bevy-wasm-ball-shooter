@@ -7,11 +7,13 @@ use bevy::{
     ui::{AlignItems, Display, FlexDirection, JustifyContent, Style, Val},
 };
 
-use crate::{gameplay::ui::components::StatusBar, loading::font_assets::FontAssets};
+use crate::{
+    gameplay::ui::components::StatusBar, loading::font_assets::FontAssets, resources::LevelCounter,
+};
 
 use super::{
     components::{LevelText, ScoreText, TurnText},
-    resources::{LevelCounter, MoveCounter, ScoreCounter, TurnCounter},
+    resources::{MoveCounter, ScoreCounter, TurnCounter},
     utils::get_text_style,
 };
 

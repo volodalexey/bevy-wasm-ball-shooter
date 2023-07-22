@@ -1,4 +1,6 @@
-use bevy::prelude::{Color, Component, StandardMaterial};
+use bevy::prelude::{Color, Component, Res, StandardMaterial};
+
+use crate::resources::LevelCounter;
 
 #[derive(Component)]
 pub struct ProjectileBall {
@@ -43,8 +45,15 @@ impl Into<StandardMaterial> for Species {
 }
 
 impl Species {
-    pub fn random_species() -> Species {
-        match fastrand::u8(0..5) {
+    pub fn random_species(level_counter: &Res<LevelCounter>) -> Species {
+        let range = match level_counter.0 {
+            1 => 1, // one color
+            2..=3 => fastrand::u8(0..2),
+            4..=5 => fastrand::u8(0..3),
+            6..=7 => fastrand::u8(0..4),
+            _ => fastrand::u8(0..5),
+        };
+        match range {
             0 => Species::Red,
             1 => Species::Blue,
             2 => Species::Green,

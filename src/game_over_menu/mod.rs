@@ -3,7 +3,7 @@ use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, U
 use crate::components::AppState;
 
 use self::{
-    resources::ButtonColors,
+    resources::GameOverButtonColors,
     systems::{cleanup_menu, click_play_button, keydown_detect, setup_menu},
 };
 
@@ -15,7 +15,7 @@ pub struct GameOverMenuPlugin;
 
 impl Plugin for GameOverMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ButtonColors>()
+        app.init_resource::<GameOverButtonColors>()
             .add_systems(OnEnter(AppState::GameOver), setup_menu)
             .add_systems(
                 Update,

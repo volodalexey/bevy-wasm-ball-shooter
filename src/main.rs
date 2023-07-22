@@ -5,14 +5,16 @@ use bevy::{
 };
 use components::AppState;
 use game_over_menu::GameOverMenuPlugin;
+use game_win_menu::GameWinMenuPlugin;
 use gameplay::GameplayPlugin;
 use loading::LoadingPlugin;
-use resources::PointerCooldown;
+use resources::{LevelCounter, PointerCooldown};
 use start_menu::StartMenuPlugin;
 use systems::{exit_game, tick_pointer_cooldown_timer};
 
 mod components;
 mod game_over_menu;
+mod game_win_menu;
 mod gameplay;
 mod loading;
 mod resources;
@@ -33,10 +35,12 @@ fn main() {
             }),
             LoadingPlugin,
             StartMenuPlugin,
+            GameWinMenuPlugin,
             GameplayPlugin,
             GameOverMenuPlugin,
         ))
         .add_state::<AppState>()
+        .insert_resource(LevelCounter(1))
         .init_resource::<PointerCooldown>()
         .add_systems(Update, (exit_game, tick_pointer_cooldown_timer))
         .run();

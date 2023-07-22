@@ -19,3 +19,6 @@ impl Default for PointerCooldown {
         }
     }
 }
+
+#[derive(Resource)]
+pub struct LevelCounter(pub u32);

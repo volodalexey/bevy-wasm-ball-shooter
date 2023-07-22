@@ -19,13 +19,13 @@ use crate::{
 
 use super::{
     components::{MainSoundtrack, StartMenu, StartMenuCamera},
-    resources::ButtonColors,
+    resources::StartMenuButtonColors,
 };
 
 pub fn setup_menu(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
-    button_colors: Res<ButtonColors>,
+    button_colors: Res<StartMenuButtonColors>,
 ) {
     commands.spawn((Camera2dBundle::default(), StartMenuCamera {}));
     commands
@@ -112,7 +112,7 @@ pub fn start_audio(mut commands: Commands, audio_assets: Res<AudioAssets>) {
 }
 
 pub fn click_play_button(
-    button_colors: Res<ButtonColors>,
+    button_colors: Res<StartMenuButtonColors>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
     mut interaction_query: Query<
         (&Interaction, &mut BackgroundColor),

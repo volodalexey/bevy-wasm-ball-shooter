@@ -55,7 +55,7 @@ impl Default for Grid {
     fn default() -> Self {
         Self {
             init_cols: 8,
-            init_rows: 20,
+            init_rows: 0,
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,
                 hex_size: hexx::Vec2::ONE,

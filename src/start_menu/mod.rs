@@ -3,7 +3,7 @@ use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, U
 use crate::components::AppState;
 
 use self::{
-    resources::ButtonColors,
+    resources::StartMenuButtonColors,
     systems::{
         cleanup_audio, cleanup_menu, click_play_button, keydown_detect, setup_menu, start_audio,
     },
@@ -17,7 +17,7 @@ pub struct StartMenuPlugin;
 
 impl Plugin for StartMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ButtonColors>()
+        app.init_resource::<StartMenuButtonColors>()
             .add_systems(OnEnter(AppState::StartMenu), (setup_menu, start_audio))
             .add_systems(
                 Update,

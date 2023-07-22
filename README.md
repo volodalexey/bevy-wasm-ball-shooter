@@ -25,7 +25,7 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-move down grid
-win menu
-level increment
+limit ball min y
+sound settings
 animation for removed balls clusters
+animation for move down

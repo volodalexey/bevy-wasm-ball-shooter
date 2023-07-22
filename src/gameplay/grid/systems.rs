@@ -3,50 +3,53 @@ use bevy::prelude::{
 };
 use hexx::shapes;
 
-use crate::gameplay::{
-    ball::{components::Species, grid_ball_bundle::GridBallBundle},
-    materials::resources::GameplayMaterials,
-    meshes::resources::GameplayMeshes,
-    ui::resources::MoveCounter,
+use crate::{
+    gameplay::{
+        ball::{components::Species, grid_ball_bundle::GridBallBundle},
+        materials::resources::GameplayMaterials,
+        meshes::resources::GameplayMeshes,
+        ui::resources::MoveCounter,
+    },
+    resources::LevelCounter,
 };
 
 use super::{components::HexComponent, events::UpdatePositions, resources::Grid};
 
 pub fn generate_grid(
     mut commands: Commands,
-    gameplay_meshes: Option<Res<GameplayMeshes>>,
-    gameplay_materials: Option<Res<GameplayMaterials>>,
+    gameplay_meshes: Res<GameplayMeshes>,
+    gameplay_materials: Res<GameplayMaterials>,
     mut grid: ResMut<Grid>,
     mut update_positions: EventWriter<UpdatePositions>,
+    level_counter: Res<LevelCounter>,
 ) {
-    if let Some(gameplay_meshes) = gameplay_meshes {
-        if let Some(gameplay_materials) = gameplay_materials {
-            for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
-                let (x, z) = grid.layout.hex_to_world_pos(hex).into();
+    let factor: i32 = (level_counter.0 * 2) as i32;
+    grid.init_cols = factor.clamp(2, 16);
+    grid.init_rows = factor;
+    for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
+        let (x, z) = grid.layout.hex_to_world_pos(hex).into();
 
-                let entity = commands
-                    .spawn((
-                        GridBallBundle::new(
-                            Vec3::new(x, 0.0, z),
-                            grid.layout.hex_size.x,
-                            Species::random_species(),
-                            &gameplay_meshes,
-                            &gameplay_materials,
-                        ),
-                        HexComponent { hex },
-                    ))
-                    .id();
+        let entity = commands
+            .spawn((
+                GridBallBundle::new(
+                    Vec3::new(x, 0.0, z),
+                    grid.layout.hex_size.x,
+                    Species::random_species(&level_counter),
+                    &gameplay_meshes,
+                    &gameplay_materials,
+                ),
+                HexComponent { hex },
+            ))
+            .id();
 
-                grid.set(hex, entity);
-            }
-
-            // Center grid on x-axis.
-            grid.update_bounds();
-            let (width, _) = grid.dim();
-            grid.layout.origin.x = -width / 2. + grid.layout.hex_size.x;
-            update_positions.send(UpdatePositions);
-        }
+        grid.set(hex, entity);
     }
+
+    // Center grid on x-axis.
+    grid.update_bounds();
+    let (width, _) = grid.dim();
+    grid.layout.origin.x = -width / 2. + grid.layout.hex_size.x;
+    update_positions.send(UpdatePositions);
 }
 
 pub const VISIBLE_ROWS: f32 = 5.0;

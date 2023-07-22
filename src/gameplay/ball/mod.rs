@@ -3,7 +3,6 @@ use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, U
 use crate::components::AppState;
 
 use self::{
-    components::Species,
     events::SnapProjectile,
     resources::ProjectileBuffer,
     systems::{
@@ -28,7 +27,7 @@ pub struct ProjectilePlugin;
 impl Plugin for ProjectilePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SnapProjectile>()
-            .insert_resource(ProjectileBuffer(vec![Species::random_species()]))
+            .insert_resource(ProjectileBuffer(vec![]))
             .add_systems(
                 OnEnter(AppState::Gameplay),
                 (setup_projectile_arrow, setup_projectile_line),

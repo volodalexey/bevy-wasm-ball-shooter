@@ -69,6 +69,12 @@ pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextSta
     }
 }
 
+pub fn check_game_win(grid: Res<Grid>, mut app_state_next_state: ResMut<NextState<AppState>>) {
+    if grid.storage.len() == 0 {
+        app_state_next_state.set(AppState::GameWin);
+    }
+}
+
 pub fn on_snap_projectile(
     mut snap_projectile: EventReader<SnapProjectile>,
     mut commands: Commands,
@@ -201,6 +207,6 @@ pub fn keydown_detect(
     keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
     if keyboard_input_key_code.any_pressed([KeyCode::Return]) {
-        app_state_next_state.set(AppState::GameOver);
+        app_state_next_state.set(AppState::GameWin);
     }
 }
