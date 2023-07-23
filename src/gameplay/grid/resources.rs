@@ -120,11 +120,11 @@ impl Grid {
         let mut max_r: i32 = 0;
         let mut min_r: i32 = 0;
         // x
-        let mut max_x: f32 = 0.0;
-        let mut min_x: f32 = 0.0;
+        let mut max_x: f32 = f32::MIN;
+        let mut min_x: f32 = f32::MAX;
         // y
-        let mut max_y: f32 = 0.0;
-        let mut min_y: f32 = 0.0;
+        let mut max_y: f32 = f32::MIN;
+        let mut min_y: f32 = f32::MAX;
         for (&hex, _) in self.storage.iter() {
             let pos = self.layout.hex_to_world_pos(hex);
             // q
@@ -145,14 +145,14 @@ impl Grid {
 
         self.bounds = Bounds {
             mins: Bound {
-                x: min_x - sx,
-                y: min_y - sy,
+                x: if min_x == f32::MAX { 0.0 } else { min_x - sx },
+                y: if min_y == f32::MAX { 0.0 } else { min_y - sy },
                 q: min_q,
                 r: min_r,
             },
             maxs: Bound {
-                x: max_x + sx,
-                y: max_y + sy,
+                x: if max_x == f32::MIN { 0.0 } else { max_x + sx },
+                y: if max_y == f32::MIN { 0.0 } else { max_y + sy },
                 q: max_q,
                 r: max_r,
             },

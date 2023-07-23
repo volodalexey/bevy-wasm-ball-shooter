@@ -210,30 +210,31 @@ pub fn shoot_projectile(
 }
 
 pub fn on_projectile_collisions_events(
+    mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
     mut snap_projectile: EventWriter<SnapProjectile>,
-    mut projectile_query: Query<
-        (Entity, &mut Velocity, &Transform, &ProjectileBall),
-        With<ProjectileBall>,
-    >,
+    mut projectile_query: Query<(Entity, &Transform, &Species), With<ProjectileBall>>,
     balls_query: Query<(Entity, &Transform), With<GridBall>>,
 ) {
     for (entity_a, entity_b) in collision_events.iter().filter_map(|e| match e {
         CollisionEvent::Started(a, b, _) => Some((a, b)),
         CollisionEvent::Stopped(_, _, _) => None,
     }) {
-        if let Ok((entity, otr)) = balls_query.get(*entity_a).or(balls_query.get(*entity_b)) {
+        if let Ok((_, _)) = balls_query.get(*entity_a).or(balls_query.get(*entity_b)) {
             let mut p1 = projectile_query.get_mut(*entity_a);
             if p1.is_err() {
                 p1 = projectile_query.get_mut(*entity_b);
             }
 
-            let (_, mut vel, tr, _) = p1.unwrap();
-            let hit_normal = (otr.translation - tr.translation).normalize();
-            vel.linvel = Vec3::ZERO;
+            let (projectile_entity, projectile_transform, species) = p1.unwrap();
+            commands.entity(projectile_entity).despawn_recursive();
             snap_projectile.send(SnapProjectile {
-                entity: Some(entity),
-                hit_normal: Some(hit_normal),
+                out_of_bounds: false,
+                pos: Vec2::new(
+                    projectile_transform.translation.x,
+                    projectile_transform.translation.z,
+                ),
+                species: *species,
             });
         }
     }

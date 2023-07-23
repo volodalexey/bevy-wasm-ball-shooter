@@ -1,11 +1,16 @@
 use bevy::prelude::{
-    Commands, Entity, EventReader, EventWriter, Query, Res, ResMut, Transform, Vec3, With,
+    Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Query, Res, ResMut, Transform,
+    Vec2, Vec3, With,
 };
 use hexx::shapes;
 
 use crate::{
     gameplay::{
-        ball::{components::Species, grid_ball_bundle::GridBallBundle},
+        ball::{
+            components::{ProjectileBall, Species},
+            events::SnapProjectile,
+            grid_ball_bundle::GridBallBundle,
+        },
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
         ui::resources::MoveCounter,
@@ -89,4 +94,36 @@ pub fn cleanup_grid(
         commands.entity(entity).despawn();
     }
     grid.clear();
+}
+
+pub fn check_projectile_out_of_grid(
+    mut commands: Commands,
+    mut projectile_query: Query<
+        (Entity, &Transform, &ProjectileBall, &Species),
+        With<ProjectileBall>,
+    >,
+    mut grid: ResMut<Grid>,
+    mut snap_projectile: EventWriter<SnapProjectile>,
+) {
+    if let Ok((projectile_entity, projectile_transform, projectile_ball, species)) =
+        projectile_query.get_single_mut()
+    {
+        if !projectile_ball.is_flying {
+            return;
+        }
+        if grid.bounds.dirty {
+            grid.update_bounds();
+        }
+        if projectile_transform.translation.z < grid.bounds.mins.y + grid.layout.hex_size.y {
+            commands.entity(projectile_entity).despawn_recursive();
+            snap_projectile.send(SnapProjectile {
+                out_of_bounds: true,
+                pos: Vec2::new(
+                    projectile_transform.translation.x,
+                    projectile_transform.translation.z,
+                ),
+                species: *species,
+            });
+        }
+    }
 }

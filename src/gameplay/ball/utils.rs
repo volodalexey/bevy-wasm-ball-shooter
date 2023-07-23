@@ -1,13 +1,13 @@
-use bevy::prelude::Vec3;
+use bevy::prelude::Vec2;
 
 use crate::gameplay::grid::resources::Bounds;
 
 pub fn clamp_inside_world_bounds(
-    mut pos: Vec3,
+    mut pos: Vec2,
     size: f32,
     grid_bounds: &Bounds,
-) -> (Vec3, bool, bool) {
-    let (x, _, y) = pos.into();
+) -> (Vec2, bool, bool) {
+    let (x, y) = pos.into();
 
     let mut clamped_x = false;
     let mut clamped_y = false;

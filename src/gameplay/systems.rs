@@ -1,6 +1,6 @@
 use bevy::prelude::{
-    default, AudioBundle, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Input,
-    KeyCode, NextState, PlaybackSettings, Query, Res, ResMut, Transform, Vec3, With,
+    default, AudioBundle, Commands, DespawnRecursiveExt, EventReader, EventWriter, Input, KeyCode,
+    NextState, PlaybackSettings, Query, Res, ResMut, Vec2, Vec3, With,
 };
 use hexx::{Direction, Hex};
 
@@ -19,7 +19,7 @@ use crate::{
 
 use super::{
     ball::{
-        components::{GridBall, ProjectileBall, Species},
+        components::{GridBall, Species},
         events::SnapProjectile,
     },
     constants::PLAYER_SPAWN_Z,
@@ -76,7 +76,7 @@ pub fn check_game_win(grid: Res<Grid>, mut app_state_next_state: ResMut<NextStat
 }
 
 pub fn on_snap_projectile(
-    mut snap_projectile: EventReader<SnapProjectile>,
+    mut snap_projectile_events: EventReader<SnapProjectile>,
     mut commands: Commands,
     gameplay_meshes: Res<GameplayMeshes>,
     gameplay_materials: Res<GameplayMaterials>,
@@ -85,53 +85,38 @@ pub fn on_snap_projectile(
     mut score_counter: ResMut<ScoreCounter>,
     mut turn_counter: ResMut<TurnCounter>,
     mut move_counter: ResMut<MoveCounter>,
-    projectile_query: Query<(Entity, &Transform, &Species), With<ProjectileBall>>,
     balls_query: Query<&Species, With<GridBall>>,
     audio_assets: Res<AudioAssets>,
 ) {
-    if snap_projectile.is_empty() {
-        return;
-    }
+    if let Some(snap_projectile) = snap_projectile_events.iter().next() {
+        let mut hex = grid.layout.world_pos_to_hex(snap_projectile.pos);
 
-    // We really only care about the first ball hit event
-    snap_projectile.clear();
+        if !snap_projectile.out_of_bounds {
+            // hard check to make sure the projectile is inside the grid bounds.
+            let (hex_radius, _) = grid.layout.hex_size.into();
+            const SKIN_WIDTH: f32 = 0.1;
+            let radius = hex_radius + SKIN_WIDTH;
+            let (clamped, was_clamped, _) =
+                clamp_inside_world_bounds(snap_projectile.pos, radius, &grid.bounds);
+            if was_clamped {
+                hex = grid.layout.world_pos_to_hex(clamped);
+            }
 
-    if let Ok((entity, tr, species)) = projectile_query.get_single() {
-        commands.entity(entity).despawn();
+            // Dumb iterative check to make sure chosen hex is not occupied.
+            const MAX_ITER: usize = 10;
+            let mut iter = 0;
+            let mut fine_pos = snap_projectile.pos;
+            while let Some(_) = grid.get(hex) {
+                let step_size = Vec2::Y * radius;
+                fine_pos += step_size;
+                (fine_pos, _, _) = clamp_inside_world_bounds(fine_pos, radius, &grid.bounds);
 
-        let mut translation = tr.translation;
+                hex = grid.layout.world_pos_to_hex(fine_pos);
 
-        let mut hex = grid
-            .layout
-            .world_pos_to_hex(hexx::Vec2::new(translation.x, translation.z));
-
-        // hard check to make sure the projectile is inside the grid bounds.
-        let (hex_radius, _) = grid.layout.hex_size.into();
-        const SKIN_WIDTH: f32 = 0.1;
-        let radius = hex_radius + SKIN_WIDTH;
-        let (clamped, was_clamped, _) =
-            clamp_inside_world_bounds(translation, radius, &grid.bounds);
-        if was_clamped {
-            hex = grid
-                .layout
-                .world_pos_to_hex(hexx::Vec2::new(clamped.x, clamped.z));
-        }
-
-        // Dumb iterative check to make sure chosen hex is not occupied.
-        const MAX_ITER: usize = 10;
-        let mut iter = 0;
-        while let Some(_) = grid.get(hex) {
-            let step_size = Vec3::Z * radius;
-            translation += step_size;
-            (translation, _, _) = clamp_inside_world_bounds(translation, radius, &grid.bounds);
-
-            hex = grid
-                .layout
-                .world_pos_to_hex(hexx::Vec2::new(translation.x, translation.z));
-
-            iter += 1;
-            if iter >= MAX_ITER {
-                break;
+                iter += 1;
+                if iter >= MAX_ITER {
+                    break;
+                }
             }
         }
 
@@ -139,9 +124,9 @@ pub fn on_snap_projectile(
         let ball = commands
             .spawn((
                 GridBallBundle::new(
-                    Vec3::new(x, translation.y, z),
+                    Vec3::new(x, 0.0, z),
                     grid.layout.hex_size.x,
-                    *species,
+                    snap_projectile.species,
                     &gameplay_meshes,
                     &gameplay_materials,
                 ),
@@ -151,55 +136,62 @@ pub fn on_snap_projectile(
 
         grid.set(hex, ball); // add snapped projectile ball as grid ball
 
-        let (cluster, _) = find_cluster(&grid, hex, |&e| {
-            e == ball
-                || match balls_query.get(e) {
-                    Ok(other) => *other == *species,
-                    Err(_) => false,
-                }
-        });
-
         let mut score_add = 0;
 
-        // remove matching clusters
-        if cluster.len() >= MIN_CLUSTER_SIZE {
-            cluster.iter().for_each(|&hex| {
-                commands.entity(*grid.get(hex).unwrap()).despawn_recursive();
-                grid.remove(&hex);
-                score_add += 1;
-                println!("score add cluster");
-            });
-        }
-
-        // remove floating clusters
-        let floating_clusters = find_floating_clusters(&grid);
-        floating_clusters
-            .iter()
-            .flat_map(|e| e.iter())
-            .for_each(|&hex| {
-                commands.entity(*grid.get(hex).unwrap()).despawn();
-                grid.remove(&hex);
-                score_add += 1;
-                println!("score add floating cluster");
+        let neighbors = grid.neighbors(hex);
+        if neighbors.len() == 0 {
+            // projectile ball snapped with no neghbours
+            // do not calc floating clusters
+        } else {
+            let (cluster, _) = find_cluster(&grid, hex, |&e| {
+                e == ball
+                    || match balls_query.get(e) {
+                        Ok(other) => *other == snap_projectile.species,
+                        Err(_) => false,
+                    }
             });
 
-        if score_add > 0 {
-            commands.spawn((AudioBundle {
-                source: audio_assets.score.clone_weak(),
-                settings: PlaybackSettings::DESPAWN,
-                ..default()
-            },));
+            // remove matching clusters
+            if cluster.len() >= MIN_CLUSTER_SIZE {
+                cluster.iter().for_each(|&hex| {
+                    commands.entity(*grid.get(hex).unwrap()).despawn_recursive();
+                    grid.remove(&hex);
+                    score_add += 1;
+                });
+            }
+
+            // remove floating clusters
+            let floating_clusters = find_floating_clusters(&grid);
+            floating_clusters
+                .iter()
+                .flat_map(|e| e.iter())
+                .for_each(|&hex| {
+                    commands.entity(*grid.get(hex).unwrap()).despawn();
+                    grid.remove(&hex);
+                    score_add += 1;
+                });
+
+            if score_add > 0 {
+                commands.spawn((AudioBundle {
+                    source: audio_assets.score.clone_weak(),
+                    settings: PlaybackSettings::DESPAWN,
+                    ..default()
+                },));
+            }
+
+            score_counter.0 += score_add;
         }
 
-        score_counter.0 += score_add;
         turn_counter.0 += 1;
         if score_add == 0 {
             move_counter.0 += 1;
         }
-        println!("score {} turn {}", score_counter.0, turn_counter.0);
 
         begin_turn.send(BeginTurn);
+
+        grid.update_bounds();
     }
+    snap_projectile_events.clear();
 }
 
 pub fn keydown_detect(

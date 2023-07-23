@@ -3,7 +3,9 @@ use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, U
 use self::{
     events::UpdatePositions,
     resources::Grid,
-    systems::{cleanup_grid, generate_grid, update_hex_coord_transforms},
+    systems::{
+        check_projectile_out_of_grid, cleanup_grid, generate_grid, update_hex_coord_transforms,
+    },
 };
 
 use super::AppState;
@@ -23,7 +25,8 @@ impl Plugin for GridPlugin {
             .add_systems(OnEnter(AppState::Gameplay), generate_grid)
             .add_systems(
                 Update,
-                update_hex_coord_transforms.run_if(in_state(AppState::Gameplay)),
+                (update_hex_coord_transforms, check_projectile_out_of_grid)
+                    .run_if(in_state(AppState::Gameplay)),
             )
             .add_systems(OnExit(AppState::Gameplay), cleanup_grid);
     }
