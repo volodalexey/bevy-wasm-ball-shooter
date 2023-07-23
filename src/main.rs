@@ -9,6 +9,7 @@ use game_win_menu::GameWinMenuPlugin;
 use gameplay::GameplayPlugin;
 use loading::LoadingPlugin;
 use resources::{LevelCounter, PointerCooldown};
+use settings_menu::SettingsMenuPlugin;
 use start_menu::StartMenuPlugin;
 use systems::{exit_game, tick_pointer_cooldown_timer};
 
@@ -18,6 +19,7 @@ mod game_win_menu;
 mod gameplay;
 mod loading;
 mod resources;
+mod settings_menu;
 mod start_menu;
 mod systems;
 fn main() {
@@ -35,6 +37,7 @@ fn main() {
             }),
             LoadingPlugin,
             StartMenuPlugin,
+            SettingsMenuPlugin,
             GameWinMenuPlugin,
             GameplayPlugin,
             GameOverMenuPlugin,

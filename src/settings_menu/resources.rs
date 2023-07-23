@@ -1,12 +1,12 @@
 use bevy::prelude::{Color, Resource};
 
 #[derive(Resource)]
-pub struct GameWinButtonColors {
+pub struct SettingsButtonColors {
     pub normal: Color,
     pub hovered: Color,
 }
 
-impl Default for GameWinButtonColors {
+impl Default for SettingsButtonColors {
     fn default() -> Self {
         Self {
             normal: Color::rgb(0.15, 1.0, 0.15).into(),

@@ -35,7 +35,7 @@ impl GridBallBundle {
             ball: GridBall,
             species,
             collider: Collider::ball(radius * INNER_RADIUS_COEFF),
-            rigid_body: RigidBody::Fixed,
+            rigid_body: RigidBody::KinematicPositionBased,
         }
     }
 }

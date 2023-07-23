@@ -1,7 +1,7 @@
 use bevy::{
     audio::{Volume, VolumeLevel},
     prelude::{
-        default, AudioBundle, BuildChildren, Button, ButtonBundle, Camera2dBundle, Changed, Color,
+        default, AudioBundle, BuildChildren, ButtonBundle, Camera2dBundle, Changed, Color,
         Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle,
         PlaybackSettings, Query, Res, ResMut, TextBundle, With,
     },
@@ -18,7 +18,7 @@ use crate::{
 };
 
 use super::{
-    components::{MainSoundtrack, StartMenu, StartMenuCamera},
+    components::{MainSoundtrack, PlayButton, SettingsButton, StartMenu, StartMenuCamera},
     resources::StartMenuButtonColors,
 };
 
@@ -35,7 +35,7 @@ pub fn setup_menu(
                     flex_direction: FlexDirection::Column,
                     width: Val::Percent(100.0),
                     height: Val::Percent(100.0),
-                    column_gap: Val::Px(10.0),
+                    row_gap: Val::Px(10.0),
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
                     ..default()
@@ -71,21 +71,55 @@ pub fn setup_menu(
                 ..default()
             });
             parent
-                .spawn(ButtonBundle {
-                    style: Style {
-                        padding: UiRect::all(Val::Px(10.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            padding: UiRect::all(Val::Px(10.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..Default::default()
+                        },
+                        background_color: button_colors.normal.into(),
                         ..Default::default()
                     },
-                    background_color: button_colors.normal.into(),
-                    ..Default::default()
-                })
+                    PlayButton {},
+                ))
                 .with_children(|parent| {
                     parent.spawn(TextBundle {
                         text: Text {
                             sections: vec![TextSection {
                                 value: "Играть".to_string(),
+                                style: TextStyle {
+                                    font: font_assets.fira_sans_bold.clone_weak(),
+                                    font_size: 40.0,
+                                    color: Color::rgb(0.9, 0.9, 0.9),
+                                },
+                            }],
+                            ..default()
+                        },
+                        ..default()
+                    });
+                });
+
+            parent
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            padding: UiRect::all(Val::Px(10.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..Default::default()
+                        },
+                        background_color: button_colors.normal.into(),
+                        ..Default::default()
+                    },
+                    SettingsButton {},
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle {
+                        text: Text {
+                            sections: vec![TextSection {
+                                value: "Настройки".to_string(),
                                 style: TextStyle {
                                     font: font_assets.fira_sans_bold.clone_weak(),
                                     font_size: 40.0,
@@ -111,12 +145,12 @@ pub fn start_audio(mut commands: Commands, audio_assets: Res<AudioAssets>) {
     ));
 }
 
-pub fn click_play_button(
+pub fn interact_with_play_button(
     button_colors: Res<StartMenuButtonColors>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
     mut interaction_query: Query<
         (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<Button>),
+        (Changed<Interaction>, With<PlayButton>),
     >,
     mut pointer_cooldown: ResMut<PointerCooldown>,
 ) {
@@ -125,6 +159,29 @@ pub fn click_play_button(
             Interaction::Pressed => {
                 pointer_cooldown.started = true;
                 app_state_next_state.set(AppState::GameplayInit);
+            }
+            Interaction::Hovered => {
+                *color = button_colors.hovered.into();
+            }
+            Interaction::None => {
+                *color = button_colors.normal.into();
+            }
+        }
+    }
+}
+
+pub fn interact_with_settings_button(
+    button_colors: Res<StartMenuButtonColors>,
+    mut app_state_next_state: ResMut<NextState<AppState>>,
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<SettingsButton>),
+    >,
+) {
+    for (interaction, mut color) in &mut interaction_query {
+        match *interaction {
+            Interaction::Pressed => {
+                app_state_next_state.set(AppState::Settings);
             }
             Interaction::Hovered => {
                 *color = button_colors.hovered.into();
