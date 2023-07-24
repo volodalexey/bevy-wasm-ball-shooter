@@ -19,7 +19,7 @@ use crate::{
         constants::{MAIN_SOUND_VOLUME_KEY, SFX_SOUND_VOLUME_KEY},
         utils::{play_score_audio, play_shoot_audio, toggle_main_audio},
     },
-    gameplay::constants::{DEFAULT_LEVEL, LEVEL_KEY},
+    gameplay::constants::{LEVEL_KEY, MAX_LEVEL, START_LEVEL},
     loading::{audio_assets::AudioAssets, font_assets::FontAssets},
     resources::LevelCounter,
 };
@@ -468,14 +468,26 @@ pub fn build_level_settings(
                             if let Ok(level) = level.parse::<u32>() {
                                 level
                             } else {
-                                DEFAULT_LEVEL
+                                START_LEVEL
                             }
                         }
-                        Err(_) => DEFAULT_LEVEL,
+                        Err(_) => START_LEVEL,
                     };
 
-                    build_level_line(saved_level, 1..=9, parent, button_colors, font_assets);
-                    build_level_line(saved_level, 10..=16, parent, button_colors, font_assets);
+                    build_level_line(
+                        saved_level,
+                        START_LEVEL..=9,
+                        parent,
+                        button_colors,
+                        font_assets,
+                    );
+                    build_level_line(
+                        saved_level,
+                        10..=MAX_LEVEL,
+                        parent,
+                        button_colors,
+                        font_assets,
+                    );
                 });
         });
 }

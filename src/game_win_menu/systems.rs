@@ -13,6 +13,7 @@ use bevy::{
 
 use crate::{
     components::AppState,
+    gameplay::constants::{MAX_LEVEL, START_LEVEL},
     loading::font_assets::FontAssets,
     resources::{LevelCounter, PointerCooldown},
 };
@@ -105,6 +106,9 @@ pub fn click_play_button(
             Interaction::Pressed => {
                 pointer_cooldown.started = true;
                 level_counter.0 += 1;
+                if level_counter.0 > MAX_LEVEL {
+                    level_counter.0 = START_LEVEL
+                }
                 app_state_next_state.set(AppState::GameplayInit);
             }
             Interaction::Hovered => {

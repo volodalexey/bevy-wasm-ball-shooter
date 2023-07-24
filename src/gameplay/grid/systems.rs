@@ -18,7 +18,9 @@ use crate::{
     resources::LevelCounter,
 };
 
-use super::{components::HexComponent, events::UpdatePositions, resources::Grid};
+use super::{
+    components::HexComponent, events::UpdatePositions, resources::Grid, utils::adjust_grid_layout,
+};
 
 pub fn generate_grid(
     mut commands: Commands,
@@ -54,6 +56,7 @@ pub fn generate_grid(
     grid.update_bounds();
     let (width, _) = grid.dim();
     grid.layout.origin.x = -width / 2. + grid.layout.hex_size.x;
+    adjust_grid_layout(&mut grid, &MoveCounter(0));
     update_positions.send(UpdatePositions);
 }
 
@@ -70,10 +73,7 @@ pub fn update_hex_coord_transforms(
     }
     event_query.clear();
 
-    let row_height = 1.5 * grid.layout.hex_size.y;
-    let init_layout_y = -grid.init_rows as f32 * row_height + VISIBLE_ROWS * row_height;
-    let move_layout_y = move_counter.0 as f32 * row_height;
-    grid.layout.origin.y = init_layout_y + move_layout_y;
+    adjust_grid_layout(&mut grid, &move_counter);
     grid.update_bounds();
 
     for (entity, mut transform, HexComponent { hex }) in hexes.iter_mut() {

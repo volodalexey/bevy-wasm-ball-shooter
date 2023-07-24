@@ -3,7 +3,7 @@ use bevy::prelude::{Commands, EventWriter, Input, KeyCode, Res, ResMut};
 use bevy::time::Time;
 use bevy_pkv::PkvStore;
 
-use crate::gameplay::constants::{DEFAULT_LEVEL, LEVEL_KEY};
+use crate::gameplay::constants::{LEVEL_KEY, START_LEVEL};
 use crate::resources::{LevelCounter, PointerCooldown};
 
 pub fn exit_game(
@@ -31,5 +31,5 @@ pub fn load_saved_level(mut commands: Commands, pkv: Res<PkvStore>) {
             return;
         }
     }
-    commands.insert_resource(LevelCounter(DEFAULT_LEVEL));
+    commands.insert_resource(LevelCounter(START_LEVEL));
 }

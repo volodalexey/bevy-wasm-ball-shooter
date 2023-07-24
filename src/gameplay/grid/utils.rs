@@ -1,7 +1,9 @@
 use bevy::{prelude::Entity, utils::HashSet};
 use hexx::Hex;
 
-use super::resources::Grid;
+use crate::gameplay::ui::resources::MoveCounter;
+
+use super::{resources::Grid, systems::VISIBLE_ROWS};
 
 #[inline(always)]
 pub fn find_cluster<'a, P>(grid: &Grid, origin: Hex, is_cluster: P) -> (Vec<Hex>, HashSet<Hex>)
@@ -66,4 +68,11 @@ pub fn find_floating_clusters(grid: &Grid) -> Vec<Vec<Hex>> {
         }
     }
     floating_clusters
+}
+
+pub fn adjust_grid_layout(grid: &mut Grid, move_counter: &MoveCounter) {
+    let row_height = 1.5 * grid.layout.hex_size.y;
+    let init_layout_y = -grid.init_rows as f32 * row_height + VISIBLE_ROWS * row_height;
+    let move_layout_y = move_counter.0 as f32 * row_height;
+    grid.layout.origin.y = init_layout_y + move_layout_y;
 }
