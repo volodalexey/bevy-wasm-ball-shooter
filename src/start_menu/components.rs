@@ -7,9 +7,6 @@ pub struct StartMenuCamera {}
 pub struct StartMenu {}
 
 #[derive(Component)]
-pub struct MainSoundtrack {}
-
-#[derive(Component)]
 pub struct PlayButton {}
 
 #[derive(Component)]

@@ -4,6 +4,7 @@ use bevy::{
     DefaultPlugins,
 };
 use components::AppState;
+use game_audio::GameAudioPlugin;
 use game_over_menu::GameOverMenuPlugin;
 use game_win_menu::GameWinMenuPlugin;
 use gameplay::GameplayPlugin;
@@ -14,6 +15,7 @@ use start_menu::StartMenuPlugin;
 use systems::{exit_game, tick_pointer_cooldown_timer};
 
 mod components;
+mod game_audio;
 mod game_over_menu;
 mod game_win_menu;
 mod gameplay;
@@ -36,6 +38,7 @@ fn main() {
                 ..default()
             }),
             LoadingPlugin,
+            GameAudioPlugin,
             StartMenuPlugin,
             SettingsMenuPlugin,
             GameWinMenuPlugin,

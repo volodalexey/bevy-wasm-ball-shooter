@@ -3,14 +3,18 @@ use bevy::prelude::{Color, Resource};
 #[derive(Resource)]
 pub struct SettingsButtonColors {
     pub normal: Color,
-    pub hovered: Color,
+    pub normal_hovered: Color,
+    pub pressed: Color,
+    pub pressed_hovered: Color,
 }
 
 impl Default for SettingsButtonColors {
     fn default() -> Self {
         Self {
-            normal: Color::rgb(0.15, 1.0, 0.15).into(),
-            hovered: Color::rgb(0.25, 1.0, 0.25).into(),
+            normal: Color::SEA_GREEN.into(),
+            normal_hovered: Color::LIME_GREEN.into(),
+            pressed: Color::rgb(0.0, 0.5, 0.0).into(),
+            pressed_hovered: Color::rgb(0.0, 0.4, 0.0).into(),
         }
     }
 }

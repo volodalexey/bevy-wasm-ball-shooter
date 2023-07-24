@@ -1,9 +1,8 @@
 use bevy::{
-    audio::{Volume, VolumeLevel},
     prelude::{
-        default, AudioBundle, BuildChildren, ButtonBundle, Camera2dBundle, Changed, Color,
-        Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle,
-        PlaybackSettings, Query, Res, ResMut, TextBundle, With,
+        default, BuildChildren, ButtonBundle, Camera2dBundle, Changed, Color, Commands,
+        DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle, Query, Res, ResMut,
+        TextBundle, With,
     },
     text::{Text, TextSection, TextStyle},
     ui::{
@@ -11,14 +10,10 @@ use bevy::{
     },
 };
 
-use crate::{
-    components::AppState,
-    loading::{audio_assets::AudioAssets, font_assets::FontAssets},
-    resources::PointerCooldown,
-};
+use crate::{components::AppState, loading::font_assets::FontAssets, resources::PointerCooldown};
 
 use super::{
-    components::{MainSoundtrack, PlayButton, SettingsButton, StartMenu, StartMenuCamera},
+    components::{PlayButton, SettingsButton, StartMenu, StartMenuCamera},
     resources::StartMenuButtonColors,
 };
 
@@ -134,17 +129,6 @@ pub fn setup_menu(
         });
 }
 
-pub fn start_audio(mut commands: Commands, audio_assets: Res<AudioAssets>) {
-    commands.spawn((
-        AudioBundle {
-            source: audio_assets.soundtrack.clone_weak(),
-            settings: PlaybackSettings::LOOP.with_volume(Volume::Relative(VolumeLevel::new(0.1))),
-            ..default()
-        },
-        MainSoundtrack {},
-    ));
-}
-
 pub fn interact_with_play_button(
     button_colors: Res<StartMenuButtonColors>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
@@ -200,15 +184,6 @@ pub fn cleanup_menu(
 ) {
     commands.entity(camera_query.single()).despawn_recursive();
     commands.entity(node_query.single()).despawn_recursive();
-}
-
-pub fn cleanup_audio(
-    mut commands: Commands,
-    soundtrack_query: Query<Entity, With<MainSoundtrack>>,
-) {
-    commands
-        .entity(soundtrack_query.single())
-        .despawn_recursive();
 }
 
 pub fn keydown_detect(

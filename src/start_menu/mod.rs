@@ -5,8 +5,8 @@ use crate::components::AppState;
 use self::{
     resources::StartMenuButtonColors,
     systems::{
-        cleanup_audio, cleanup_menu, interact_with_play_button, interact_with_settings_button,
-        keydown_detect, setup_menu, start_audio,
+        cleanup_menu, interact_with_play_button, interact_with_settings_button, keydown_detect,
+        setup_menu,
     },
 };
 
@@ -19,7 +19,7 @@ pub struct StartMenuPlugin;
 impl Plugin for StartMenuPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StartMenuButtonColors>()
-            .add_systems(OnEnter(AppState::StartMenu), (setup_menu, start_audio))
+            .add_systems(OnEnter(AppState::StartMenu), setup_menu)
             .add_systems(
                 Update,
                 (
@@ -29,6 +29,6 @@ impl Plugin for StartMenuPlugin {
                 )
                     .run_if(in_state(AppState::StartMenu)),
             )
-            .add_systems(OnExit(AppState::StartMenu), (cleanup_menu, cleanup_audio));
+            .add_systems(OnExit(AppState::StartMenu), cleanup_menu);
     }
 }
