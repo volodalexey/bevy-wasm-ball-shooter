@@ -1,8 +1,8 @@
 use bevy::{
     prelude::{
-        default, BuildChildren, ButtonBundle, Camera2dBundle, ChildBuilder, Color, Commands,
-        DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle, Query, Res, ResMut,
-        TextBundle, With,
+        default, AudioSink, BuildChildren, ButtonBundle, Camera2dBundle, ChildBuilder, Color,
+        Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle, Query, Res,
+        ResMut, TextBundle, With,
     },
     text::{Text, TextSection, TextStyle},
     ui::{
@@ -14,8 +14,12 @@ use bevy_pkv::PkvStore;
 
 use crate::{
     components::AppState,
-    game_audio::constants::{MAIN_SOUND_VOLUME_KEY, SHOOT_SOUND_VOLUME_KEY},
-    loading::font_assets::FontAssets,
+    game_audio::{
+        components::MainSound,
+        constants::{MAIN_SOUND_VOLUME_KEY, SHOOT_SOUND_VOLUME_KEY},
+        utils::{play_shoot_audio, toggle_main_audio},
+    },
+    loading::{audio_assets::AudioAssets, font_assets::FontAssets},
 };
 
 use super::{
@@ -185,6 +189,9 @@ pub fn build_volume_row(
 }
 
 pub fn interact_with_volume_button(
+    mut commands: Commands,
+    audio_assets: Res<AudioAssets>,
+    main_sound_query: Query<&AudioSink, With<MainSound>>,
     button_colors: Res<SettingsButtonColors>,
     mut button_query: Query<
         (&Interaction, &mut BackgroundColor, &mut VolumeButton),
@@ -210,6 +217,16 @@ pub fn interact_with_volume_button(
                     pkv.set_string(button_volume.key.clone(), &button_volume.value.to_string())
                         .expect("failed to save volume");
                     *button_color = button_colors.pressed.into();
+
+                    match button_volume.key.as_str() {
+                        MAIN_SOUND_VOLUME_KEY => {
+                            toggle_main_audio(&main_sound_query, button_volume.value);
+                        }
+                        SHOOT_SOUND_VOLUME_KEY => {
+                            play_shoot_audio(&mut commands, &audio_assets, button_volume.value);
+                        }
+                        _ => {}
+                    }
                 }
             }
             Interaction::Hovered => {

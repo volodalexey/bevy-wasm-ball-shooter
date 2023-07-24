@@ -1,14 +1,16 @@
 use bevy::{
     prelude::{
-        default, Assets, AudioBundle, BuildChildren, Camera, Commands, DespawnRecursiveExt, Entity,
-        EventReader, EventWriter, GlobalTransform, Input, Mesh, MouseButton, PlaybackSettings,
-        Query, Res, ResMut, Touches, Transform, Vec2, Vec3, Visibility, With, Without,
+        Assets, BuildChildren, Camera, Commands, DespawnRecursiveExt, Entity, EventReader,
+        EventWriter, GlobalTransform, Input, Mesh, MouseButton, Query, Res, ResMut, Touches,
+        Transform, Vec2, Vec3, Visibility, With, Without,
     },
     window::{PrimaryWindow, Window},
 };
+use bevy_pkv::PkvStore;
 use bevy_rapier3d::prelude::{CollisionEvent, Velocity};
 
 use crate::{
+    game_audio::{constants::SHOOT_SOUND_VOLUME_KEY, utils::play_shoot_audio},
     gameplay::{
         constants::PLAYER_SPAWN_Z,
         events::BeginTurn,
@@ -116,6 +118,7 @@ pub fn shoot_projectile(
     >,
     touches: Res<Touches>,
     pointer_cooldown: Res<PointerCooldown>,
+    pkv: Res<PkvStore>,
 ) {
     if pointer_cooldown.started {
         return;
@@ -189,16 +192,22 @@ pub fn shoot_projectile(
                             return;
                         }
 
-                        commands.spawn((AudioBundle {
-                            source: audio_assets.flying.clone_weak(),
-                            settings: PlaybackSettings::DESPAWN,
-                            ..default()
-                        },));
-
                         let aim_direction = (point - ball_transform.translation).normalize();
                         vel.linvel = aim_direction * PROJECTILE_SPEED;
 
                         projectile_ball.is_flying = true;
+
+                        if let Ok(shoot_sound_volume) = pkv.get::<String>(SHOOT_SOUND_VOLUME_KEY) {
+                            if let Ok(shoot_sound_volume) = shoot_sound_volume.parse::<f32>() {
+                                if shoot_sound_volume > 0.0 {
+                                    play_shoot_audio(
+                                        &mut commands,
+                                        &audio_assets,
+                                        shoot_sound_volume,
+                                    );
+                                }
+                            }
+                        }
                     } else {
                         *arrow_visibility = Visibility::Hidden;
                         *line_visibility = Visibility::Hidden;

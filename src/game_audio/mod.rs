@@ -5,10 +5,10 @@ use crate::components::AppState;
 
 use self::systems::check_start_main_audio;
 
-mod components;
+pub mod components;
 pub mod constants;
 mod systems;
-mod utils;
+pub mod utils;
 pub struct GameAudioPlugin;
 
 impl Plugin for GameAudioPlugin {
