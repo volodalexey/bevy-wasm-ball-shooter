@@ -1,4 +1,4 @@
-use bevy::prelude::{App, OnEnter, Plugin};
+use bevy::prelude::{App, OnExit, Plugin};
 use bevy_pkv::PkvStore;
 
 use crate::components::AppState;
@@ -14,6 +14,6 @@ pub struct GameAudioPlugin;
 impl Plugin for GameAudioPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(PkvStore::new("bevy-wasm", "ball-shooter"))
-            .add_systems(OnEnter(AppState::StartMenu), check_start_main_audio);
+            .add_systems(OnExit(AppState::Loading), check_start_main_audio);
     }
 }

@@ -1,8 +1,8 @@
 use bevy::{
     prelude::{
-        default, AudioSink, BuildChildren, ButtonBundle, Camera2dBundle, ChildBuilder, Color,
-        Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle, Query, Res,
-        ResMut, TextBundle, With,
+        default, AudioSink, BuildChildren, ButtonBundle, Camera2dBundle, Changed, ChildBuilder,
+        Color, Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle, Query,
+        Res, ResMut, TextBundle, With,
     },
     text::{Text, TextSection, TextStyle},
     ui::{
@@ -16,14 +16,14 @@ use crate::{
     components::AppState,
     game_audio::{
         components::MainSound,
-        constants::{MAIN_SOUND_VOLUME_KEY, SHOOT_SOUND_VOLUME_KEY},
-        utils::{play_shoot_audio, toggle_main_audio},
+        constants::{MAIN_SOUND_VOLUME_KEY, SFX_SOUND_VOLUME_KEY},
+        utils::{play_score_audio, play_shoot_audio, toggle_main_audio},
     },
     loading::{audio_assets::AudioAssets, font_assets::FontAssets},
 };
 
 use super::{
-    components::{SettingsMenu, SettingsMenuCamera, VolumeButton},
+    components::{BackButton, SettingsMenu, SettingsMenuCamera, VolumeButton},
     resources::SettingsButtonColors,
 };
 
@@ -76,13 +76,44 @@ pub fn setup_menu(
                 &pkv,
             );
             build_volume_row(
-                "Звук выстрела",
-                SHOOT_SOUND_VOLUME_KEY,
+                "Звук выстрела/очков",
+                SFX_SOUND_VOLUME_KEY,
                 parent,
                 &font_assets,
                 &button_colors,
                 &pkv,
             );
+
+            parent
+                .spawn((
+                    ButtonBundle {
+                        style: Style {
+                            padding: UiRect::all(Val::Px(10.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..Default::default()
+                        },
+                        background_color: button_colors.normal.into(),
+                        ..Default::default()
+                    },
+                    BackButton {},
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle {
+                        text: Text {
+                            sections: vec![TextSection {
+                                value: "Назад".to_string(),
+                                style: TextStyle {
+                                    font: font_assets.fira_sans_bold.clone_weak(),
+                                    font_size: 20.0,
+                                    color: Color::rgb(0.9, 0.9, 0.9),
+                                },
+                            }],
+                            ..default()
+                        },
+                        ..default()
+                    });
+                });
         });
 }
 
@@ -222,8 +253,12 @@ pub fn interact_with_volume_button(
                         MAIN_SOUND_VOLUME_KEY => {
                             toggle_main_audio(&main_sound_query, button_volume.value);
                         }
-                        SHOOT_SOUND_VOLUME_KEY => {
-                            play_shoot_audio(&mut commands, &audio_assets, button_volume.value);
+                        SFX_SOUND_VOLUME_KEY => {
+                            if fastrand::bool() {
+                                play_shoot_audio(&mut commands, &audio_assets, button_volume.value);
+                            } else {
+                                play_score_audio(&mut commands, &audio_assets, button_volume.value);
+                            }
                         }
                         _ => {}
                     }
@@ -255,6 +290,30 @@ pub fn interact_with_volume_button(
     }
 }
 
+pub fn interact_with_back_button(
+    button_colors: Res<SettingsButtonColors>,
+    mut app_state_next_state: ResMut<NextState<AppState>>,
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<BackButton>),
+    >,
+) {
+    for (interaction, mut color) in &mut interaction_query {
+        match *interaction {
+            Interaction::Pressed => {
+                *color = button_colors.back_pressed.into();
+                app_state_next_state.set(AppState::StartMenu);
+            }
+            Interaction::Hovered => {
+                *color = button_colors.back_hovered.into();
+            }
+            Interaction::None => {
+                *color = button_colors.back_idle.into();
+            }
+        }
+    }
+}
+
 pub fn cleanup_menu(
     mut commands: Commands,
     camera_query: Query<Entity, With<SettingsMenuCamera>>,
@@ -269,6 +328,6 @@ pub fn keydown_detect(
     keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
     if keyboard_input_key_code.any_pressed([KeyCode::Space]) {
-        app_state_next_state.set(AppState::GameplayInit);
+        app_state_next_state.set(AppState::StartMenu);
     }
 }

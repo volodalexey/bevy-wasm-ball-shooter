@@ -4,7 +4,10 @@ use crate::components::AppState;
 
 use self::{
     resources::SettingsButtonColors,
-    systems::{cleanup_menu, interact_with_volume_button, keydown_detect, setup_menu},
+    systems::{
+        cleanup_menu, interact_with_back_button, interact_with_volume_button, keydown_detect,
+        setup_menu,
+    },
 };
 
 mod components;
@@ -19,7 +22,12 @@ impl Plugin for SettingsMenuPlugin {
             .add_systems(OnEnter(AppState::Settings), setup_menu)
             .add_systems(
                 Update,
-                (interact_with_volume_button, keydown_detect).run_if(in_state(AppState::Settings)),
+                (
+                    interact_with_volume_button,
+                    keydown_detect,
+                    interact_with_back_button,
+                )
+                    .run_if(in_state(AppState::Settings)),
             )
             .add_systems(OnExit(AppState::Settings), cleanup_menu);
     }

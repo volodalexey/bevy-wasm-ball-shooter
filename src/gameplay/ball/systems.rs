@@ -10,7 +10,7 @@ use bevy_pkv::PkvStore;
 use bevy_rapier3d::prelude::{CollisionEvent, Velocity};
 
 use crate::{
-    game_audio::{constants::SHOOT_SOUND_VOLUME_KEY, utils::play_shoot_audio},
+    game_audio::{constants::SFX_SOUND_VOLUME_KEY, utils::play_shoot_audio},
     gameplay::{
         constants::PLAYER_SPAWN_Z,
         events::BeginTurn,
@@ -197,7 +197,7 @@ pub fn shoot_projectile(
 
                         projectile_ball.is_flying = true;
 
-                        if let Ok(shoot_sound_volume) = pkv.get::<String>(SHOOT_SOUND_VOLUME_KEY) {
+                        if let Ok(shoot_sound_volume) = pkv.get::<String>(SFX_SOUND_VOLUME_KEY) {
                             if let Ok(shoot_sound_volume) = shoot_sound_volume.parse::<f32>() {
                                 if shoot_sound_volume > 0.0 {
                                     play_shoot_audio(

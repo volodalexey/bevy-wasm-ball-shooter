@@ -1,11 +1,13 @@
 use bevy::prelude::{
-    default, AudioBundle, Commands, DespawnRecursiveExt, EventReader, EventWriter, Input, KeyCode,
-    NextState, PlaybackSettings, Query, Res, ResMut, Vec2, Vec3, With,
+    Commands, DespawnRecursiveExt, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res,
+    ResMut, Vec2, Vec3, With,
 };
+use bevy_pkv::PkvStore;
 use hexx::{Direction, Hex};
 
 use crate::{
     components::AppState,
+    game_audio::{constants::SFX_SOUND_VOLUME_KEY, utils::play_score_audio},
     gameplay::{
         ball::{grid_ball_bundle::GridBallBundle, utils::clamp_inside_world_bounds},
         constants::MIN_CLUSTER_SIZE,
@@ -87,6 +89,7 @@ pub fn on_snap_projectile(
     mut move_counter: ResMut<MoveCounter>,
     balls_query: Query<&Species, With<GridBall>>,
     audio_assets: Res<AudioAssets>,
+    pkv: Res<PkvStore>,
 ) {
     if let Some(snap_projectile) = snap_projectile_events.iter().next() {
         let mut hex = grid.layout.world_pos_to_hex(snap_projectile.pos);
@@ -172,11 +175,13 @@ pub fn on_snap_projectile(
                 });
 
             if score_add > 0 {
-                commands.spawn((AudioBundle {
-                    source: audio_assets.score.clone_weak(),
-                    settings: PlaybackSettings::DESPAWN,
-                    ..default()
-                },));
+                if let Ok(sfx_sound_volume) = pkv.get::<String>(SFX_SOUND_VOLUME_KEY) {
+                    if let Ok(sfx_sound_volume) = sfx_sound_volume.parse::<f32>() {
+                        if sfx_sound_volume > 0.0 {
+                            play_score_audio(&mut commands, &audio_assets, sfx_sound_volume);
+                        }
+                    }
+                }
             }
 
             score_counter.0 += score_add;

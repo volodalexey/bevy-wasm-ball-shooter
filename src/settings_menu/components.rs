@@ -12,3 +12,6 @@ pub struct VolumeButton {
     pub key: String,
     pub pressed: bool,
 }
+
+#[derive(Component)]
+pub struct BackButton {}

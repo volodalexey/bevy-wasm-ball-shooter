@@ -53,3 +53,15 @@ pub fn play_shoot_audio(commands: &mut Commands, audio_assets: &Res<AudioAssets>
         ShootSound {},
     ));
 }
+
+pub fn play_score_audio(commands: &mut Commands, audio_assets: &Res<AudioAssets>, volume: f32) {
+    commands.spawn((
+        AudioBundle {
+            source: audio_assets.score.clone_weak(),
+            settings: PlaybackSettings::DESPAWN
+                .with_volume(Volume::Relative(VolumeLevel::new(volume))),
+            ..default()
+        },
+        ShootSound {},
+    ));
+}
