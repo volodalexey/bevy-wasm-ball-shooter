@@ -6,7 +6,7 @@ pub struct SettingsMenuCamera {}
 #[derive(Component)]
 pub struct SettingsMenu {}
 
-#[derive(Component, PartialEq)]
+#[derive(Component)]
 pub struct VolumeButton {
     pub value: f32,
     pub key: String,
@@ -15,3 +15,9 @@ pub struct VolumeButton {
 
 #[derive(Component)]
 pub struct BackButton {}
+
+#[derive(Component)]
+pub struct LevelButton {
+    pub level: u32,
+    pub pressed: bool,
+}

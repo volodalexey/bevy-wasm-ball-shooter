@@ -25,7 +25,7 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-sound settings
+set level in settings
 animation for removed balls clusters
 animation for move down
 do not generate color to shoot if not available in grid

@@ -20,7 +20,7 @@ use self::{
 };
 
 mod ball;
-mod constants;
+pub mod constants;
 mod events;
 mod grid;
 mod main_camera;

@@ -5,8 +5,8 @@ use crate::components::AppState;
 use self::{
     resources::SettingsButtonColors,
     systems::{
-        cleanup_menu, interact_with_back_button, interact_with_volume_button, keydown_detect,
-        setup_menu,
+        cleanup_menu, interact_with_back_button, interact_with_level_button,
+        interact_with_volume_button, keydown_detect, setup_menu,
     },
 };
 
@@ -26,6 +26,7 @@ impl Plugin for SettingsMenuPlugin {
                     interact_with_volume_button,
                     keydown_detect,
                     interact_with_back_button,
+                    interact_with_level_button,
                 )
                     .run_if(in_state(AppState::Settings)),
             )

@@ -117,7 +117,7 @@ pub fn setup_menu(
                                 value: "Настройки".to_string(),
                                 style: TextStyle {
                                     font: font_assets.fira_sans_bold.clone_weak(),
-                                    font_size: 40.0,
+                                    font_size: 30.0,
                                     color: Color::rgb(0.9, 0.9, 0.9),
                                 },
                             }],

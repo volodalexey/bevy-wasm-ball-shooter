@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{default, App, PluginGroup, Update},
+    prelude::{default, App, PluginGroup, Startup, Update},
     window::{Window, WindowPlugin},
     DefaultPlugins,
 };
@@ -9,10 +9,10 @@ use game_over_menu::GameOverMenuPlugin;
 use game_win_menu::GameWinMenuPlugin;
 use gameplay::GameplayPlugin;
 use loading::LoadingPlugin;
-use resources::{LevelCounter, PointerCooldown};
+use resources::PointerCooldown;
 use settings_menu::SettingsMenuPlugin;
 use start_menu::StartMenuPlugin;
-use systems::{exit_game, tick_pointer_cooldown_timer};
+use systems::{exit_game, load_saved_level, tick_pointer_cooldown_timer};
 
 mod components;
 mod game_audio;
@@ -46,8 +46,8 @@ fn main() {
             GameOverMenuPlugin,
         ))
         .add_state::<AppState>()
-        .insert_resource(LevelCounter(1))
         .init_resource::<PointerCooldown>()
+        .add_systems(Startup, load_saved_level)
         .add_systems(Update, (exit_game, tick_pointer_cooldown_timer))
         .run();
 }
