@@ -23,7 +23,7 @@ use crate::{
         utils::{plane_intersection, ray_from_mouse_position},
     },
     loading::audio_assets::AudioAssets,
-    resources::PointerCooldown,
+    ui::resources::PointerCooldown,
 };
 
 use super::{

@@ -13,7 +13,7 @@ use crate::{
         },
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
-        ui::resources::MoveCounter,
+        panels::resources::MoveCounter,
     },
     resources::LevelCounter,
 };

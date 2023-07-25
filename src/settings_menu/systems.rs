@@ -14,12 +14,12 @@ use bevy_pkv::PkvStore;
 
 use crate::{
     components::AppState,
+    constants::{LEVEL_KEY, MAX_LEVEL, START_LEVEL},
     game_audio::{
         components::MainSound,
         constants::{MAIN_SOUND_VOLUME_KEY, SFX_SOUND_VOLUME_KEY},
         utils::{play_score_audio, play_shoot_audio, toggle_main_audio},
     },
-    gameplay::constants::{LEVEL_KEY, MAX_LEVEL, START_LEVEL},
     loading::{audio_assets::AudioAssets, font_assets::FontAssets},
     resources::LevelCounter,
 };
@@ -337,7 +337,7 @@ pub fn keydown_detect(
     mut app_state_next_state: ResMut<NextState<AppState>>,
     keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
-    if keyboard_input_key_code.any_pressed([KeyCode::Space]) {
+    if keyboard_input_key_code.any_just_released([KeyCode::Space]) {
         app_state_next_state.set(AppState::StartMenu);
     }
 }

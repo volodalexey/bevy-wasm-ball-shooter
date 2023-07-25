@@ -25,7 +25,6 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-cak to main menu after level
 animation for removed balls clusters
 animation for move down
 fix restitution angle and tune contact

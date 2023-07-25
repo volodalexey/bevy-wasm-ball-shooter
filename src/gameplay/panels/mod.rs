@@ -12,9 +12,9 @@ pub mod resources;
 mod systems;
 mod utils;
 
-pub struct UIPlugin;
+pub struct PanelsPlugin;
 
-impl Plugin for UIPlugin {
+impl Plugin for PanelsPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(TurnCounter(0))
             .insert_resource(MoveCounter(0))

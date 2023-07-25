@@ -17,6 +17,8 @@ use crate::{
         },
     },
     loading::audio_assets::AudioAssets,
+    resources::LevelCounter,
+    utils::increment_level,
 };
 
 use super::{
@@ -29,7 +31,7 @@ use super::{
     grid::{events::UpdatePositions, resources::Grid},
     materials::resources::GameplayMaterials,
     meshes::resources::GameplayMeshes,
-    ui::resources::{MoveCounter, ScoreCounter, TurnCounter},
+    panels::resources::{MoveCounter, ScoreCounter, TurnCounter},
 };
 
 pub fn setup_gameplay(mut begin_turn: EventWriter<BeginTurn>) {
@@ -71,8 +73,13 @@ pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextSta
     }
 }
 
-pub fn check_game_win(grid: Res<Grid>, mut app_state_next_state: ResMut<NextState<AppState>>) {
+pub fn check_game_win(
+    grid: Res<Grid>,
+    mut app_state_next_state: ResMut<NextState<AppState>>,
+    mut level_counter: ResMut<LevelCounter>,
+) {
     if grid.storage.len() == 0 {
+        increment_level(&mut level_counter);
         app_state_next_state.set(AppState::GameWin);
     }
 }
@@ -202,8 +209,13 @@ pub fn on_snap_projectile(
 pub fn keydown_detect(
     mut app_state_next_state: ResMut<NextState<AppState>>,
     keyboard_input_key_code: Res<Input<KeyCode>>,
+    mut level_counter: ResMut<LevelCounter>,
 ) {
-    if keyboard_input_key_code.any_pressed([KeyCode::Return]) {
+    if keyboard_input_key_code.any_just_released([KeyCode::Escape]) {
+        app_state_next_state.set(AppState::GameOver);
+    }
+    if keyboard_input_key_code.any_just_released([KeyCode::Space]) {
+        increment_level(&mut level_counter);
         app_state_next_state.set(AppState::GameWin);
     }
 }

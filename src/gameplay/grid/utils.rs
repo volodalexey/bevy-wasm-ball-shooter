@@ -1,7 +1,7 @@
 use bevy::{prelude::Entity, utils::HashSet};
 use hexx::Hex;
 
-use crate::gameplay::ui::resources::MoveCounter;
+use crate::gameplay::panels::resources::MoveCounter;
 
 use super::{resources::Grid, systems::VISIBLE_ROWS};
 

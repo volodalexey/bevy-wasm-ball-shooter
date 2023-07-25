@@ -10,12 +10,12 @@ use self::{
     main_light::MainLightPlugin,
     materials::MaterialsPlugin,
     meshes::MeshesPlugin,
+    panels::PanelsPlugin,
     physics::PhysicsPlugin,
     systems::{
         check_game_over, check_game_win, keydown_detect, on_begin_turn, on_snap_projectile,
         setup_gameplay,
     },
-    ui::UIPlugin,
     walls::WallsPlugin,
 };
 
@@ -27,9 +27,9 @@ mod main_camera;
 mod main_light;
 mod materials;
 mod meshes;
+mod panels;
 mod physics;
 mod systems;
-mod ui;
 mod utils;
 mod walls;
 
@@ -46,7 +46,7 @@ impl Plugin for GameplayPlugin {
             WallsPlugin,
             GridPlugin,
             ProjectilePlugin,
-            UIPlugin,
+            PanelsPlugin,
         ))
         .add_event::<BeginTurn>()
         .insert_resource(Msaa::Off)
