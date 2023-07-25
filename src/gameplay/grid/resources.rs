@@ -54,7 +54,7 @@ pub struct Grid {
 impl Default for Grid {
     fn default() -> Self {
         Self {
-            init_cols: 8,
+            init_cols: 0,
             init_rows: 0,
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,

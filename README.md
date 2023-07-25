@@ -25,10 +25,9 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-set level in settings
+cak to main menu after level
 animation for removed balls clusters
 animation for move down
-do not generate color to shoot if not available in grid
 fix restitution angle and tune contact
 show next ball to shoot
 draw full line to first contact

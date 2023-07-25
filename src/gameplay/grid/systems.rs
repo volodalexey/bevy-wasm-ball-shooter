@@ -41,7 +41,7 @@ pub fn generate_grid(
                 GridBallBundle::new(
                     Vec3::new(x, 0.0, z),
                     grid.layout.hex_size.x,
-                    Species::random_species(&level_counter),
+                    Species::random_species(),
                     &gameplay_meshes,
                     &gameplay_materials,
                 ),

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bevy::{
     prelude::{
         Assets, BuildChildren, Camera, Commands, DespawnRecursiveExt, Entity, EventReader,
@@ -21,7 +23,7 @@ use crate::{
         utils::{plane_intersection, ray_from_mouse_position},
     },
     loading::audio_assets::AudioAssets,
-    resources::{LevelCounter, PointerCooldown},
+    resources::PointerCooldown,
 };
 
 use super::{
@@ -52,16 +54,41 @@ pub fn projectile_reload(
     mut buffer: ResMut<ProjectileBuffer>,
     mut begin_turn: EventReader<BeginTurn>,
     grid: Res<Grid>,
-    level_counter: Res<LevelCounter>,
+    balls_query: Query<&Species, With<GridBall>>,
 ) {
     if begin_turn.is_empty() {
         return;
     }
     begin_turn.clear();
 
+    let mut cache: HashMap<&Species, &Species> = HashMap::with_capacity(5);
+    for species in balls_query.iter() {
+        if cache.len() == 5 {
+            break;
+        }
+        if let None = cache.get(species) {
+            cache.insert(species, species);
+        }
+    }
+    let mut colors_in_grid: Vec<Species> = Vec::with_capacity(cache.len());
+    for (key, _) in cache.iter() {
+        colors_in_grid.push(**key);
+    }
+
     let species = match buffer.0.pop() {
-        Some(species) => species,
-        None => Species::random_species(&level_counter),
+        Some(species) => {
+            // if picked from buffer color is absent in grid
+            // generate the new one
+            if let Some(_) = colors_in_grid
+                .iter()
+                .find(|grid_species| **grid_species == species)
+            {
+                species
+            } else {
+                Species::pick_random(&colors_in_grid)
+            }
+        }
+        None => Species::pick_random(&colors_in_grid),
     };
 
     commands.spawn(ProjectileBallBundle::new(
@@ -72,7 +99,7 @@ pub fn projectile_reload(
         &gameplay_materials,
     ));
 
-    buffer.0.push(Species::random_species(&level_counter));
+    buffer.0.push(Species::pick_random(&colors_in_grid));
 }
 
 pub fn shoot_projectile(

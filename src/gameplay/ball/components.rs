@@ -1,6 +1,6 @@
-use bevy::prelude::{Color, Component, Res, StandardMaterial};
+use std::fmt::{Display, Formatter, Result};
 
-use crate::resources::LevelCounter;
+use bevy::prelude::{Color, Component, StandardMaterial};
 
 #[derive(Component)]
 pub struct ProjectileBall {
@@ -16,13 +16,29 @@ pub struct ProjectileLineParent;
 #[derive(Component)]
 pub struct GridBall;
 
-#[derive(Component, PartialEq, Clone, Copy)]
+#[derive(Component, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum Species {
     Red,
     Blue,
     Green,
     Yellow,
     White,
+}
+
+impl Display for Species {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Species::Red => "Species::Red",
+                Species::Blue => "Species::Blue",
+                Species::Green => "Species::Green",
+                Species::Yellow => "Species::Yellow",
+                Species::White => "Species::White",
+            },
+        )
+    }
 }
 
 impl Into<Color> for Species {
@@ -45,21 +61,23 @@ impl Into<StandardMaterial> for Species {
 }
 
 impl Species {
-    pub fn random_species(level_counter: &Res<LevelCounter>) -> Species {
-        let range = match level_counter.0 {
-            1 => 1, // one color
-            2..=3 => fastrand::u8(0..2),
-            4..=5 => fastrand::u8(0..3),
-            6..=7 => fastrand::u8(0..4),
-            _ => fastrand::u8(0..5),
-        };
-        match range {
+    pub fn random_species() -> Species {
+        match fastrand::u8(0..5) {
             0 => Species::Red,
             1 => Species::Blue,
             2 => Species::Green,
             3 => Species::Yellow,
             4 => Species::White,
             _ => unreachable!(),
+        }
+    }
+
+    pub fn pick_random(colors_in_grid: &Vec<Species>) -> Species {
+        if colors_in_grid.len() > 0 {
+            let i = fastrand::usize(..colors_in_grid.len());
+            colors_in_grid[i]
+        } else {
+            Species::random_species()
         }
     }
 }
