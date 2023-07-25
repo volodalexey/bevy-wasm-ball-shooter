@@ -8,10 +8,11 @@ use bevy::{
     ui::{AlignItems, Display, FlexDirection, Interaction, JustifyContent, Style, UiRect, Val},
 };
 
-use crate::loading::font_assets::FontAssets;
-
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+use super::components::QuitButton;
 use super::{
-    components::{QuitButton, UICamera, UIMenu},
+    components::{UICamera, UIMenu},
     constants::{
         COLUMN_ROW_GAP, LARGE_BUTTON_FONT_SIZE, LARGE_BUTTON_PADDING, LARGE_FONT_SIZE,
         MENU_ROW_GAP, MIDDLE_BUTTON_FONT_SIZE, MIDDLE_BUTTON_PADDING, MIDDLE_FONT_SIZE,
@@ -19,6 +20,7 @@ use super::{
     },
     resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
 };
+use crate::loading::font_assets::FontAssets;
 
 pub fn build_ui_camera(commands: &mut Commands) {
     commands.spawn((
@@ -203,7 +205,8 @@ pub fn build_size_button(
             });
         });
 }
-
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
 pub fn build_quit_button(
     parent: &mut ChildBuilder<'_, '_, '_>,
     font_assets: &Res<FontAssets>,

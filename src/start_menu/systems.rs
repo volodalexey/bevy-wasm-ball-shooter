@@ -1,8 +1,11 @@
-use bevy::{
-    app::AppExit,
-    prelude::{Commands, EventWriter, Input, KeyCode, NextState, Res, ResMut},
-};
+use bevy::prelude::{Commands, Input, KeyCode, NextState, Res, ResMut};
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+use bevy::{app::AppExit, prelude::EventWriter};
 
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+use crate::ui::utils::build_quit_button;
 use crate::{
     components::AppState,
     loading::font_assets::FontAssets,
@@ -10,8 +13,7 @@ use crate::{
         components::NextStateButton,
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
         utils::{
-            build_large_button, build_large_text, build_menu, build_middle_button,
-            build_quit_button, build_ui_camera,
+            build_large_button, build_large_text, build_menu, build_middle_button, build_ui_camera,
         },
     },
 };
@@ -51,18 +53,27 @@ pub fn setup_menu(
             &button_colors,
             false,
         );
+        #[cfg(not(target_arch = "wasm32"))]
+        #[allow(dead_code)]
         build_quit_button(parent, &font_assets, &text_colors, &button_colors);
     });
 }
 
-pub fn keydown_detect(
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+pub fn keydown_quit_detect(
     mut app_exit_event_writer: EventWriter<AppExit>,
-    mut app_state_next_state: ResMut<NextState<AppState>>,
     keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
     if keyboard_input_key_code.any_just_released([KeyCode::Escape]) {
         app_exit_event_writer.send(AppExit);
     }
+}
+
+pub fn keydown_init_detect(
+    mut app_state_next_state: ResMut<NextState<AppState>>,
+    keyboard_input_key_code: Res<Input<KeyCode>>,
+) {
     if keyboard_input_key_code.any_just_released([KeyCode::Space]) {
         app_state_next_state.set(AppState::GameplayInit);
     }

@@ -1,9 +1,11 @@
-use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
-
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+use crate::ui::systems::interact_with_quit_button;
 use crate::{
     components::AppState,
-    ui::systems::{cleanup_menu, interact_with_next_state_button, interact_with_quit_button},
+    ui::systems::{cleanup_menu, interact_with_next_state_button},
 };
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
 
 use self::systems::{keydown_detect, setup_menu};
 

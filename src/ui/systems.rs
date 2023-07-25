@@ -1,20 +1,23 @@
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+use bevy::{app::AppExit, prelude::EventWriter};
 use bevy::{
-    app::AppExit,
     prelude::{
-        Changed, Commands, DespawnRecursiveExt, Entity, EventWriter, NextState, Query, Res, ResMut,
-        With,
+        Changed, Commands, DespawnRecursiveExt, Entity, NextState, Query, Res, ResMut, With,
     },
     time::Time,
     ui::{BackgroundColor, Interaction},
 };
 
-use crate::components::AppState;
-
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
+use super::components::QuitButton;
 use super::{
-    components::{NextStateButton, QuitButton, UICamera, UIMenu},
+    components::{NextStateButton, UICamera, UIMenu},
     resources::{PointerCooldown, UIMenuButtonColors},
     utils::button_color_by_interaction,
 };
+use crate::components::AppState;
 
 pub fn tick_pointer_cooldown_timer(mut pointer_cooldown: ResMut<PointerCooldown>, time: Res<Time>) {
     if pointer_cooldown.started {
@@ -72,7 +75,8 @@ pub fn interact_with_next_state_button(
         }
     }
 }
-
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(dead_code)]
 pub fn interact_with_quit_button(
     mut app_exit_event_writer: EventWriter<AppExit>,
     mut button_query: Query<
