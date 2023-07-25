@@ -1,32 +1,29 @@
 use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
 
-use crate::components::AppState;
+use crate::{
+    components::AppState,
+    ui::systems::{cleanup_menu, interact_with_next_state_button},
+};
 
-use self::{
-    resources::SettingsButtonColors,
-    systems::{
-        cleanup_menu, interact_with_back_button, interact_with_level_button,
-        interact_with_volume_button, keydown_detect, setup_menu,
-    },
+use self::systems::{
+    interact_with_level_button, interact_with_volume_button, keydown_detect, setup_menu,
 };
 
 mod components;
-mod resources;
 mod systems;
 
 pub struct SettingsMenuPlugin;
 
 impl Plugin for SettingsMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<SettingsButtonColors>()
-            .add_systems(OnEnter(AppState::Settings), setup_menu)
+        app.add_systems(OnEnter(AppState::Settings), setup_menu)
             .add_systems(
                 Update,
                 (
                     interact_with_volume_button,
                     keydown_detect,
-                    interact_with_back_button,
                     interact_with_level_button,
+                    interact_with_next_state_button,
                 )
                     .run_if(in_state(AppState::Settings)),
             )

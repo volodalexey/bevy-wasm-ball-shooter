@@ -51,6 +51,7 @@ pub fn interact_with_next_state_button(
         match *interaction {
             Interaction::Pressed => {
                 *background_color = button_color_by_interaction(
+                    false,
                     &button_colors,
                     &next_state_button.color_type,
                     interaction,
@@ -61,6 +62,7 @@ pub fn interact_with_next_state_button(
             }
             Interaction::Hovered | Interaction::None => {
                 *background_color = button_color_by_interaction(
+                    false,
                     &button_colors,
                     &next_state_button.color_type,
                     interaction,
@@ -83,6 +85,7 @@ pub fn interact_with_quit_button(
         match *interaction {
             Interaction::Pressed => {
                 *background_color = button_color_by_interaction(
+                    false,
                     &button_colors,
                     &quit_button.color_type,
                     interaction,
@@ -92,6 +95,7 @@ pub fn interact_with_quit_button(
             }
             Interaction::Hovered | Interaction::None => {
                 *background_color = button_color_by_interaction(
+                    false,
                     &button_colors,
                     &quit_button.color_type,
                     interaction,

@@ -32,6 +32,7 @@ pub fn setup_menu(
             &font_assets,
             &text_colors,
             &button_colors,
+            false,
         );
         build_middle_button(
             parent,
@@ -44,6 +45,7 @@ pub fn setup_menu(
             &font_assets,
             &text_colors,
             &button_colors,
+            false,
         );
     });
 }

@@ -1,14 +1,8 @@
 use bevy::{
     prelude::{
-        default, AudioSink, BuildChildren, ButtonBundle, Camera2dBundle, Changed, ChildBuilder,
-        Color, Commands, DespawnRecursiveExt, Entity, Input, KeyCode, NextState, NodeBundle, Query,
-        Res, ResMut, TextBundle, With,
+        AudioSink, ChildBuilder, Commands, Input, KeyCode, NextState, Query, Res, ResMut, With,
     },
-    text::{Text, TextSection, TextStyle},
-    ui::{
-        AlignItems, BackgroundColor, Display, FlexDirection, Interaction, JustifyContent, Style,
-        UiRect, Val,
-    },
+    ui::{BackgroundColor, Interaction},
 };
 use bevy_pkv::PkvStore;
 
@@ -22,109 +16,70 @@ use crate::{
     },
     loading::{audio_assets::AudioAssets, font_assets::FontAssets},
     resources::LevelCounter,
+    ui::{
+        components::NextStateButton,
+        resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
+        utils::{
+            build_flex_column_start, build_flex_column_stretch, build_flex_row_between,
+            build_flex_row_evenly, build_large_text, build_menu, build_middle_button,
+            build_middle_text, build_ui_camera, button_color_by_interaction,
+        },
+    },
 };
 
-use super::{
-    components::{BackButton, LevelButton, SettingsMenu, SettingsMenuCamera, VolumeButton},
-    resources::SettingsButtonColors,
-};
+use super::components::{LevelButton, VolumeButton};
 
 pub fn setup_menu(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
-    button_colors: Res<SettingsButtonColors>,
+    button_colors: Res<UIMenuButtonColors>,
+    text_colors: Res<UIMenuTextColors>,
     pkv: Res<PkvStore>,
 ) {
-    commands.spawn((Camera2dBundle::default(), SettingsMenuCamera {}));
-    commands
-        .spawn((
-            NodeBundle {
-                style: Style {
-                    display: Display::Flex,
-                    flex_direction: FlexDirection::Column,
-                    width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
-                    row_gap: Val::Px(10.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                ..default()
+    build_ui_camera(&mut commands);
+    build_menu(&mut commands, |parent| {
+        build_large_text(parent, "Настройки", &font_assets, &text_colors);
+        build_volume_row(
+            "Фоновый звук",
+            MAIN_SOUND_VOLUME_KEY,
+            parent,
+            &font_assets,
+            &button_colors,
+            &text_colors,
+            &pkv,
+        );
+        build_volume_row(
+            "Звук выстрела/очков",
+            SFX_SOUND_VOLUME_KEY,
+            parent,
+            &font_assets,
+            &button_colors,
+            &text_colors,
+            &pkv,
+        );
+        build_level_settings(
+            "Уровень",
+            LEVEL_KEY,
+            parent,
+            &font_assets,
+            &button_colors,
+            &text_colors,
+            &pkv,
+        );
+        build_middle_button(
+            parent,
+            NextStateButton {
+                color_type: ColorType::Gray,
+                next_state: AppState::StartMenu,
             },
-            SettingsMenu {},
-        ))
-        .with_children(|parent| {
-            parent.spawn(TextBundle {
-                text: Text {
-                    sections: vec![TextSection {
-                        value: "Настройки".to_string(),
-                        style: TextStyle {
-                            font: font_assets.fira_sans_bold.clone_weak(),
-                            font_size: 40.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                        },
-                    }],
-                    ..default()
-                },
-                ..default()
-            });
-
-            build_volume_row(
-                "Фоновый звук",
-                MAIN_SOUND_VOLUME_KEY,
-                parent,
-                &font_assets,
-                &button_colors,
-                &pkv,
-            );
-            build_volume_row(
-                "Звук выстрела/очков",
-                SFX_SOUND_VOLUME_KEY,
-                parent,
-                &font_assets,
-                &button_colors,
-                &pkv,
-            );
-            build_level_settings(
-                "Уровень",
-                LEVEL_KEY,
-                parent,
-                &font_assets,
-                &button_colors,
-                &pkv,
-            );
-
-            parent
-                .spawn((
-                    ButtonBundle {
-                        style: Style {
-                            padding: UiRect::all(Val::Px(10.0)),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..Default::default()
-                        },
-                        background_color: button_colors.normal.into(),
-                        ..Default::default()
-                    },
-                    BackButton {},
-                ))
-                .with_children(|parent| {
-                    parent.spawn(TextBundle {
-                        text: Text {
-                            sections: vec![TextSection {
-                                value: "Назад".to_string(),
-                                style: TextStyle {
-                                    font: font_assets.fira_sans_bold.clone_weak(),
-                                    font_size: 20.0,
-                                    color: Color::rgb(0.9, 0.9, 0.9),
-                                },
-                            }],
-                            ..default()
-                        },
-                        ..default()
-                    });
-                });
-        });
+            &ColorType::Gray,
+            "Назад",
+            &font_assets,
+            &text_colors,
+            &button_colors,
+            false,
+        );
+    });
 }
 
 pub fn build_volume_row(
@@ -132,108 +87,49 @@ pub fn build_volume_row(
     key: &str,
     parent: &mut ChildBuilder<'_, '_, '_>,
     font_assets: &Res<FontAssets>,
-    button_colors: &Res<SettingsButtonColors>,
+    button_colors: &Res<UIMenuButtonColors>,
+    text_colors: &Res<UIMenuTextColors>,
     pkv: &Res<PkvStore>,
 ) {
-    parent
-        .spawn(NodeBundle {
-            style: Style {
-                display: Display::Flex,
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(6.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Start,
-                ..default()
-            },
-            ..default()
-        })
-        .with_children(|parent| {
-            parent.spawn(TextBundle {
-                text: Text {
-                    sections: vec![TextSection {
-                        value: title.to_string(),
-                        style: TextStyle {
-                            font: font_assets.fira_sans_bold.clone_weak(),
-                            font_size: 20.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                        },
-                    }],
-                    ..default()
-                },
-                ..default()
-            });
-
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        display: Display::Flex,
-                        flex_direction: FlexDirection::Row,
-                        column_gap: Val::Px(6.0),
-                        justify_content: JustifyContent::SpaceEvenly,
-                        align_items: AlignItems::Center,
-                        ..default()
+    build_flex_column_start(parent, |parent| {
+        build_middle_text(parent, title, font_assets, text_colors);
+        build_flex_row_evenly(parent, |parent| {
+            [0.0, 0.01, 0.1, 0.3, 0.5, 1.0].map(|v| {
+                let selected = match pkv.get::<String>(key) {
+                    Ok(sound_volume) => {
+                        if let Ok(parsed) = sound_volume.parse::<f32>() {
+                            parsed == v
+                        } else {
+                            false
+                        }
+                    }
+                    Err(_) => false,
+                };
+                build_middle_button(
+                    parent,
+                    VolumeButton {
+                        value: v,
+                        key: key.to_string(),
+                        pressed: selected,
+                        color_type: ColorType::Green,
                     },
-                    ..default()
-                })
-                .with_children(|parent| {
-                    [0.0, 0.01, 0.1, 0.3, 0.5, 1.0].map(|v| {
-                        let pressed = match pkv.get::<String>(key) {
-                            Ok(sound_volume) => {
-                                if let Ok(parsed) = sound_volume.parse::<f32>() {
-                                    parsed == v
-                                } else {
-                                    false
-                                }
-                            }
-                            Err(_) => false,
-                        };
-                        parent
-                            .spawn((
-                                ButtonBundle {
-                                    style: Style {
-                                        padding: UiRect::all(Val::Px(10.0)),
-                                        justify_content: JustifyContent::Center,
-                                        align_items: AlignItems::Center,
-                                        ..Default::default()
-                                    },
-                                    background_color: match pressed {
-                                        true => button_colors.pressed.into(),
-                                        false => button_colors.normal.into(),
-                                    },
-                                    ..Default::default()
-                                },
-                                VolumeButton {
-                                    value: v,
-                                    key: key.to_string(),
-                                    pressed,
-                                },
-                            ))
-                            .with_children(|parent| {
-                                parent.spawn(TextBundle {
-                                    text: Text {
-                                        sections: vec![TextSection {
-                                            value: v.to_string(),
-                                            style: TextStyle {
-                                                font: font_assets.fira_sans_bold.clone_weak(),
-                                                font_size: 20.0,
-                                                color: Color::rgb(0.9, 0.9, 0.9),
-                                            },
-                                        }],
-                                        ..default()
-                                    },
-                                    ..default()
-                                });
-                            });
-                    });
-                });
+                    &ColorType::Green,
+                    v.to_string().as_str(),
+                    font_assets,
+                    text_colors,
+                    button_colors,
+                    selected,
+                );
+            });
         });
+    });
 }
 
 pub fn interact_with_volume_button(
     mut commands: Commands,
     audio_assets: Res<AudioAssets>,
     main_sound_query: Query<&AudioSink, With<MainSound>>,
-    button_colors: Res<SettingsButtonColors>,
+    button_colors: Res<UIMenuButtonColors>,
     mut button_query: Query<
         (&Interaction, &mut BackgroundColor, &mut VolumeButton),
         With<VolumeButton>,
@@ -248,7 +144,7 @@ pub fn interact_with_volume_button(
         Some((idx, (_, _, button_volume))) => (idx as i32, button_volume.key.clone()),
         None => (-1, "".to_string()),
     };
-    for (idx, (interaction, mut button_color, mut button_volume)) in
+    for (idx, (interaction, mut background_color, mut button_volume)) in
         button_query.iter_mut().enumerate()
     {
         match *interaction {
@@ -257,7 +153,13 @@ pub fn interact_with_volume_button(
                     button_volume.pressed = true;
                     pkv.set_string(button_volume.key.clone(), &button_volume.value.to_string())
                         .expect("failed to save volume");
-                    *button_color = button_colors.pressed.into();
+                    *background_color = button_color_by_interaction(
+                        button_volume.pressed,
+                        &button_colors,
+                        &button_volume.color_type,
+                        interaction,
+                    )
+                    .into();
 
                     match button_volume.key.as_str() {
                         MAIN_SOUND_VOLUME_KEY => {
@@ -275,11 +177,13 @@ pub fn interact_with_volume_button(
                 }
             }
             Interaction::Hovered => {
-                if button_volume.pressed {
-                    *button_color = button_colors.pressed_hovered.into();
-                } else {
-                    *button_color = button_colors.normal_hovered.into();
-                }
+                *background_color = button_color_by_interaction(
+                    button_volume.pressed,
+                    &button_colors,
+                    &button_volume.color_type,
+                    interaction,
+                )
+                .into();
             }
             Interaction::None => {
                 if pressed_button.0 > -1
@@ -290,54 +194,23 @@ pub fn interact_with_volume_button(
                         button_volume.pressed = false;
                     }
                 }
-                if button_volume.pressed {
-                    *button_color = button_colors.pressed.into();
-                } else {
-                    *button_color = button_colors.normal.into();
-                }
+                *background_color = button_color_by_interaction(
+                    button_volume.pressed,
+                    &button_colors,
+                    &button_volume.color_type,
+                    interaction,
+                )
+                .into();
             }
         };
     }
-}
-
-pub fn interact_with_back_button(
-    button_colors: Res<SettingsButtonColors>,
-    mut app_state_next_state: ResMut<NextState<AppState>>,
-    mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<BackButton>),
-    >,
-) {
-    for (interaction, mut color) in &mut interaction_query {
-        match *interaction {
-            Interaction::Pressed => {
-                *color = button_colors.back_pressed.into();
-                app_state_next_state.set(AppState::StartMenu);
-            }
-            Interaction::Hovered => {
-                *color = button_colors.back_hovered.into();
-            }
-            Interaction::None => {
-                *color = button_colors.back_idle.into();
-            }
-        }
-    }
-}
-
-pub fn cleanup_menu(
-    mut commands: Commands,
-    camera_query: Query<Entity, With<SettingsMenuCamera>>,
-    node_query: Query<Entity, With<SettingsMenu>>,
-) {
-    commands.entity(camera_query.single()).despawn_recursive();
-    commands.entity(node_query.single()).despawn_recursive();
 }
 
 pub fn keydown_detect(
     mut app_state_next_state: ResMut<NextState<AppState>>,
     keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
-    if keyboard_input_key_code.any_just_released([KeyCode::Space]) {
+    if keyboard_input_key_code.any_just_released([KeyCode::Escape]) {
         app_state_next_state.set(AppState::StartMenu);
     }
 }
@@ -346,72 +219,47 @@ pub fn build_level_button(
     saved_level: u32,
     iter_level: u32,
     parent: &mut ChildBuilder<'_, '_, '_>,
-    button_colors: &Res<SettingsButtonColors>,
+    button_colors: &Res<UIMenuButtonColors>,
     font_assets: &Res<FontAssets>,
+    text_colors: &Res<UIMenuTextColors>,
 ) {
-    let pressed = saved_level == iter_level;
-    parent
-        .spawn((
-            ButtonBundle {
-                style: Style {
-                    padding: UiRect::all(Val::Px(10.0)),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..Default::default()
-                },
-                background_color: match pressed {
-                    true => button_colors.pressed.into(),
-                    false => button_colors.normal.into(),
-                },
-                ..Default::default()
-            },
-            LevelButton {
-                level: iter_level,
-                pressed,
-            },
-        ))
-        .with_children(|parent| {
-            parent.spawn(TextBundle {
-                text: Text {
-                    sections: vec![TextSection {
-                        value: iter_level.to_string(),
-                        style: TextStyle {
-                            font: font_assets.fira_sans_bold.clone_weak(),
-                            font_size: 20.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                        },
-                    }],
-                    ..default()
-                },
-                ..default()
-            });
-        });
+    let selected = saved_level == iter_level;
+    build_middle_button(
+        parent,
+        LevelButton {
+            level: iter_level,
+            pressed: selected,
+            color_type: ColorType::Green,
+        },
+        &ColorType::Green,
+        iter_level.to_string().as_str(),
+        font_assets,
+        text_colors,
+        button_colors,
+        selected,
+    );
 }
 
 pub fn build_level_line(
     saved_level: u32,
     range: std::ops::RangeInclusive<u32>,
     parent: &mut ChildBuilder<'_, '_, '_>,
-    button_colors: &Res<SettingsButtonColors>,
+    button_colors: &Res<UIMenuButtonColors>,
     font_assets: &Res<FontAssets>,
+    text_colors: &Res<UIMenuTextColors>,
 ) {
-    parent
-        .spawn(NodeBundle {
-            style: Style {
-                display: Display::Flex,
-                flex_direction: FlexDirection::Row,
-                column_gap: Val::Px(6.0),
-                justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            ..default()
-        })
-        .with_children(|parent| {
-            range.for_each(|l| {
-                build_level_button(saved_level, l, parent, button_colors, font_assets);
-            });
+    build_flex_row_between(parent, |parent| {
+        range.for_each(|l| {
+            build_level_button(
+                saved_level,
+                l,
+                parent,
+                button_colors,
+                font_assets,
+                text_colors,
+            );
         });
+    });
 }
 
 pub fn build_level_settings(
@@ -419,82 +267,48 @@ pub fn build_level_settings(
     key: &str,
     parent: &mut ChildBuilder<'_, '_, '_>,
     font_assets: &Res<FontAssets>,
-    button_colors: &Res<SettingsButtonColors>,
+    button_colors: &Res<UIMenuButtonColors>,
+    text_colors: &Res<UIMenuTextColors>,
     pkv: &Res<PkvStore>,
 ) {
-    parent
-        .spawn(NodeBundle {
-            style: Style {
-                display: Display::Flex,
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(6.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Start,
-                ..default()
-            },
-            ..default()
-        })
-        .with_children(|parent| {
-            parent.spawn(TextBundle {
-                text: Text {
-                    sections: vec![TextSection {
-                        value: title.to_string(),
-                        style: TextStyle {
-                            font: font_assets.fira_sans_bold.clone_weak(),
-                            font_size: 20.0,
-                            color: Color::rgb(0.9, 0.9, 0.9),
-                        },
-                    }],
-                    ..default()
-                },
-                ..default()
-            });
+    build_flex_column_start(parent, |parent| {
+        build_middle_text(parent, title, font_assets, text_colors);
 
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        display: Display::Flex,
-                        flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(6.0),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Stretch,
-                        ..default()
-                    },
-                    ..default()
-                })
-                .with_children(|parent| {
-                    let saved_level = match pkv.get::<String>(key) {
-                        Ok(level) => {
-                            if let Ok(level) = level.parse::<u32>() {
-                                level
-                            } else {
-                                START_LEVEL
-                            }
-                        }
-                        Err(_) => START_LEVEL,
-                    };
+        build_flex_column_stretch(parent, |parent| {
+            let saved_level = match pkv.get::<String>(key) {
+                Ok(level) => {
+                    if let Ok(level) = level.parse::<u32>() {
+                        level
+                    } else {
+                        START_LEVEL
+                    }
+                }
+                Err(_) => START_LEVEL,
+            };
 
-                    build_level_line(
-                        saved_level,
-                        START_LEVEL..=9,
-                        parent,
-                        button_colors,
-                        font_assets,
-                    );
-                    build_level_line(
-                        saved_level,
-                        10..=MAX_LEVEL,
-                        parent,
-                        button_colors,
-                        font_assets,
-                    );
-                });
+            build_level_line(
+                saved_level,
+                START_LEVEL..=9,
+                parent,
+                button_colors,
+                font_assets,
+                text_colors,
+            );
+            build_level_line(
+                saved_level,
+                10..=MAX_LEVEL,
+                parent,
+                button_colors,
+                font_assets,
+                text_colors,
+            );
         });
+    });
 }
 
 pub fn interact_with_level_button(
     mut commands: Commands,
-    button_colors: Res<SettingsButtonColors>,
+    button_colors: Res<UIMenuButtonColors>,
     mut button_query: Query<
         (&Interaction, &mut BackgroundColor, &mut LevelButton),
         With<LevelButton>,
@@ -509,7 +323,7 @@ pub fn interact_with_level_button(
         Some((idx, _)) => idx as i32,
         None => -1,
     };
-    for (idx, (interaction, mut button_color, mut button_level)) in
+    for (idx, (interaction, mut background_color, mut button_level)) in
         button_query.iter_mut().enumerate()
     {
         match *interaction {
@@ -518,17 +332,25 @@ pub fn interact_with_level_button(
                     button_level.pressed = true;
                     pkv.set_string(LEVEL_KEY, &button_level.level.to_string())
                         .expect("failed to save level");
-                    *button_color = button_colors.pressed.into();
+                    *background_color = button_color_by_interaction(
+                        button_level.pressed,
+                        &button_colors,
+                        &button_level.color_type,
+                        interaction,
+                    )
+                    .into();
 
                     commands.insert_resource(LevelCounter(button_level.level));
                 }
             }
             Interaction::Hovered => {
-                if button_level.pressed {
-                    *button_color = button_colors.pressed_hovered.into();
-                } else {
-                    *button_color = button_colors.normal_hovered.into();
-                }
+                *background_color = button_color_by_interaction(
+                    button_level.pressed,
+                    &button_colors,
+                    &button_level.color_type,
+                    interaction,
+                )
+                .into();
             }
             Interaction::None => {
                 if pressed_button_idx > -1 && pressed_button_idx != idx as i32 {
@@ -536,11 +358,13 @@ pub fn interact_with_level_button(
                         button_level.pressed = false;
                     }
                 }
-                if button_level.pressed {
-                    *button_color = button_colors.pressed.into();
-                } else {
-                    *button_color = button_colors.normal.into();
-                }
+                *background_color = button_color_by_interaction(
+                    button_level.pressed,
+                    &button_colors,
+                    &button_level.color_type,
+                    interaction,
+                )
+                .into();
             }
         };
     }
