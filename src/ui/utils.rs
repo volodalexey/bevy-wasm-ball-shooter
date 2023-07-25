@@ -1,7 +1,8 @@
 use bevy::{
+    core_pipeline::clear_color::ClearColorConfig,
     prelude::{
-        default, BuildChildren, ButtonBundle, Camera2dBundle, ChildBuilder, Color, Commands,
-        Component, NodeBundle, Res, TextBundle,
+        default, BuildChildren, ButtonBundle, Camera2d, Camera2dBundle, ChildBuilder, Color,
+        Commands, Component, NodeBundle, Res, TextBundle,
     },
     text::{Text, TextSection, TextStyle},
     ui::{AlignItems, Display, FlexDirection, Interaction, JustifyContent, Style, UiRect, Val},
@@ -20,7 +21,16 @@ use super::{
 };
 
 pub fn build_ui_camera(commands: &mut Commands) {
-    commands.spawn((Camera2dBundle::default(), UICamera {}));
+    commands.spawn((
+        Camera2dBundle {
+            camera_2d: Camera2d {
+                clear_color: ClearColorConfig::Custom(Color::BLACK),
+                ..default()
+            },
+            ..default()
+        },
+        UICamera {},
+    ));
 }
 
 pub fn build_menu(commands: &mut Commands, children: impl FnOnce(&mut ChildBuilder)) {

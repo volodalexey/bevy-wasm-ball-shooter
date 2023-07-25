@@ -19,6 +19,8 @@ impl Plugin for GameWinMenuPlugin {
                 (
                     interact_with_next_state_button,
                     keydown_detect,
+                    #[cfg(not(target_arch = "wasm32"))]
+                    #[allow(dead_code)]
                     interact_with_quit_button,
                 )
                     .run_if(in_state(AppState::GameWin)),

@@ -58,7 +58,7 @@ impl Default for UIMenuButtonColors {
 
             green_hovered: Color::rgb(0.2, 0.8, 0.2).into(),
             green_idle: Color::rgb(0.2, 0.7, 0.2).into(),
-            green_selected_hovered: Color::rgb(0.2, 0.65, 0.2).into(),
+            green_selected_hovered: Color::rgb(0.2, 0.55, 0.2).into(),
             green_selected: Color::rgb(0.2, 0.5, 0.2).into(),
             green_pressed: Color::rgb(0.2, 0.45, 0.2).into(),
 
