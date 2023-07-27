@@ -11,18 +11,21 @@ use crate::{loading::font_assets::FontAssets, resources::LevelCounter};
 
 use super::{
     components::{LevelText, ScoreText, StatusBar, TurnText},
-    resources::{MoveCounter, ScoreCounter, TurnCounter},
+    resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
     utils::get_text_style,
 };
 
 pub fn setup_resources(
+    mut commands: Commands,
     mut turn_counter: ResMut<TurnCounter>,
     mut move_counter: ResMut<MoveCounter>,
     mut score_counter: ResMut<ScoreCounter>,
+    level_counter: Res<LevelCounter>,
 ) {
     turn_counter.0 = 0;
     move_counter.0 = 0;
     score_counter.0 = 0;
+    commands.insert_resource(CooldownMoveCounter::from_level(level_counter.0));
 }
 
 pub fn setup_ui(mut commands: Commands, font_assets: Res<FontAssets>) {
@@ -92,7 +95,7 @@ pub fn update_ui(
         (With<ScoreText>, Without<TurnText>, Without<LevelText>),
     >,
     turn_counter: Res<TurnCounter>,
-    move_counter: Res<MoveCounter>,
+    cooldown_move_counter: Res<CooldownMoveCounter>,
     mut turn_text_query: Query<&mut Text, (With<TurnText>, Without<ScoreText>, Without<LevelText>)>,
     level_counter: Res<LevelCounter>,
     mut level_text_query: Query<
@@ -104,7 +107,10 @@ pub fn update_ui(
         score_text.sections[0].value = format!("Очки: {:?} ", score_counter.0);
     }
     for mut turn_text in &mut turn_text_query {
-        turn_text.sections[0].value = format!("Ходов: {} ({})", turn_counter.0, move_counter.0);
+        turn_text.sections[0].value = format!(
+            "Ходов: {} ({})",
+            turn_counter.0, cooldown_move_counter.value
+        );
     }
     for mut level_text in &mut level_text_query {
         level_text.sections[0].value = format!("Уровень: {}", level_counter.0);

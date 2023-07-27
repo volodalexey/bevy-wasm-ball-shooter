@@ -21,7 +21,7 @@ use crate::{
         grid::utils::{find_cluster, find_floating_clusters},
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
-        panels::resources::{MoveCounter, ScoreCounter, TurnCounter},
+        panels::resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
     },
     loading::audio_assets::AudioAssets,
     resources::LevelCounter,
@@ -65,7 +65,7 @@ pub fn generate_grid(
     update_positions.send(UpdatePositions);
 }
 
-pub const VISIBLE_ROWS: f32 = 5.0;
+pub const VISIBLE_ROWS: f32 = 8.0;
 
 pub fn update_hex_coord_transforms(
     mut balls_query: Query<(Entity, &mut Transform, &GridBall), With<GridBall>>,
@@ -201,6 +201,7 @@ pub fn on_snap_projectile(
     mut score_counter: ResMut<ScoreCounter>,
     mut turn_counter: ResMut<TurnCounter>,
     mut move_counter: ResMut<MoveCounter>,
+    mut cooldown_move_counter: ResMut<CooldownMoveCounter>,
     balls_query: Query<(&Transform, &Species, &mut GridBall), With<GridBall>>,
     audio_assets: Res<AudioAssets>,
     pkv: Res<PkvStore>,
@@ -359,8 +360,12 @@ pub fn on_snap_projectile(
         }
 
         turn_counter.0 += 1;
-        if score_add == 0 {
-            move_counter.0 += 1;
+        if score_add == 0 && cooldown_move_counter.init_value != 0 {
+            cooldown_move_counter.value -= 1;
+            if cooldown_move_counter.value == 0 {
+                move_counter.0 += 1;
+                cooldown_move_counter.value = cooldown_move_counter.init_value;
+            }
         }
 
         begin_turn.send(BeginTurn);
