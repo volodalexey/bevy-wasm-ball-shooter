@@ -1,6 +1,7 @@
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Debug, Display, Formatter, Result};
 
-use bevy::prelude::{Color, Component, StandardMaterial};
+use bevy::prelude::{Color, Component, StandardMaterial, Vec3};
+use hexx::Hex;
 
 #[derive(Component)]
 pub struct ProjectileBall {
@@ -14,7 +15,24 @@ pub struct ProjectileLine;
 pub struct ProjectileLineParent;
 
 #[derive(Component)]
-pub struct GridBall;
+pub struct GridBall {
+    pub hex: Hex,
+}
+
+#[derive(Component)]
+pub struct OutBall {
+    pub started: bool,
+    pub initial_velocity: Vec3,
+}
+
+impl Default for OutBall {
+    fn default() -> Self {
+        Self {
+            started: false,
+            initial_velocity: Vec3::ZERO,
+        }
+    }
+}
 
 #[derive(Component, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum Species {
@@ -26,6 +44,22 @@ pub enum Species {
 }
 
 impl Display for Species {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Species::Red => "Species::Red",
+                Species::Blue => "Species::Blue",
+                Species::Green => "Species::Green",
+                Species::Yellow => "Species::Yellow",
+                Species::White => "Species::White",
+            },
+        )
+    }
+}
+
+impl Debug for Species {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(
             f,
@@ -60,9 +94,9 @@ impl Into<StandardMaterial> for Species {
     }
 }
 
-impl Species {
-    pub fn random_species() -> Species {
-        match fastrand::u8(0..5) {
+impl From<u8> for Species {
+    fn from(num: u8) -> Self {
+        match num {
             0 => Species::Red,
             1 => Species::Blue,
             2 => Species::Green,
@@ -70,6 +104,12 @@ impl Species {
             4 => Species::White,
             _ => unreachable!(),
         }
+    }
+}
+
+impl Species {
+    pub fn random_species() -> Species {
+        Self::from(fastrand::u8(0..5))
     }
 
     pub fn pick_random(colors_in_grid: &Vec<Species>) -> Species {

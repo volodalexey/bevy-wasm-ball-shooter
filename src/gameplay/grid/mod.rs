@@ -4,7 +4,8 @@ use self::{
     events::UpdatePositions,
     resources::Grid,
     systems::{
-        check_projectile_out_of_grid, cleanup_grid, generate_grid, update_hex_coord_transforms,
+        check_projectile_out_of_grid, cleanup_grid, generate_grid, on_projectile_collisions_events,
+        on_snap_projectile, update_hex_coord_transforms,
     },
 };
 
@@ -25,7 +26,12 @@ impl Plugin for GridPlugin {
             .add_systems(OnEnter(AppState::Gameplay), generate_grid)
             .add_systems(
                 Update,
-                (update_hex_coord_transforms, check_projectile_out_of_grid)
+                (
+                    update_hex_coord_transforms,
+                    check_projectile_out_of_grid,
+                    on_projectile_collisions_events,
+                    on_snap_projectile,
+                )
                     .run_if(in_state(AppState::Gameplay)),
             )
             .add_systems(OnExit(AppState::Gameplay), cleanup_grid);

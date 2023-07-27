@@ -3,16 +3,16 @@ use std::collections::HashMap;
 use bevy::{
     prelude::{
         Assets, BuildChildren, Camera, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, GlobalTransform, Input, Mesh, MouseButton, Query, Res, ResMut, Touches,
-        Transform, Vec2, Vec3, Visibility, With, Without,
+        GlobalTransform, Handle, Input, Mesh, MouseButton, Query, Res, ResMut, StandardMaterial,
+        Touches, Transform, Vec2, Vec3, Visibility, With, Without,
     },
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier3d::prelude::{CollisionEvent, Velocity};
+use bevy_rapier3d::prelude::Velocity;
 
 use crate::{
-    game_audio::{constants::SFX_SOUND_VOLUME_KEY, utils::play_shoot_audio},
+    game_audio::utils::pkv_play_shoot_audio,
     gameplay::{
         constants::PLAYER_SPAWN_Z,
         events::BeginTurn,
@@ -28,10 +28,10 @@ use crate::{
 
 use super::{
     components::{
-        GridBall, ProjectileArrow, ProjectileBall, ProjectileLine, ProjectileLineParent, Species,
+        GridBall, OutBall, ProjectileArrow, ProjectileBall, ProjectileLine, ProjectileLineParent,
+        Species,
     },
     constants::{INNER_RADIUS_COEFF, PROJECTILE_SPEED},
-    events::SnapProjectile,
     projectile_arrow_bundle::ProjectileArrowBundle,
     projectile_ball_bundle::ProjectileBallBundle,
     projectile_line_bundle::ProjectileLineBundle,
@@ -69,6 +69,9 @@ pub fn projectile_reload(
         if let None = cache.get(species) {
             cache.insert(species, species);
         }
+    }
+    if grid.storage.len() == 0 {
+        return; // no more balls in grid
     }
     let mut colors_in_grid: Vec<Species> = Vec::with_capacity(cache.len());
     for (key, _) in cache.iter() {
@@ -224,54 +227,13 @@ pub fn shoot_projectile(
 
                         projectile_ball.is_flying = true;
 
-                        if let Ok(shoot_sound_volume) = pkv.get::<String>(SFX_SOUND_VOLUME_KEY) {
-                            if let Ok(shoot_sound_volume) = shoot_sound_volume.parse::<f32>() {
-                                if shoot_sound_volume > 0.0 {
-                                    play_shoot_audio(
-                                        &mut commands,
-                                        &audio_assets,
-                                        shoot_sound_volume,
-                                    );
-                                }
-                            }
-                        }
+                        pkv_play_shoot_audio(&mut commands, &audio_assets, &pkv);
                     } else {
                         *arrow_visibility = Visibility::Hidden;
                         *line_visibility = Visibility::Hidden;
                     }
                 }
             }
-        }
-    }
-}
-
-pub fn on_projectile_collisions_events(
-    mut commands: Commands,
-    mut collision_events: EventReader<CollisionEvent>,
-    mut snap_projectile: EventWriter<SnapProjectile>,
-    mut projectile_query: Query<(Entity, &Transform, &Species), With<ProjectileBall>>,
-    balls_query: Query<(Entity, &Transform), With<GridBall>>,
-) {
-    for (entity_a, entity_b) in collision_events.iter().filter_map(|e| match e {
-        CollisionEvent::Started(a, b, _) => Some((a, b)),
-        CollisionEvent::Stopped(_, _, _) => None,
-    }) {
-        if let Ok((_, _)) = balls_query.get(*entity_a).or(balls_query.get(*entity_b)) {
-            let mut p1 = projectile_query.get_mut(*entity_a);
-            if p1.is_err() {
-                p1 = projectile_query.get_mut(*entity_b);
-            }
-
-            let (projectile_entity, projectile_transform, species) = p1.unwrap();
-            commands.entity(projectile_entity).despawn_recursive();
-            snap_projectile.send(SnapProjectile {
-                out_of_bounds: false,
-                pos: Vec2::new(
-                    projectile_transform.translation.x,
-                    projectile_transform.translation.z,
-                ),
-                species: *species,
-            });
         }
     }
 }
@@ -323,5 +285,40 @@ pub fn cleanup_projectile_line(
 ) {
     for projectile_entity in projectile_query.iter() {
         commands.entity(projectile_entity).despawn_recursive();
+    }
+}
+
+pub fn animate_out_ball(
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut balls_query: Query<
+        (&mut OutBall, &mut Transform, &Handle<StandardMaterial>),
+        With<OutBall>,
+    >,
+) {
+    for (mut grid_ball_out, mut ball_transform, ball_material) in balls_query.iter_mut() {
+        if !grid_ball_out.started {
+            grid_ball_out.started = true;
+            grid_ball_out.initial_velocity =
+                Vec3::new(-0.2 + fastrand::f32() * 0.4, fastrand::f32() * 0.5, 0.0);
+        } else {
+            grid_ball_out.initial_velocity += Vec3::new(0.0, 0.0, 0.01); // gravity
+            ball_transform.translation += grid_ball_out.initial_velocity;
+            if let Some(ball_material) = materials.get_mut(&ball_material) {
+                ball_material
+                    .base_color
+                    .set_a(ball_material.base_color.a() - 0.01);
+            }
+        }
+    }
+}
+
+pub fn check_out_ball_bounds(
+    mut commands: Commands,
+    out_balls_query: Query<(Entity, &OutBall, &Transform), With<OutBall>>,
+) {
+    for (ball_entity, grid_ball_out, ball_transform) in out_balls_query.iter() {
+        if grid_ball_out.started && ball_transform.translation.z > PLAYER_SPAWN_Z {
+            commands.entity(ball_entity).despawn_recursive();
+        }
     }
 }

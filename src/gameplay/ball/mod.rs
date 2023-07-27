@@ -6,9 +6,9 @@ use self::{
     events::SnapProjectile,
     resources::ProjectileBuffer,
     systems::{
-        cleanup_projectile_arrow, cleanup_projectile_ball, cleanup_projectile_line,
-        on_projectile_collisions_events, projectile_reload, setup_projectile_arrow,
-        setup_projectile_line, shoot_projectile,
+        animate_out_ball, check_out_ball_bounds, cleanup_projectile_arrow, cleanup_projectile_ball,
+        cleanup_projectile_line, projectile_reload, setup_projectile_arrow, setup_projectile_line,
+        shoot_projectile,
     },
 };
 
@@ -16,6 +16,7 @@ pub mod components;
 pub mod constants;
 pub mod events;
 pub mod grid_ball_bundle;
+pub mod out_ball_bundle;
 pub mod projectile_arrow_bundle;
 pub mod projectile_ball_bundle;
 pub mod projectile_line_bundle;
@@ -37,7 +38,8 @@ impl Plugin for ProjectilePlugin {
                 (
                     projectile_reload,
                     shoot_projectile,
-                    on_projectile_collisions_events,
+                    animate_out_ball,
+                    check_out_ball_bounds,
                 )
                     .run_if(in_state(AppState::Gameplay)),
             )

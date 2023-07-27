@@ -5,10 +5,14 @@ use bevy::{
         With,
     },
 };
+use bevy_pkv::PkvStore;
 
 use crate::loading::audio_assets::AudioAssets;
 
-use super::components::{MainSound, ShootSound};
+use super::{
+    components::{MainSound, ShootSound},
+    constants::SFX_SOUND_VOLUME_KEY,
+};
 
 pub fn setup_main_audio(
     commands: &mut Commands,
@@ -54,6 +58,20 @@ pub fn play_shoot_audio(commands: &mut Commands, audio_assets: &Res<AudioAssets>
     ));
 }
 
+pub fn pkv_play_shoot_audio(
+    commands: &mut Commands,
+    audio_assets: &Res<AudioAssets>,
+    pkv: &Res<PkvStore>,
+) {
+    if let Ok(shoot_sound_volume) = pkv.get::<String>(SFX_SOUND_VOLUME_KEY) {
+        if let Ok(shoot_sound_volume) = shoot_sound_volume.parse::<f32>() {
+            if shoot_sound_volume > 0.0 {
+                play_shoot_audio(commands, audio_assets, shoot_sound_volume);
+            }
+        }
+    }
+}
+
 pub fn play_score_audio(commands: &mut Commands, audio_assets: &Res<AudioAssets>, volume: f32) {
     commands.spawn((
         AudioBundle {
@@ -64,4 +82,18 @@ pub fn play_score_audio(commands: &mut Commands, audio_assets: &Res<AudioAssets>
         },
         ShootSound {},
     ));
+}
+
+pub fn pkv_play_score_audio(
+    commands: &mut Commands,
+    audio_assets: &Res<AudioAssets>,
+    pkv: &Res<PkvStore>,
+) {
+    if let Ok(sfx_sound_volume) = pkv.get::<String>(SFX_SOUND_VOLUME_KEY) {
+        if let Ok(sfx_sound_volume) = sfx_sound_volume.parse::<f32>() {
+            if sfx_sound_volume > 0.0 {
+                play_score_audio(commands, audio_assets, sfx_sound_volume);
+            }
+        }
+    }
 }

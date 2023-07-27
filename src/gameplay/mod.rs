@@ -12,10 +12,7 @@ use self::{
     meshes::MeshesPlugin,
     panels::PanelsPlugin,
     physics::PhysicsPlugin,
-    systems::{
-        check_game_over, check_game_win, keydown_detect, on_begin_turn, on_snap_projectile,
-        setup_gameplay,
-    },
+    systems::{check_game_over, check_game_win, keydown_detect, on_begin_turn, setup_gameplay},
     walls::WallsPlugin,
 };
 
@@ -57,7 +54,6 @@ impl Plugin for GameplayPlugin {
                 on_begin_turn,
                 check_game_over,
                 check_game_win.after(check_game_over),
-                on_snap_projectile,
                 keydown_detect,
             )
                 .run_if(in_state(AppState::Gameplay)),

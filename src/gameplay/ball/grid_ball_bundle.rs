@@ -1,5 +1,6 @@
-use bevy::prelude::{Bundle, PbrBundle, Res, Transform, Vec3};
+use bevy::prelude::{default, Bundle, PbrBundle, Res, Transform, Vec3};
 use bevy_rapier3d::prelude::{Collider, RigidBody};
+use hexx::Hex;
 
 use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources::GameplayMeshes};
 
@@ -24,15 +25,16 @@ impl GridBallBundle {
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
+        hex: Hex,
     ) -> Self {
         Self {
             pbr: PbrBundle {
                 mesh: gameplay_meshes.grid_ball.clone(),
                 material: gameplay_materials.from_species(species),
                 transform: Transform::from_translation(pos),
-                ..Default::default()
+                ..default()
             },
-            ball: GridBall,
+            ball: GridBall { hex },
             species,
             collider: Collider::ball(radius * INNER_RADIUS_COEFF),
             rigid_body: RigidBody::KinematicPositionBased,
