@@ -10,11 +10,13 @@ use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
 pub struct Bound {
     pub x: f32,
     pub y: f32,
-    pub q: i32,
-    pub r: i32,
+    pub axi_q: i32,
+    pub axi_r: i32,
+    pub off_q: i32,
+    pub off_r: i32,
 }
 
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Default)]
 pub struct Bounds {
     pub mins: Bound,
     pub maxs: Bound,
@@ -29,17 +31,21 @@ impl Display for Bounds {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(
             f,
-            "Bounds {}<x>{} {}<y>{} {}<q({})>{} {}<r({})>{}",
+            "Bounds {}<x>{} {}<y>{} q={} r={} axi({}<q>{}, {}<r>{}) off({}<q>{}, {}<r>{})",
             self.mins.x,
             self.maxs.x,
             self.mins.y,
             self.maxs.y,
-            self.mins.q,
             self.cols,
-            self.maxs.q,
-            self.mins.r,
             self.rows,
-            self.maxs.r
+            self.mins.axi_q,
+            self.maxs.axi_q,
+            self.mins.axi_r,
+            self.maxs.axi_r,
+            self.mins.off_q,
+            self.maxs.off_q,
+            self.mins.off_r,
+            self.maxs.off_r,
         )
     }
 }
@@ -48,6 +54,7 @@ impl Display for Bounds {
 pub struct Grid {
     pub init_cols: i32,
     pub init_rows: i32,
+    pub offset_mode: OffsetHexMode,
     pub layout: HexLayout,
     pub storage: HashMap<Hex, Entity>,
     pub bounds: Bounds,
@@ -58,6 +65,7 @@ impl Default for Grid {
         Self {
             init_cols: 0,
             init_rows: 0,
+            offset_mode: OffsetHexMode::OddRows,
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,
                 hex_size: hexx::Vec2::ONE,
@@ -126,11 +134,15 @@ impl Grid {
     #[inline]
     pub fn update_bounds(&mut self) {
         // q
-        let mut max_q: i32 = 0;
-        let mut min_q: i32 = 0;
+        let mut max_axi_q: i32 = 0;
+        let mut min_axi_q: i32 = 0;
+        let mut max_off_q: i32 = 0;
+        let mut min_off_q: i32 = 0;
         // r
-        let mut max_r: i32 = 0;
-        let mut min_r: i32 = 0;
+        let mut max_axi_r: i32 = 0;
+        let mut min_axi_r: i32 = 0;
+        let mut max_off_r: i32 = 0;
+        let mut min_off_r: i32 = 0;
         // x
         let mut max_x: f32 = f32::MIN;
         let mut min_x: f32 = f32::MAX;
@@ -139,12 +151,17 @@ impl Grid {
         let mut min_y: f32 = f32::MAX;
         for (&hex, _) in self.storage.iter() {
             let pos = self.layout.hex_to_world_pos(hex);
+            let offset = hex.to_offset_coordinates(self.offset_mode);
             // q
-            min_q = min_q.min(hex.x);
-            max_q = max_q.max(hex.x);
+            min_axi_q = min_axi_q.min(hex.x);
+            max_axi_q = max_axi_q.max(hex.x);
+            min_off_q = min_off_q.min(offset[0]);
+            max_off_q = max_off_q.max(offset[0]);
             // r
-            min_r = min_r.min(hex.y);
-            max_r = max_r.max(hex.y);
+            min_axi_r = min_axi_r.min(hex.y);
+            max_axi_r = max_axi_r.max(hex.y);
+            min_off_r = min_off_r.min(offset[1]);
+            max_off_r = max_off_r.max(offset[1]);
             // x
             min_x = min_x.min(pos.x);
             max_x = max_x.max(pos.x);
@@ -159,14 +176,18 @@ impl Grid {
             mins: Bound {
                 x: if min_x == f32::MAX { 0.0 } else { min_x - sx },
                 y: if min_y == f32::MAX { 0.0 } else { min_y - sy },
-                q: min_q,
-                r: min_r,
+                axi_q: min_axi_q,
+                axi_r: min_axi_r,
+                off_q: min_off_q,
+                off_r: min_off_r,
             },
             maxs: Bound {
                 x: if max_x == f32::MIN { 0.0 } else { max_x + sx },
                 y: if max_y == f32::MIN { 0.0 } else { max_y + sy },
-                q: max_q,
-                r: max_r,
+                axi_q: max_axi_q,
+                axi_r: max_axi_r,
+                off_q: max_off_q,
+                off_r: max_off_r,
             },
             cols: self.columns(),
             rows: self.rows(),
@@ -191,6 +212,11 @@ impl Grid {
     #[allow(dead_code)]
     pub fn print_sorted_offset(&mut self) {
         self.print_sorted(false, true, false, false)
+    }
+
+    #[allow(dead_code)]
+    pub fn print_sorted_axial(&mut self) {
+        self.print_sorted(false, false, true, false)
     }
 
     #[allow(dead_code)]
@@ -220,19 +246,19 @@ impl Grid {
             .collect();
         let y_mul_factor: i32 = format!("1{}", replaced).parse().unwrap();
         for (&hex, entity) in self.storage.iter() {
-            let hex_offset = hex.to_offset_coordinates(OffsetHexMode::OddRows);
+            let hex_offset = hex.to_offset_coordinates(self.offset_mode);
             let sort_value = hex_offset[1].abs() * y_mul_factor + hex_offset[0].abs();
             s.push((sort_value, (hex, entity.index(), hex_offset)));
         }
         s.sort_by(|x, y| x.0.cmp(&y.0));
         info!("Grid sorted----");
-        for r in self.bounds.mins.r..=self.bounds.maxs.r {
+        for off_r in self.bounds.mins.off_r..=self.bounds.maxs.off_r {
             let mut result: Vec<String> = Vec::new();
-            for mut q in self.bounds.mins.q..=self.bounds.maxs.q {
-                q = q - (r as f32 * 0.5).floor() as i32; // print inside rectangle, so adjust axial column
-                                                         // print!(" q({}) r({}) ", q, r);
-                if let Some((_, (hex, id, hex_offset))) =
-                    s.iter().find(|(_, (hex, _, _))| hex.x == q && hex.y == r)
+            for off_q in self.bounds.mins.off_q..=self.bounds.maxs.off_q {
+                let axi_hex = Hex::from_offset_coordinates([off_q, off_r], self.offset_mode);
+                if let Some((_, (hex, id, hex_offset))) = s
+                    .iter()
+                    .find(|(_, (hex, _, _))| hex.x == axi_hex.x && hex.y == axi_hex.y)
                 {
                     if print_id {
                         result.push(format!("id-({})", id));

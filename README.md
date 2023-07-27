@@ -25,7 +25,7 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-animation for removed balls clusters
+move down depends on level
 animation for move down
 fix restitution angle and tune contact
 show next ball to shoot

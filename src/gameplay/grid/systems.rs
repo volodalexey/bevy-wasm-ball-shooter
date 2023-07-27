@@ -231,6 +231,7 @@ pub fn on_snap_projectile(
                 .empty_neighbors(hex)
                 .iter()
                 .filter_map(|e_hex| {
+                    println!("e_hex({}, {})", e_hex.x, e_hex.y);
                     // get empty neighbors (free grid places)
                     // filter by min and max column (do not overflow left and right column)
                     // filter only that have neighbours in grid
@@ -260,6 +261,7 @@ pub fn on_snap_projectile(
         }
 
         let (x, z) = grid.layout.hex_to_world_pos(hex).into();
+        info!("final snap hex({}, {}) pos({}, {})", hex.x, hex.y, x, z);
         let ball = commands
             .spawn(GridBallBundle::new(
                 Vec3::new(x, 0.0, z),
@@ -272,7 +274,7 @@ pub fn on_snap_projectile(
             .id();
 
         grid.set(hex, ball); // add snapped projectile ball as grid ball
-        grid.print_sorted_position();
+        grid.print_sorted_axial();
 
         let mut score_add = 0;
 
