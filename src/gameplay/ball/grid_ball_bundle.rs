@@ -1,4 +1,4 @@
-use bevy::prelude::{default, Bundle, PbrBundle, Res, Transform, Vec3};
+use bevy::prelude::{default, PbrBundle, Res, Transform, Vec3};
 use bevy_rapier3d::prelude::{Collider, RigidBody};
 use hexx::Hex;
 
@@ -9,14 +9,7 @@ use super::{
     constants::INNER_RADIUS_COEFF,
 };
 
-#[derive(Bundle)]
-pub struct GridBallBundle {
-    pub pbr: PbrBundle,
-    pub ball: GridBall,
-    pub species: Species,
-    pub collider: Collider,
-    pub rigid_body: RigidBody,
-}
+pub struct GridBallBundle;
 
 impl GridBallBundle {
     pub fn new(
@@ -26,18 +19,18 @@ impl GridBallBundle {
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
         hex: Hex,
-    ) -> Self {
-        Self {
-            pbr: PbrBundle {
+    ) -> (PbrBundle, GridBall, Species, RigidBody, Collider) {
+        (
+            PbrBundle {
                 mesh: gameplay_meshes.grid_ball.clone(),
                 material: gameplay_materials.from_species(species),
                 transform: Transform::from_translation(pos),
                 ..default()
             },
-            ball: GridBall { hex },
+            GridBall { hex },
             species,
-            collider: Collider::ball(radius * INNER_RADIUS_COEFF),
-            rigid_body: RigidBody::KinematicPositionBased,
-        }
+            RigidBody::KinematicPositionBased,
+            Collider::ball(radius * INNER_RADIUS_COEFF),
+        )
     }
 }

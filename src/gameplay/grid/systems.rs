@@ -3,7 +3,7 @@ use bevy::prelude::{
     ResMut, Transform, Vec2, Vec3, With,
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier3d::prelude::{CollisionEvent, RapierContext};
+use bevy_rapier3d::prelude::{CollisionEvent, Velocity};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -11,6 +11,7 @@ use crate::{
     gameplay::{
         ball::{
             components::{GridBall, OutBall, ProjectileBall, Species},
+            constants::MIN_PROJECTILE_SNAP_VELOCITY,
             events::SnapProjectile,
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
@@ -107,13 +108,13 @@ pub fn cleanup_grid(
 pub fn check_projectile_out_of_grid(
     mut commands: Commands,
     mut projectile_query: Query<
-        (Entity, &Transform, &ProjectileBall, &Species),
+        (Entity, &Transform, &mut ProjectileBall, &Species),
         With<ProjectileBall>,
     >,
     mut grid: ResMut<Grid>,
     mut snap_projectile: EventWriter<SnapProjectile>,
 ) {
-    if let Ok((projectile_entity, projectile_transform, projectile_ball, species)) =
+    if let Ok((projectile_entity, projectile_transform, mut projectile_ball, species)) =
         projectile_query.get_single_mut()
     {
         if !projectile_ball.is_flying {
@@ -123,6 +124,7 @@ pub fn check_projectile_out_of_grid(
             grid.update_bounds();
         }
         if projectile_transform.translation.z < grid.bounds.mins.y + grid.layout.hex_size.y {
+            projectile_ball.is_ready_to_despawn = true;
             commands.entity(projectile_entity).despawn_recursive();
             snap_projectile.send(SnapProjectile {
                 out_of_bounds: true,
@@ -140,51 +142,49 @@ pub fn on_projectile_collisions_events(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
     mut snap_projectile: EventWriter<SnapProjectile>,
-    mut projectile_query: Query<(Entity, &Transform, &Species), With<ProjectileBall>>,
+    mut projectile_query: Query<
+        (Entity, &Transform, &Species, &Velocity, &mut ProjectileBall),
+        With<ProjectileBall>,
+    >,
     balls_query: Query<(Entity, &Transform), With<GridBall>>,
-    rapier_context: Res<RapierContext>,
 ) {
     for (entity_a, entity_b) in collision_events.iter().filter_map(|e| match e {
-        CollisionEvent::Started(a, b, _) => Some((a, b)),
-        CollisionEvent::Stopped(_, _, _) => None,
+        CollisionEvent::Started(_, _, _) => None,
+        CollisionEvent::Stopped(a, b, _) => Some((a, b)),
     }) {
-        if let Ok((ball_entity, ball_transform)) =
-            balls_query.get(*entity_a).or(balls_query.get(*entity_b))
-        {
+        if let Ok((_, _)) = balls_query.get(*entity_a).or(balls_query.get(*entity_b)) {
             let mut p1 = projectile_query.get_mut(*entity_a);
             if p1.is_err() {
                 p1 = projectile_query.get_mut(*entity_b);
             }
-            println!(
-                "ball_entity {} collision {} {}",
-                ball_entity.index(),
-                (*entity_a).index(),
-                (*entity_b).index()
-            );
 
-            if let Some(contact_pair) = rapier_context.contact_pair(*entity_a, *entity_b) {
-                if contact_pair.has_any_active_contacts() {
-                    println!("manifolds_len {:?}", contact_pair.manifolds_len());
+            if let Ok((
+                projectile_entity,
+                projectile_transform,
+                species,
+                velocity,
+                mut projectile_ball,
+            )) = p1
+            {
+                // take into account only collision between projectile and grid ball
+                println!("velocity {:?}", velocity);
+                if !projectile_ball.is_ready_to_despawn
+                    && (velocity.linvel.z >= 0.0
+                        || velocity.linvel.z.abs() <= MIN_PROJECTILE_SNAP_VELOCITY)
+                {
+                    projectile_ball.is_ready_to_despawn = true;
+                    // if ball turned back
+                    // or ball moves too slow
+                    commands.entity(projectile_entity).despawn_recursive();
+                    snap_projectile.send(SnapProjectile {
+                        out_of_bounds: false,
+                        pos: Vec2::new(
+                            projectile_transform.translation.x,
+                            projectile_transform.translation.z,
+                        ),
+                        species: *species,
+                    });
                 }
-            }
-
-            if let Ok((projectile_entity, projectile_transform, species)) = p1 {
-                println!(
-                    "bt {:?} pt {:?}",
-                    ball_transform.translation, projectile_transform.translation
-                );
-                // TODO set some flag to prevent despawn the same projectile
-                // projectile can collide with two balls, use only first event
-                commands.entity(projectile_entity).despawn_recursive();
-                println!("SnapProjectile event");
-                snap_projectile.send(SnapProjectile {
-                    out_of_bounds: false,
-                    pos: Vec2::new(
-                        projectile_transform.translation.x,
-                        projectile_transform.translation.z,
-                    ),
-                    species: *species,
-                });
             }
         }
     }
@@ -222,37 +222,35 @@ pub fn on_snap_projectile(
         hex = clamp_inside_world_bounds(&hex, &grid);
         info!("was_clamped hex({}, {})", hex.x, hex.y);
 
-        if !snap_projectile.out_of_bounds {
-            let mut empty_neighbors = grid
-                .empty_neighbors(hex)
-                .iter()
-                .map(|hex| clamp_inside_world_bounds(hex, &grid))
-                .filter_map(|e_hex| {
-                    println!("e_hex({}, {})", e_hex.x, e_hex.y);
-                    // get empty neighbors (free grid places)
-                    // filter by min and max column (do not overflow left and right column)
-                    // filter only that have neighbours in grid
-                    match grid.neighbors(e_hex).len() > 0 {
-                        true => Some(e_hex),
-                        false => None,
-                    }
-                })
-                .collect::<Vec<Hex>>();
-            info!("empty_neighbors {:?}", empty_neighbors);
-            let mut grid_hex_option = grid.get(hex);
-            while grid_hex_option.is_some() && empty_neighbors.len() > 0 {
-                // this postition is already occupied in grid
-                info!("found the same position in grid  hex({}, {})", hex.x, hex.y);
-                if let Some(pop_hex) = empty_neighbors.pop() {
-                    hex = pop_hex;
-                    grid_hex_option = grid.get(hex);
+        let mut empty_neighbors = grid
+            .empty_neighbors(hex)
+            .iter()
+            .map(|hex| clamp_inside_world_bounds(hex, &grid))
+            .filter_map(|e_hex| {
+                println!("e_hex({}, {})", e_hex.x, e_hex.y);
+                // get empty neighbors (free grid places)
+                // filter by min and max column (do not overflow left and right column)
+                // filter only that have neighbours in grid
+                match grid.neighbors(e_hex).len() > 0 {
+                    true => Some(e_hex),
+                    false => None,
                 }
+            })
+            .collect::<Vec<Hex>>();
+        info!("empty_neighbors {:?}", empty_neighbors);
+        let mut grid_hex_option = grid.get(hex);
+        while grid_hex_option.is_some() && empty_neighbors.len() > 0 {
+            // this postition is already occupied in grid
+            info!("found the same position in grid  hex({}, {})", hex.x, hex.y);
+            if let Some(pop_hex) = empty_neighbors.pop() {
+                hex = pop_hex;
+                grid_hex_option = grid.get(hex);
             }
-            if grid_hex_option.is_some() {
-                error!("Can not snap projectile to grid, all possible places occupied!");
-                begin_turn.send(BeginTurn);
-                return;
-            }
+        }
+        if grid_hex_option.is_some() {
+            error!("Can not snap projectile to grid, all possible places occupied!");
+            begin_turn.send(BeginTurn);
+            return;
         }
 
         let (x, z) = grid.layout.hex_to_world_pos(hex).into();
@@ -343,8 +341,6 @@ pub fn on_snap_projectile(
                     grid.remove(&c_hex);
                     score_add += 1;
                 });
-
-            // grid.clear();
 
             if score_add > 0 {
                 pkv_play_score_audio(&mut commands, &audio_assets, &pkv);

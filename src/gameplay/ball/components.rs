@@ -6,6 +6,7 @@ use hexx::Hex;
 #[derive(Component)]
 pub struct ProjectileBall {
     pub is_flying: bool,
+    pub is_ready_to_despawn: bool,
 }
 
 #[derive(Component)]

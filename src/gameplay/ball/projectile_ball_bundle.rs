@@ -1,4 +1,4 @@
-use bevy::prelude::{Bundle, PbrBundle, Res, Transform, Vec3};
+use bevy::prelude::{PbrBundle, Res, Transform, Vec3};
 use bevy_rapier3d::prelude::{
     ActiveEvents, Ccd, Collider, LockedAxes, Restitution, RigidBody, Sleeping, Velocity,
 };
@@ -10,20 +10,7 @@ use super::{
     constants::INNER_RADIUS_COEFF,
 };
 
-#[derive(Bundle)]
-pub struct ProjectileBallBundle {
-    pub pbr: PbrBundle,
-    pub ball: ProjectileBall,
-    pub species: Species,
-    pub collider: Collider,
-    pub rigid_body: RigidBody,
-    pub locked_axes: LockedAxes,
-    pub restitution: Restitution,
-    pub velocity: Velocity,
-    pub collision_events: ActiveEvents,
-    pub ccd: Ccd,
-    pub sleeping: Sleeping,
-}
+pub struct ProjectileBallBundle;
 
 impl ProjectileBallBundle {
     pub fn new(
@@ -32,24 +19,39 @@ impl ProjectileBallBundle {
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
-    ) -> Self {
-        Self {
-            pbr: PbrBundle {
+    ) -> (
+        PbrBundle,
+        ProjectileBall,
+        Species,
+        Collider,
+        RigidBody,
+        LockedAxes,
+        Restitution,
+        Velocity,
+        ActiveEvents,
+        Ccd,
+        Sleeping,
+    ) {
+        (
+            PbrBundle {
                 mesh: gameplay_meshes.grid_ball.clone(),
                 material: gameplay_materials.from_species(species),
                 transform: Transform::from_translation(pos),
                 ..Default::default()
             },
-            ball: ProjectileBall { is_flying: false },
+            ProjectileBall {
+                is_flying: false,
+                is_ready_to_despawn: false,
+            },
             species,
-            collider: Collider::ball(radius * INNER_RADIUS_COEFF),
-            rigid_body: RigidBody::Dynamic,
-            locked_axes: LockedAxes::TRANSLATION_LOCKED_Z,
-            restitution: Restitution::coefficient(1.0),
-            velocity: Velocity::default(),
-            collision_events: ActiveEvents::COLLISION_EVENTS,
-            ccd: Ccd::enabled(),
-            sleeping: Sleeping::disabled(),
-        }
+            Collider::ball(radius * INNER_RADIUS_COEFF),
+            RigidBody::Dynamic,
+            LockedAxes::TRANSLATION_LOCKED_Y,
+            Restitution::coefficient(1.0),
+            Velocity::default(),
+            ActiveEvents::COLLISION_EVENTS,
+            Ccd::enabled(),
+            Sleeping::disabled(),
+        )
     }
 }
