@@ -12,6 +12,8 @@ pub struct Bound {
     pub y: f32,
     pub axi_q: i32,
     pub axi_r: i32,
+    pub init_odd_off_q: i32,
+    pub init_even_off_q: i32,
     pub off_q: i32,
     pub off_r: i32,
 }
@@ -23,15 +25,13 @@ pub struct Bounds {
     pub cols: i32,
     pub rows: i32,
     pub dirty: bool,
-    pub init_left: f32,
-    pub init_right: f32,
 }
 
 impl Display for Bounds {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(
             f,
-            "Bounds {}<x>{} {}<y>{} q={} r={} axi({}<q>{}, {}<r>{}) off({}<q>{}, {}<r>{})",
+            "Bounds {}<x>{} {}<y>{} q={} r={} axi({}<q>{}, {}<r>{}) off({}<q>{}, {}<r>{}) odd({}<>{}) even({}<>{})",
             self.mins.x,
             self.maxs.x,
             self.mins.y,
@@ -46,6 +46,10 @@ impl Display for Bounds {
             self.maxs.off_q,
             self.mins.off_r,
             self.maxs.off_r,
+            self.mins.init_odd_off_q,
+            self.maxs.init_odd_off_q,
+            self.mins.init_even_off_q,
+            self.maxs.init_even_off_q,
         )
     }
 }
@@ -178,6 +182,8 @@ impl Grid {
                 y: if min_y == f32::MAX { 0.0 } else { min_y - sy },
                 axi_q: min_axi_q,
                 axi_r: min_axi_r,
+                init_odd_off_q: 0,
+                init_even_off_q: 0,
                 off_q: min_off_q,
                 off_r: min_off_r,
             },
@@ -186,20 +192,22 @@ impl Grid {
                 y: if max_y == f32::MIN { 0.0 } else { max_y + sy },
                 axi_q: max_axi_q,
                 axi_r: max_axi_r,
+                init_odd_off_q: Hex {
+                    x: self.init_cols - 1,
+                    y: 0,
+                }
+                .to_offset_coordinates(self.offset_mode)[0],
+                init_even_off_q: Hex {
+                    x: self.init_cols - 1,
+                    y: 1,
+                }
+                .to_offset_coordinates(self.offset_mode)[0],
                 off_q: max_off_q,
                 off_r: max_off_r,
             },
             cols: self.columns(),
             rows: self.rows(),
             dirty: false,
-            init_left: self.layout.hex_to_world_pos(Hex { x: 0, y: 0 }).x,
-            init_right: self
-                .layout
-                .hex_to_world_pos(Hex {
-                    x: self.init_cols,
-                    y: 0,
-                })
-                .x,
         }
     }
 

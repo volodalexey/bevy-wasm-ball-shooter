@@ -1,5 +1,5 @@
 use bevy::prelude::{
-    info, warn, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Query, Res,
+    error, info, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Query, Res,
     ResMut, Transform, Vec2, Vec3, With,
 };
 use bevy_pkv::PkvStore;
@@ -14,11 +14,10 @@ use crate::{
             events::SnapProjectile,
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
-            utils::clamp_inside_world_bounds,
         },
         constants::{MAX_COLS, MIN_CLUSTER_SIZE, MIN_COLS},
         events::BeginTurn,
-        grid::utils::{find_cluster, find_floating_clusters},
+        grid::utils::{clamp_inside_world_bounds, find_cluster, find_floating_clusters},
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
         panels::resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
@@ -211,36 +210,30 @@ pub fn on_snap_projectile(
             grid.update_bounds();
         }
 
-        let mut hex = grid.layout.world_pos_to_hex(snap_projectile.pos);
+        println!("{}", grid.bounds);
+        let projectile_position = snap_projectile.pos;
+        // let projectile_position = Vec2::new(-1.0528764, 12.633377);
+        let mut hex = grid.layout.world_pos_to_hex(projectile_position);
         info!(
             "snap hex({}, {}) pos({}, {})",
-            hex.x, hex.y, snap_projectile.pos.x, snap_projectile.pos.y
+            hex.x, hex.y, projectile_position.x, projectile_position.y
         );
+        // check to make sure the projectile is inside the grid bounds.
+        hex = clamp_inside_world_bounds(&hex, &grid);
+        info!("was_clamped hex({}, {})", hex.x, hex.y);
 
         if !snap_projectile.out_of_bounds {
-            // check to make sure the projectile is inside the grid bounds.
-            let clamped = clamp_inside_world_bounds(
-                snap_projectile.pos,
-                grid.bounds.init_left,
-                grid.bounds.init_right,
-                grid.bounds.mins.y,
-            );
-            hex = grid.layout.world_pos_to_hex(clamped);
-            info!("was_clamped hex({}, {}) {}", hex.x, hex.y, grid.bounds);
-
             let mut empty_neighbors = grid
                 .empty_neighbors(hex)
                 .iter()
+                .map(|hex| clamp_inside_world_bounds(hex, &grid))
                 .filter_map(|e_hex| {
                     println!("e_hex({}, {})", e_hex.x, e_hex.y);
                     // get empty neighbors (free grid places)
                     // filter by min and max column (do not overflow left and right column)
                     // filter only that have neighbours in grid
-                    match e_hex.x >= 0
-                        && e_hex.x <= grid.init_cols
-                        && grid.neighbors(*e_hex).len() > 0
-                    {
-                        true => Some(*e_hex),
+                    match grid.neighbors(e_hex).len() > 0 {
+                        true => Some(e_hex),
                         false => None,
                     }
                 })
@@ -256,7 +249,8 @@ pub fn on_snap_projectile(
                 }
             }
             if grid_hex_option.is_some() {
-                warn!("Can not snap projectile to grid, all possible places occupied!");
+                error!("Can not snap projectile to grid, all possible places occupied!");
+                begin_turn.send(BeginTurn);
                 return;
             }
         }

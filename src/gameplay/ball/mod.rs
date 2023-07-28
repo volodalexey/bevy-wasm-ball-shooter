@@ -22,7 +22,6 @@ pub mod projectile_ball_bundle;
 pub mod projectile_line_bundle;
 mod resources;
 mod systems;
-pub mod utils;
 pub struct ProjectilePlugin;
 
 impl Plugin for ProjectilePlugin {

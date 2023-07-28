@@ -76,3 +76,28 @@ pub fn adjust_grid_layout(grid: &mut Grid, move_counter: &MoveCounter) {
     let move_layout_y = move_counter.0 as f32 * row_height;
     grid.layout.origin.y = init_layout_y + move_layout_y;
 }
+
+pub fn clamp_inside_world_bounds(hex: &Hex, grid: &Grid) -> Hex {
+    let hex = *hex;
+    let offset = hex.to_offset_coordinates(grid.offset_mode);
+    let is_even = (offset[1] + 1) & 1 == 0;
+
+    let off_q: i32 = match is_even {
+        true => offset[0].clamp(
+            grid.bounds.mins.init_even_off_q,
+            grid.bounds.maxs.init_even_off_q,
+        ),
+        false => offset[0].clamp(
+            grid.bounds.mins.init_odd_off_q,
+            grid.bounds.maxs.init_odd_off_q,
+        ),
+    };
+    // println!("is_even {} offset[{}, {}]", is_even, offset[0], offset[1]);
+
+    let mut off_r = offset[1];
+    if off_r < 0 {
+        off_r = 0;
+    }
+
+    Hex::from_offset_coordinates([off_q, off_r], grid.offset_mode)
+}

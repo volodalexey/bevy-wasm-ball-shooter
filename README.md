@@ -25,8 +25,9 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-move down depends on level
 animation for move down
+animation for snap position
+menu button in game
 fix restitution angle and tune contact
 show next ball to shoot
 draw full line to first contact
