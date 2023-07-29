@@ -6,9 +6,7 @@ use bevy::{
     time::Time,
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier3d::prelude::{
-    CollisionEvent, ImpulseJoint, PrismaticJointBuilder, RigidBody, Velocity,
-};
+use bevy_rapier3d::prelude::{CollisionEvent, RigidBody, Velocity};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -16,7 +14,7 @@ use crate::{
     gameplay::{
         ball::{
             components::{GridBall, OutBall, ProjectileBall, Species},
-            constants::{INNER_RADIUS_COEFF, MIN_PROJECTILE_SNAP_VELOCITY},
+            constants::MIN_PROJECTILE_SNAP_VELOCITY,
             events::SnapProjectile,
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
@@ -35,7 +33,7 @@ use crate::{
 use super::{
     events::UpdatePositions,
     resources::{CollisionSnapCooldown, Grid},
-    utils::adjust_grid_layout,
+    utils::{adjust_grid_layout, build_joints},
 };
 
 pub fn generate_grid(
@@ -52,7 +50,6 @@ pub fn generate_grid(
     for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
         let (x, z) = grid.layout.hex_to_world_pos(hex).into();
         let is_first = hex.y == 0;
-        let is_even = (hex.y as u32 + 1) & 1 == 0;
 
         let grid_ball_bundle = GridBallBundle::new(
             Vec3::new(x, 0.0, z),
@@ -74,39 +71,10 @@ pub fn generate_grid(
             continue;
         }
 
-        let hex_pos3 = Vec3::new(x, 0.0, z);
-
-        let neighbors = vec![
-            hex.neighbor(hexx::Direction::Top),
-            hex.neighbor(hexx::Direction::TopRight),
-            match is_even {
-                true => hex.neighbor(hexx::Direction::BottomRight),
-                false => hex.neighbor(hexx::Direction::TopLeft),
-            },
-        ];
-        let joints = neighbors
-            .iter()
-            .filter_map(|neighbor_hex| {
-                if let Some(grid_neighbor) = grid.get(*neighbor_hex) {
-                    return Some((grid_neighbor, grid.layout.hex_to_world_pos(*neighbor_hex)));
-                }
-                None
-            })
-            .map(|(neighbor_entity, neighbor_pos)| {
-                let neighbor_hex_pos3 = Vec3::new(neighbor_pos.x, 0.0, neighbor_pos.y);
-                let axis = hex_pos3 - neighbor_hex_pos3;
-                println!("{:?}", axis);
-                let prism = PrismaticJointBuilder::new(axis).limits([
-                    grid.layout.hex_size.y * 2.0 * INNER_RADIUS_COEFF,
-                    3.0 * grid.layout.hex_size.y,
-                ]);
-                ImpulseJoint::new(*neighbor_entity, prism)
-            });
-
         let entity = commands
             .spawn(grid_ball_bundle)
             .with_children(|parent| {
-                for joint in joints {
+                for joint in build_joints(hex, &grid) {
                     parent.spawn(joint);
                 }
             })
@@ -319,8 +287,13 @@ pub fn on_snap_projectile(
             return;
         }
 
+        grid.print_sorted_axial();
+        let no_neighbors = grid.neighbors(hex).len() == 0;
         let (x, z) = grid.layout.hex_to_world_pos(hex).into();
-        info!("final snap hex({}, {}) pos({}, {})", hex.x, hex.y, x, z);
+        info!(
+            "final snap hex({}, {}) pos({}, {}) no_neighbors({})",
+            hex.x, hex.y, x, z, no_neighbors
+        );
         let ball = commands
             .spawn(GridBallBundle::new(
                 Vec3::new(x, 0.0, z),
@@ -329,17 +302,23 @@ pub fn on_snap_projectile(
                 &gameplay_meshes,
                 &gameplay_materials,
                 hex,
-                RigidBody::Dynamic,
+                match hex.y == 0 {
+                    true => RigidBody::KinematicPositionBased,
+                    false => RigidBody::Dynamic,
+                },
             ))
+            .with_children(|parent| {
+                for joint in build_joints(hex, &grid) {
+                    parent.spawn(joint);
+                }
+            })
             .id();
 
         grid.set(hex, ball); // add snapped projectile ball as grid ball
-        grid.print_sorted_axial();
 
         let mut score_add = 0;
 
-        let neighbors = grid.neighbors(hex);
-        if neighbors.len() == 0 {
+        if no_neighbors {
             // projectile ball snapped with no neghbours
             // do not calc floating clusters
         } else {
