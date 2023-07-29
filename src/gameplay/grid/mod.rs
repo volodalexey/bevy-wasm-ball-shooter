@@ -2,16 +2,17 @@ use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, U
 
 use self::{
     events::UpdatePositions,
-    resources::Grid,
+    resources::{CollisionSnapCooldown, Grid},
     systems::{
         check_projectile_out_of_grid, cleanup_grid, generate_grid, on_projectile_collisions_events,
-        on_snap_projectile, update_hex_coord_transforms,
+        on_snap_projectile, tick_collision_snap_cooldown_timer, update_hex_coord_transforms,
     },
 };
 
 use super::AppState;
 
 pub mod components;
+pub mod constants;
 pub mod events;
 pub mod resources;
 pub mod systems;
@@ -22,6 +23,7 @@ pub struct GridPlugin;
 impl Plugin for GridPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Grid>()
+            .insert_resource(CollisionSnapCooldown::default())
             .add_event::<UpdatePositions>()
             .add_systems(OnEnter(AppState::Gameplay), generate_grid)
             .add_systems(
@@ -31,6 +33,7 @@ impl Plugin for GridPlugin {
                     check_projectile_out_of_grid,
                     on_projectile_collisions_events,
                     on_snap_projectile,
+                    tick_collision_snap_cooldown_timer,
                 )
                     .run_if(in_state(AppState::Gameplay)),
             )

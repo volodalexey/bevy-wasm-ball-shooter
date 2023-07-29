@@ -1,5 +1,5 @@
 use bevy::prelude::{shape, Assets, Mesh, PbrBundle, Res, ResMut, Transform, Vec3};
-use bevy_rapier3d::prelude::{Collider, RigidBody};
+use bevy_rapier3d::prelude::{CoefficientCombineRule, Collider, Friction, Restitution, RigidBody};
 
 use crate::gameplay::materials::resources::GameplayMaterials;
 
@@ -17,7 +17,14 @@ impl WallBundle {
         meshes: &mut ResMut<Assets<Mesh>>,
         gameplay_materials: &Res<GameplayMaterials>,
         length: f32,
-    ) -> (PbrBundle, WallType, RigidBody, Collider) {
+    ) -> (
+        PbrBundle,
+        WallType,
+        RigidBody,
+        Collider,
+        Restitution,
+        Friction,
+    ) {
         (
             PbrBundle {
                 mesh: meshes.add(Mesh::from(shape::Box::new(WALL_X_WIDTH, WALL_Y, length))),
@@ -28,6 +35,14 @@ impl WallBundle {
             wall_type,
             RigidBody::Fixed,
             Collider::cuboid(WALL_X_WIDTH / 2.0, WALL_Y / 2.0, length / 2.0),
+            Restitution {
+                coefficient: 1.0,
+                combine_rule: CoefficientCombineRule::Max,
+            },
+            Friction {
+                coefficient: 0.0,
+                combine_rule: CoefficientCombineRule::Min,
+            },
         )
     }
 }

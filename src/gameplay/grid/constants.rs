@@ -1,0 +1,1 @@
+pub const COLLISION_SNAP_COOLDOWN_TIME: f32 = 5.0;

@@ -1,6 +1,7 @@
 use bevy::prelude::{PbrBundle, Res, Transform, Vec3};
-use bevy_rapier3d::prelude::{
-    ActiveEvents, Ccd, Collider, LockedAxes, Restitution, RigidBody, Sleeping, Velocity,
+use bevy_rapier3d::{
+    prelude::{ActiveEvents, Ccd, Collider, LockedAxes, RigidBody, Sleeping, Velocity},
+    render::ColliderDebugColor,
 };
 
 use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources::GameplayMeshes};
@@ -26,11 +27,11 @@ impl ProjectileBallBundle {
         Collider,
         RigidBody,
         LockedAxes,
-        Restitution,
         Velocity,
         ActiveEvents,
         Ccd,
         Sleeping,
+        ColliderDebugColor,
     ) {
         (
             PbrBundle {
@@ -47,11 +48,11 @@ impl ProjectileBallBundle {
             Collider::ball(radius * INNER_RADIUS_COEFF),
             RigidBody::Dynamic,
             LockedAxes::TRANSLATION_LOCKED_Y,
-            Restitution::coefficient(1.0),
             Velocity::default(),
             ActiveEvents::COLLISION_EVENTS,
             Ccd::enabled(),
             Sleeping::disabled(),
+            ColliderDebugColor(species.into()),
         )
     }
 }

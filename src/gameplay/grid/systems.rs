@@ -1,9 +1,14 @@
-use bevy::prelude::{
-    error, info, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Query, Res,
-    ResMut, Transform, Vec2, Vec3, With,
+use bevy::{
+    prelude::{
+        error, info, BuildChildren, Commands, DespawnRecursiveExt, Entity, EventReader,
+        EventWriter, Query, Res, ResMut, Transform, Vec2, Vec3, With,
+    },
+    time::Time,
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier3d::prelude::{CollisionEvent, Velocity};
+use bevy_rapier3d::prelude::{
+    CollisionEvent, ImpulseJoint, PrismaticJointBuilder, RigidBody, Velocity,
+};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -11,7 +16,7 @@ use crate::{
     gameplay::{
         ball::{
             components::{GridBall, OutBall, ProjectileBall, Species},
-            constants::MIN_PROJECTILE_SNAP_VELOCITY,
+            constants::{INNER_RADIUS_COEFF, MIN_PROJECTILE_SNAP_VELOCITY},
             events::SnapProjectile,
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
@@ -27,7 +32,11 @@ use crate::{
     resources::LevelCounter,
 };
 
-use super::{events::UpdatePositions, resources::Grid, utils::adjust_grid_layout};
+use super::{
+    events::UpdatePositions,
+    resources::{CollisionSnapCooldown, Grid},
+    utils::adjust_grid_layout,
+};
 
 pub fn generate_grid(
     mut commands: Commands,
@@ -42,18 +51,66 @@ pub fn generate_grid(
     grid.init_rows = factor;
     for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
         let (x, z) = grid.layout.hex_to_world_pos(hex).into();
+        let is_first = hex.y == 0;
+        let is_even = (hex.y as u32 + 1) & 1 == 0;
+
+        let grid_ball_bundle = GridBallBundle::new(
+            Vec3::new(x, 0.0, z),
+            grid.layout.hex_size.x,
+            Species::random_species(),
+            &gameplay_meshes,
+            &gameplay_materials,
+            hex,
+            match is_first {
+                true => RigidBody::KinematicPositionBased,
+                false => RigidBody::Dynamic,
+            },
+        );
+
+        if is_first {
+            let entity = commands.spawn(grid_ball_bundle).id();
+
+            grid.set(hex, entity);
+            continue;
+        }
+
+        let hex_pos3 = Vec3::new(x, 0.0, z);
+
+        let neighbors = vec![
+            hex.neighbor(hexx::Direction::Top),
+            hex.neighbor(hexx::Direction::TopRight),
+            match is_even {
+                true => hex.neighbor(hexx::Direction::BottomRight),
+                false => hex.neighbor(hexx::Direction::TopLeft),
+            },
+        ];
+        let joints = neighbors
+            .iter()
+            .filter_map(|neighbor_hex| {
+                if let Some(grid_neighbor) = grid.get(*neighbor_hex) {
+                    return Some((grid_neighbor, grid.layout.hex_to_world_pos(*neighbor_hex)));
+                }
+                None
+            })
+            .map(|(neighbor_entity, neighbor_pos)| {
+                let neighbor_hex_pos3 = Vec3::new(neighbor_pos.x, 0.0, neighbor_pos.y);
+                let axis = hex_pos3 - neighbor_hex_pos3;
+                println!("{:?}", axis);
+                let prism = PrismaticJointBuilder::new(axis).limits([
+                    grid.layout.hex_size.y * 2.0 * INNER_RADIUS_COEFF,
+                    3.0 * grid.layout.hex_size.y,
+                ]);
+                ImpulseJoint::new(*neighbor_entity, prism)
+            });
 
         let entity = commands
-            .spawn(GridBallBundle::new(
-                Vec3::new(x, 0.0, z),
-                grid.layout.hex_size.x,
-                Species::random_species(),
-                &gameplay_meshes,
-                &gameplay_materials,
-                hex,
-            ))
+            .spawn(grid_ball_bundle)
+            .with_children(|parent| {
+                for joint in joints {
+                    parent.spawn(joint);
+                }
+            })
             .id();
-
         grid.set(hex, entity);
     }
 
@@ -127,7 +184,6 @@ pub fn check_projectile_out_of_grid(
             projectile_ball.is_ready_to_despawn = true;
             commands.entity(projectile_entity).despawn_recursive();
             snap_projectile.send(SnapProjectile {
-                out_of_bounds: true,
                 pos: Vec2::new(
                     projectile_transform.translation.x,
                     projectile_transform.translation.z,
@@ -147,10 +203,11 @@ pub fn on_projectile_collisions_events(
         With<ProjectileBall>,
     >,
     balls_query: Query<(Entity, &Transform), With<GridBall>>,
+    mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
 ) {
-    for (entity_a, entity_b) in collision_events.iter().filter_map(|e| match e {
-        CollisionEvent::Started(_, _, _) => None,
-        CollisionEvent::Stopped(a, b, _) => Some((a, b)),
+    for (entity_a, entity_b, started) in collision_events.iter().map(|e| match e {
+        CollisionEvent::Started(a, b, _) => (a, b, true),
+        CollisionEvent::Stopped(a, b, _) => (a, b, false),
     }) {
         if let Ok((_, _)) = balls_query.get(*entity_a).or(balls_query.get(*entity_b)) {
             let mut p1 = projectile_query.get_mut(*entity_a);
@@ -167,17 +224,26 @@ pub fn on_projectile_collisions_events(
             )) = p1
             {
                 // take into account only collision between projectile and grid ball
-                println!("velocity {:?}", velocity);
+                println!("velocity {:?} len {}", velocity, velocity.linvel.length());
                 if !projectile_ball.is_ready_to_despawn
-                    && (velocity.linvel.z >= 0.0
-                        || velocity.linvel.z.abs() <= MIN_PROJECTILE_SNAP_VELOCITY)
+                    && match started {
+                        true => {
+                            collision_snap_cooldown.timer.unpause();
+                            collision_snap_cooldown.timer.reset();
+                            false
+                        }
+                        false => {
+                            collision_snap_cooldown.timer.pause();
+                            velocity.linvel.z >= 0.0
+                                || velocity.linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY
+                        }
+                    }
                 {
                     projectile_ball.is_ready_to_despawn = true;
                     // if ball turned back
                     // or ball moves too slow
                     commands.entity(projectile_entity).despawn_recursive();
                     snap_projectile.send(SnapProjectile {
-                        out_of_bounds: false,
                         pos: Vec2::new(
                             projectile_transform.translation.x,
                             projectile_transform.translation.z,
@@ -263,6 +329,7 @@ pub fn on_snap_projectile(
                 &gameplay_meshes,
                 &gameplay_materials,
                 hex,
+                RigidBody::Dynamic,
             ))
             .id();
 
@@ -361,4 +428,36 @@ pub fn on_snap_projectile(
         begin_turn.send(BeginTurn);
     }
     snap_projectile_events.clear();
+}
+
+pub fn tick_collision_snap_cooldown_timer(
+    mut commands: Commands,
+    mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
+    time: Res<Time>,
+    mut projectile_query: Query<
+        (Entity, &Transform, &mut ProjectileBall, &Species),
+        With<ProjectileBall>,
+    >,
+    mut snap_projectile: EventWriter<SnapProjectile>,
+) {
+    if !collision_snap_cooldown.timer.paused() {
+        collision_snap_cooldown.timer.tick(time.delta());
+        if collision_snap_cooldown.timer.finished() {
+            // snap projectile anyway after some time
+            collision_snap_cooldown.timer.pause();
+            if let Ok((projectile_entity, projectile_transform, mut projectile_ball, species)) =
+                projectile_query.get_single_mut()
+            {
+                projectile_ball.is_ready_to_despawn = true;
+                commands.entity(projectile_entity).despawn_recursive();
+                snap_projectile.send(SnapProjectile {
+                    pos: Vec2::new(
+                        projectile_transform.translation.x,
+                        projectile_transform.translation.z,
+                    ),
+                    species: *species,
+                });
+            }
+        }
+    }
 }

@@ -3,8 +3,13 @@ use std::{
     fmt::{Display, Formatter, Result},
 };
 
-use bevy::prelude::{info, Entity, Resource};
+use bevy::{
+    prelude::{info, Entity, Resource},
+    time::{Timer, TimerMode},
+};
 use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
+
+use super::constants::COLLISION_SNAP_COOLDOWN_TIME;
 
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Bound {
@@ -299,5 +304,18 @@ impl Grid {
             info!("{}", result.join(" "));
         }
         info!("----Grid sorted");
+    }
+}
+
+#[derive(Resource)]
+pub struct CollisionSnapCooldown {
+    pub timer: Timer,
+}
+
+impl Default for CollisionSnapCooldown {
+    fn default() -> Self {
+        let mut timer = Timer::from_seconds(COLLISION_SNAP_COOLDOWN_TIME, TimerMode::Repeating);
+        timer.pause();
+        Self { timer }
     }
 }
