@@ -14,14 +14,15 @@ use crate::{
     gameplay::{
         ball::{
             components::{GridBall, OutBall, ProjectileBall, Species},
-            constants::MIN_PROJECTILE_SNAP_VELOCITY,
             events::SnapProjectile,
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
         },
         constants::{MAX_COLS, MIN_CLUSTER_SIZE, MIN_COLS},
         events::BeginTurn,
-        grid::utils::{clamp_inside_world_bounds, find_cluster, find_floating_clusters},
+        grid::utils::{
+            clamp_inside_world_bounds, find_cluster, find_floating_clusters, is_move_slow,
+        },
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
         panels::resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
@@ -151,6 +152,10 @@ pub fn check_projectile_out_of_grid(
         if projectile_transform.translation.z < grid.bounds.mins.y + grid.layout.hex_size.y {
             projectile_ball.is_ready_to_despawn = true;
             commands.entity(projectile_entity).despawn_recursive();
+            info!(
+                "Projectile out of grid snap {} {}",
+                grid.bounds.mins.y, projectile_transform.translation.z
+            );
             snap_projectile.send(SnapProjectile {
                 pos: Vec2::new(
                     projectile_transform.translation.x,
@@ -192,18 +197,21 @@ pub fn on_projectile_collisions_events(
             )) = p1
             {
                 // take into account only collision between projectile and grid ball
-                println!("velocity {:?} len {}", velocity, velocity.linvel.length());
+                // println!("velocity {:?} len {}", velocity, velocity.linvel.length());
                 if !projectile_ball.is_ready_to_despawn
                     && match started {
                         true => {
-                            collision_snap_cooldown.timer.unpause();
-                            collision_snap_cooldown.timer.reset();
+                            collision_snap_cooldown.start();
                             false
                         }
                         false => {
-                            collision_snap_cooldown.timer.pause();
-                            velocity.linvel.z >= 0.0
-                                || velocity.linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY
+                            let is_slow = is_move_slow(velocity.linvel);
+                            if is_slow {
+                                collision_snap_cooldown.stop();
+                            } else {
+                                collision_snap_cooldown.start();
+                            }
+                            is_slow
                         }
                     }
                 {
@@ -211,6 +219,7 @@ pub fn on_projectile_collisions_events(
                     // if ball turned back
                     // or ball moves too slow
                     commands.entity(projectile_entity).despawn_recursive();
+                    info!("Projectile too slow so snap");
                     snap_projectile.send(SnapProjectile {
                         pos: Vec2::new(
                             projectile_transform.translation.x,
@@ -244,7 +253,7 @@ pub fn on_snap_projectile(
             grid.update_bounds();
         }
 
-        println!("{}", grid.bounds);
+        // println!("{}", grid.bounds);
         let projectile_position = snap_projectile.pos;
         // let projectile_position = Vec2::new(-1.0528764, 12.633377);
         let mut hex = grid.layout.world_pos_to_hex(projectile_position);
@@ -261,7 +270,7 @@ pub fn on_snap_projectile(
             .iter()
             .map(|hex| clamp_inside_world_bounds(hex, &grid))
             .filter_map(|e_hex| {
-                println!("e_hex({}, {})", e_hex.x, e_hex.y);
+                // println!("e_hex({}, {})", e_hex.x, e_hex.y);
                 // get empty neighbors (free grid places)
                 // filter by min and max column (do not overflow left and right column)
                 // filter only that have neighbours in grid
@@ -414,21 +423,29 @@ pub fn tick_collision_snap_cooldown_timer(
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
     time: Res<Time>,
     mut projectile_query: Query<
-        (Entity, &Transform, &mut ProjectileBall, &Species),
+        (Entity, &Transform, &mut ProjectileBall, &Species, &Velocity),
         With<ProjectileBall>,
     >,
     mut snap_projectile: EventWriter<SnapProjectile>,
 ) {
     if !collision_snap_cooldown.timer.paused() {
         collision_snap_cooldown.timer.tick(time.delta());
-        if collision_snap_cooldown.timer.finished() {
-            // snap projectile anyway after some time
-            collision_snap_cooldown.timer.pause();
-            if let Ok((projectile_entity, projectile_transform, mut projectile_ball, species)) =
-                projectile_query.get_single_mut()
-            {
+        if let Ok((
+            projectile_entity,
+            projectile_transform,
+            mut projectile_ball,
+            species,
+            velocity,
+        )) = projectile_query.get_single_mut()
+        {
+            if collision_snap_cooldown.is_ready_for_check(|| {
+                return is_move_slow(velocity.linvel);
+            }) {
+                // snap projectile anyway after some time
+                collision_snap_cooldown.restart();
                 projectile_ball.is_ready_to_despawn = true;
                 commands.entity(projectile_entity).despawn_recursive();
+                info!("Projectile timeout snap");
                 snap_projectile.send(SnapProjectile {
                     pos: Vec2::new(
                         projectile_transform.translation.x,

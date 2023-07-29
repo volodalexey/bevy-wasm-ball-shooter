@@ -1,5 +1,5 @@
 use bevy::prelude::{
-    EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, With,
+    warn, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, With,
 };
 use bevy_pkv::PkvStore;
 use hexx::{Direction, Hex};
@@ -46,6 +46,10 @@ pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextSta
     for (&hex, _) in grid.storage.iter() {
         let world_pos = grid.layout.hex_to_world_pos(hex);
         if world_pos.y >= z - 0.1 {
+            warn!(
+                "GameOver because hex({}, {}) y position is {}",
+                hex.x, hex.y, world_pos.y
+            );
             app_state_next_state.set(AppState::GameOver);
             break;
         }

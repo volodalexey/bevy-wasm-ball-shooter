@@ -5,7 +5,10 @@ use bevy::{
 use bevy_rapier3d::prelude::{ImpulseJoint, PrismaticJointBuilder};
 use hexx::Hex;
 
-use crate::gameplay::{ball::constants::INNER_RADIUS_COEFF, panels::resources::MoveCounter};
+use crate::gameplay::{
+    ball::constants::{INNER_RADIUS_COEFF, MIN_PROJECTILE_SNAP_VELOCITY},
+    panels::resources::MoveCounter,
+};
 
 use super::{resources::Grid, systems::VISIBLE_ROWS};
 
@@ -135,7 +138,7 @@ pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
         .map(|(neighbor_entity, neighbor_pos)| {
             let neighbor_hex_pos3 = Vec3::new(neighbor_pos.x, 0.0, neighbor_pos.y);
             let axis = hex_pos3 - neighbor_hex_pos3;
-            println!("{:?}", axis);
+            // println!("{:?}", axis);
             let prism = PrismaticJointBuilder::new(axis).limits([
                 2.0 * grid.layout.hex_size.y * INNER_RADIUS_COEFF,
                 2.0 * grid.layout.hex_size.y * INNER_RADIUS_COEFF,
@@ -143,4 +146,8 @@ pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
             ImpulseJoint::new(*neighbor_entity, prism)
         })
         .collect::<Vec<ImpulseJoint>>()
+}
+
+pub fn is_move_slow(linvel: Vec3) -> bool {
+    linvel.z >= 0.0 || linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY
 }

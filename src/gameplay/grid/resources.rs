@@ -307,15 +307,83 @@ impl Grid {
     }
 }
 
+pub struct CheckAt {
+    ms_time: u32,
+    checked: bool,
+}
+
+impl CheckAt {
+    pub fn new(ms_time: u32) -> Self {
+        Self {
+            ms_time,
+            checked: false,
+        }
+    }
+}
+
 #[derive(Resource)]
 pub struct CollisionSnapCooldown {
     pub timer: Timer,
+    pub check_at: Vec<CheckAt>,
 }
 
 impl Default for CollisionSnapCooldown {
     fn default() -> Self {
         let mut timer = Timer::from_seconds(COLLISION_SNAP_COOLDOWN_TIME, TimerMode::Repeating);
         timer.pause();
-        Self { timer }
+        Self {
+            timer,
+            check_at: vec![
+                CheckAt::new(1000),
+                CheckAt::new(2000),
+                CheckAt::new(3000),
+                CheckAt::new(4000),
+            ],
+        }
+    }
+}
+
+impl CollisionSnapCooldown {
+    pub fn start(&mut self) {
+        self.restart();
+        self.timer.unpause();
+    }
+
+    pub fn stop(&mut self) {
+        self.timer.pause();
+    }
+
+    pub fn restart(&mut self) {
+        self.timer.reset();
+        self.timer.pause();
+        self.check_at = vec![
+            CheckAt::new(1000),
+            CheckAt::new(2000),
+            CheckAt::new(3000),
+            CheckAt::new(4000),
+        ];
+    }
+
+    pub fn is_ready_for_check(&mut self, check_fn: impl Fn() -> bool) -> bool {
+        let elapsed_ms = self.timer.elapsed().as_millis() as u32;
+        self.timer.finished()
+            || (self
+                .check_at
+                .iter_mut()
+                .filter_map(|mut check_at| {
+                    if !check_at.checked && elapsed_ms > check_at.ms_time {
+                        (*check_at).checked = true;
+                        // println!(
+                        //     "is ready for check at={} el={}",
+                        //     check_at.ms_time, elapsed_ms
+                        // );
+                        return Some(true);
+                    }
+                    None
+                })
+                .collect::<Vec<bool>>()
+                .len()
+                > 0
+                && check_fn())
     }
 }
