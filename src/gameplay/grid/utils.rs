@@ -109,23 +109,17 @@ pub fn clamp_inside_world_bounds(hex: &Hex, grid: &Grid) -> Hex {
     Hex::from_offset_coordinates([off_q, off_r], grid.offset_mode)
 }
 
-/// each ball in grid can have 3 max joints
+/// each ball in grid can have 4 max joints
 /// assume pointy-top orientation
-/// 1 joint - to the top-left
-/// 2 joint - to the top-right
-/// 3 joint - depend on the row: odd row => to the right, even row => to the left
 pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
     let (x, z) = grid.layout.hex_to_world_pos(hex).into();
-    let is_even = (hex.y as u32 + 1) & 1 == 0;
     let hex_pos3 = Vec3::new(x, 0.0, z);
 
     let neighbors = vec![
+        hex.neighbor(hexx::Direction::TopLeft),
         hex.neighbor(hexx::Direction::Top),
         hex.neighbor(hexx::Direction::TopRight),
-        match is_even {
-            true => hex.neighbor(hexx::Direction::BottomRight),
-            false => hex.neighbor(hexx::Direction::TopLeft),
-        },
+        hex.neighbor(hexx::Direction::BottomRight),
     ];
     neighbors
         .iter()
