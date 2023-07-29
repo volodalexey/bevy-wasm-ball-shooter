@@ -2,39 +2,33 @@ use std::collections::HashMap;
 
 use bevy::{
     prelude::{
-        Assets, BuildChildren, Camera, Commands, DespawnRecursiveExt, Entity, EventReader,
-        GlobalTransform, Handle, Input, Mesh, MouseButton, Query, Res, ResMut, StandardMaterial,
-        Touches, Transform, Vec2, Vec3, Visibility, With, Without,
+        Assets, Commands, DespawnRecursiveExt, Entity, EventReader, Handle, Input, Mesh,
+        MouseButton, Query, Res, ResMut, StandardMaterial, Touches, Transform, Vec2, Vec3,
+        Visibility, With, Without,
     },
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier3d::prelude::Velocity;
+use bevy_rapier2d::prelude::Velocity;
 
 use crate::{
     game_audio::utils::pkv_play_shoot_audio,
     gameplay::{
-        constants::PLAYER_SPAWN_Z,
+        constants::{PROJECTILE_SHOOT, PROJECTILE_SPAWN},
         events::BeginTurn,
         grid::resources::Grid,
-        main_camera::components::MainCamera,
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
-        utils::{plane_intersection, ray_from_mouse_position},
     },
     loading::audio_assets::AudioAssets,
     ui::resources::PointerCooldown,
 };
 
 use super::{
-    components::{
-        GridBall, OutBall, ProjectileArrow, ProjectileBall, ProjectileLine, ProjectileLineParent,
-        Species,
-    },
+    aim_bundle::AimBundle,
+    components::{AimLine, AimTarget, GridBall, OutBall, ProjectileBall, Species},
     constants::{INNER_RADIUS_COEFF, PROJECTILE_SPEED},
-    projectile_arrow_bundle::ProjectileArrowBundle,
     projectile_ball_bundle::ProjectileBallBundle,
-    projectile_line_bundle::ProjectileLineBundle,
     resources::ProjectileBuffer,
 };
 
@@ -95,7 +89,7 @@ pub fn projectile_reload(
     };
 
     commands.spawn(ProjectileBallBundle::new(
-        Vec3::new(0.0, 0.0, PLAYER_SPAWN_Z),
+        Vec2::new(0.0, PROJECTILE_SPAWN),
         grid.layout.hex_size.x,
         species,
         &gameplay_meshes,
@@ -108,43 +102,19 @@ pub fn projectile_reload(
 pub fn shoot_projectile(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    camera_query: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut projectile_ball_query: Query<
         (&Transform, &mut Velocity, &mut ProjectileBall),
-        (
-            With<ProjectileBall>,
-            Without<ProjectileArrow>,
-            Without<ProjectileLine>,
-        ),
+        (With<ProjectileBall>, Without<AimTarget>, Without<AimLine>),
     >,
     mouse_button_input: Res<Input<MouseButton>>,
     audio_assets: Res<AudioAssets>,
-    mut projectile_arrow_query: Query<
+    mut aim_target_query: Query<
         (&mut Transform, &mut Visibility),
-        (
-            With<ProjectileArrow>,
-            Without<ProjectileBall>,
-            Without<ProjectileLineParent>,
-            Without<ProjectileLine>,
-        ),
+        (With<AimTarget>, Without<ProjectileBall>, Without<AimLine>),
     >,
-    mut projectile_line_parent_query: Query<
+    mut aim_line_query: Query<
         (&mut Transform, &mut Visibility),
-        (
-            With<ProjectileLineParent>,
-            Without<ProjectileBall>,
-            Without<ProjectileArrow>,
-            Without<ProjectileLine>,
-        ),
-    >,
-    mut projectile_line_query: Query<
-        &mut Transform,
-        (
-            With<ProjectileLine>,
-            Without<ProjectileBall>,
-            Without<ProjectileArrow>,
-            Without<ProjectileLineParent>,
-        ),
+        (With<AimLine>, Without<ProjectileBall>, Without<AimTarget>),
     >,
     touches: Res<Touches>,
     pointer_cooldown: Res<PointerCooldown>,
@@ -170,120 +140,96 @@ pub fn shoot_projectile(
         let touch_position = touch.position();
         pointer_position = Vec2::new(touch_position.x, window.height() - touch_position.y);
     }
-    if let Ok((mut arrow_transform, mut arrow_visibility)) = projectile_arrow_query.get_single_mut()
-    {
-        if let Ok((mut line_parent_transform, mut line_visibility)) =
-            projectile_line_parent_query.get_single_mut()
-        {
-            if let Ok(mut line_transform) = projectile_line_query.get_single_mut() {
-                if let Ok((ball_transform, mut vel, mut projectile_ball)) =
-                    projectile_ball_query.get_single_mut()
-                {
-                    if pointer_position.length() > Vec2::ZERO.length() && !projectile_ball.is_flying
-                    {
-                        *arrow_visibility = Visibility::Visible;
-                        *line_visibility = Visibility::Visible;
+    if let Ok((mut target_transform, mut target_visibility)) = aim_target_query.get_single_mut() {
+        if let Ok((mut line_transform, mut line_visibility)) = aim_line_query.get_single_mut() {
+            if let Ok((ball_transform, mut vel, mut projectile_ball)) =
+                projectile_ball_query.get_single_mut()
+            {
+                if pointer_position.length() > Vec2::ZERO.length() && !projectile_ball.is_flying {
+                    *target_visibility = Visibility::Visible;
+                    *line_visibility = Visibility::Visible;
 
-                        let (camera, camera_transform) = camera_query.single();
-
-                        let (ray_pos, ray_dir) = ray_from_mouse_position(
-                            window.width(),
-                            window.height(),
-                            pointer_position,
-                            camera,
-                            camera_transform,
-                        );
-                        let (plane_pos, plane_normal) =
-                            (Vec3::new(0., ball_transform.translation.y, 0.), Vec3::Y);
-
-                        let mut point =
-                            plane_intersection(ray_pos, ray_dir, plane_pos, plane_normal);
-                        point.y = 0.0;
-                        if point.z > PLAYER_SPAWN_Z - 2.0 {
-                            point.z = PLAYER_SPAWN_Z - 2.0;
-                        }
-
-                        arrow_transform.translation = point;
-
-                        line_parent_transform.translation.x =
-                            (point.x - ball_transform.translation.x) / 2.0;
-                        line_parent_transform.translation.z =
-                            point.z + (ball_transform.translation.z - point.z) / 2.0;
-
-                        line_transform.scale.y = ball_transform
-                            .translation
-                            .distance(arrow_transform.translation)
-                            - INNER_RADIUS_COEFF * 2.0;
-                        line_parent_transform.look_at(point, Vec3::Z);
-
-                        if !(mouse_button_input.just_released(MouseButton::Left)
-                            || touches.any_just_released())
-                        {
-                            return;
-                        }
-
-                        let aim_direction = (point - ball_transform.translation).normalize();
-                        vel.linvel = aim_direction * PROJECTILE_SPEED;
-
-                        projectile_ball.is_flying = true;
-
-                        pkv_play_shoot_audio(&mut commands, &audio_assets, &pkv);
-                    } else {
-                        *arrow_visibility = Visibility::Hidden;
-                        *line_visibility = Visibility::Hidden;
+                    let mut projectile_position = pointer_position;
+                    if projectile_position.y > PROJECTILE_SHOOT {
+                        projectile_position.y = PROJECTILE_SHOOT;
                     }
+
+                    target_transform.translation.x = projectile_position.x;
+                    target_transform.translation.y = projectile_position.y;
+
+                    // line_parent_transform.translation.x =
+                    //     (projectile_position.x - ball_transform.translation.x) / 2.0;
+                    // line_parent_transform.translation.y = projectile_position.y
+                    //     + (ball_transform.translation.y - projectile_position.y) / 2.0;
+
+                    line_transform.scale.y = ball_transform
+                        .translation
+                        .distance(target_transform.translation)
+                        - INNER_RADIUS_COEFF * 2.0;
+                    // line_parent_transform.look_at(
+                    //     Vec3::new(projectile_position.x, projectile_position.y, 0.0),
+                    //     Vec3::Z,
+                    // );
+
+                    if !(mouse_button_input.just_released(MouseButton::Left)
+                        || touches.any_just_released())
+                    {
+                        return;
+                    }
+
+                    let aim_direction =
+                        (projectile_position - ball_transform.translation.truncate()).normalize();
+                    vel.linvel = aim_direction * PROJECTILE_SPEED;
+
+                    projectile_ball.is_flying = true;
+
+                    pkv_play_shoot_audio(&mut commands, &audio_assets, &pkv);
+                } else {
+                    *target_visibility = Visibility::Hidden;
+                    *line_visibility = Visibility::Hidden;
                 }
             }
         }
     }
 }
 
-pub fn setup_projectile_arrow(
+pub fn setup_aim_target(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    gameplay_materials: Res<GameplayMaterials>,
+    grid: Res<Grid>,
+) {
+    commands.spawn(AimBundle::new_target(
+        Vec2::new(0.0, PROJECTILE_SPAWN / 2.0),
+        &mut meshes,
+        &gameplay_materials,
+        &grid,
+    ));
+}
+
+pub fn cleanup_aim_target(
+    mut commands: Commands,
+    aim_target_query: Query<Entity, With<AimTarget>>,
+) {
+    for projectile_entity in aim_target_query.iter() {
+        commands.entity(projectile_entity).despawn_recursive();
+    }
+}
+
+pub fn setup_aim_line(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     gameplay_materials: Res<GameplayMaterials>,
 ) {
-    commands.spawn(ProjectileArrowBundle::new(
-        Vec3::new(0.0, 0.0, PLAYER_SPAWN_Z / 2.0),
+    commands.spawn(AimBundle::new_line(
+        Vec2::new(0.0, PROJECTILE_SPAWN / 2.0),
         &mut meshes,
         &gameplay_materials,
     ));
 }
 
-pub fn cleanup_projectile_arrow(
-    mut commands: Commands,
-    projectile_query: Query<Entity, With<ProjectileArrow>>,
-) {
-    for projectile_entity in projectile_query.iter() {
-        commands.entity(projectile_entity).despawn_recursive();
-    }
-}
-
-pub fn setup_projectile_line(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    gameplay_materials: Res<GameplayMaterials>,
-) {
-    commands
-        .spawn(ProjectileLineBundle::new_parent(Vec3::new(
-            0.0,
-            0.0,
-            PLAYER_SPAWN_Z / 2.0,
-        )))
-        .with_children(|parent| {
-            parent.spawn(ProjectileLineBundle::new_child(
-                Vec3::ZERO,
-                &mut meshes,
-                &gameplay_materials,
-            ));
-        });
-}
-
-pub fn cleanup_projectile_line(
-    mut commands: Commands,
-    projectile_query: Query<Entity, With<ProjectileLineParent>>,
-) {
-    for projectile_entity in projectile_query.iter() {
+pub fn cleanup_aim_line(mut commands: Commands, aim_line_query: Query<Entity, With<AimLine>>) {
+    for projectile_entity in aim_line_query.iter() {
         commands.entity(projectile_entity).despawn_recursive();
     }
 }
@@ -317,7 +263,7 @@ pub fn check_out_ball_bounds(
     out_balls_query: Query<(Entity, &OutBall, &Transform), With<OutBall>>,
 ) {
     for (ball_entity, grid_ball_out, ball_transform) in out_balls_query.iter() {
-        if grid_ball_out.started && ball_transform.translation.z > PLAYER_SPAWN_Z {
+        if grid_ball_out.started && ball_transform.translation.z > PROJECTILE_SPAWN {
             commands.entity(ball_entity).despawn_recursive();
         }
     }

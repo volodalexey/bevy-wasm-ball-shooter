@@ -1,7 +1,7 @@
-use bevy::prelude::{App, Plugin, Vec3};
+use bevy::prelude::{App, Plugin, Vec2};
 
 // use bevy_rapier3d::prelude::RapierDebugRenderPlugin;
-use bevy_rapier3d::prelude::{NoUserData, RapierConfiguration, RapierPhysicsPlugin};
+use bevy_rapier2d::prelude::{NoUserData, RapierConfiguration, RapierPhysicsPlugin};
 
 pub struct PhysicsPlugin;
 
@@ -12,7 +12,7 @@ impl Plugin for PhysicsPlugin {
             // RapierDebugRenderPlugin::default(),
         ))
         .insert_resource(RapierConfiguration {
-            gravity: Vec3::ZERO,
+            gravity: Vec2::ZERO,
             ..Default::default()
         });
     }

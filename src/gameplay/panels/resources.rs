@@ -30,11 +30,7 @@ impl CooldownMoveCounter {
             4 => 8,
             5 => 7,
             6 => 6,
-            7 => 5,
-            8 => 4,
-            9 => 3,
-            10 => 2,
-            _ => 1,
+            _ => 5,
         };
         Self {
             value: init_value,

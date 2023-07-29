@@ -1,6 +1,9 @@
 use std::fmt::{Debug, Display, Formatter, Result};
 
-use bevy::prelude::{Color, Component, StandardMaterial, Vec3};
+use bevy::{
+    prelude::{Color, Component, Vec3},
+    sprite::ColorMaterial,
+};
 use hexx::Hex;
 
 #[derive(Component)]
@@ -8,12 +11,6 @@ pub struct ProjectileBall {
     pub is_flying: bool,
     pub is_ready_to_despawn: bool,
 }
-
-#[derive(Component)]
-pub struct ProjectileLine;
-
-#[derive(Component)]
-pub struct ProjectileLineParent;
 
 #[derive(Component)]
 pub struct GridBall {
@@ -88,8 +85,8 @@ impl Into<Color> for Species {
     }
 }
 
-impl Into<StandardMaterial> for Species {
-    fn into(self) -> StandardMaterial {
+impl Into<ColorMaterial> for Species {
+    fn into(self) -> ColorMaterial {
         let color: Color = self.into();
         color.into()
     }
@@ -124,4 +121,7 @@ impl Species {
 }
 
 #[derive(Component)]
-pub struct ProjectileArrow;
+pub struct AimLine;
+
+#[derive(Component)]
+pub struct AimTarget;

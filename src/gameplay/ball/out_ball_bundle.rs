@@ -1,4 +1,7 @@
-use bevy::prelude::{default, PbrBundle, Res, Transform, Vec3};
+use bevy::{
+    prelude::{default, Res, Transform, Vec2, Vec3},
+    sprite::{ColorMaterial, MaterialMesh2dBundle},
+};
 
 use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources::GameplayMeshes};
 
@@ -8,16 +11,16 @@ pub struct OutBallBundle;
 
 impl OutBallBundle {
     pub fn new(
-        pos: Vec3,
+        pos: Vec2,
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
-    ) -> (PbrBundle, OutBall, Species) {
+    ) -> (MaterialMesh2dBundle<ColorMaterial>, OutBall, Species) {
         (
-            PbrBundle {
-                mesh: gameplay_meshes.grid_ball.clone(),
+            MaterialMesh2dBundle {
+                mesh: gameplay_meshes.grid_ball.clone().into(),
                 material: gameplay_materials.from_species(species),
-                transform: Transform::from_translation(pos),
+                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
                 ..default()
             },
             OutBall::default(),

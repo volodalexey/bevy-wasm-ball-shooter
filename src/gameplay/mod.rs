@@ -27,7 +27,6 @@ mod meshes;
 mod panels;
 mod physics;
 mod systems;
-mod utils;
 mod walls;
 
 pub struct GameplayPlugin;

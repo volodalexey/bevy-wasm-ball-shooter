@@ -1,5 +1,8 @@
-use bevy::prelude::{PbrBundle, Res, Transform, Vec3};
-use bevy_rapier3d::{
+use bevy::{
+    prelude::{Res, Transform, Vec2, Vec3},
+    sprite::{ColorMaterial, MaterialMesh2dBundle},
+};
+use bevy_rapier2d::{
     prelude::{ActiveEvents, Ccd, Collider, LockedAxes, RigidBody, Sleeping, Velocity},
     render::ColliderDebugColor,
 };
@@ -15,13 +18,13 @@ pub struct ProjectileBallBundle;
 
 impl ProjectileBallBundle {
     pub fn new(
-        pos: Vec3,
+        pos: Vec2,
         radius: f32,
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
     ) -> (
-        PbrBundle,
+        MaterialMesh2dBundle<ColorMaterial>,
         ProjectileBall,
         Species,
         Collider,
@@ -34,10 +37,10 @@ impl ProjectileBallBundle {
         ColliderDebugColor,
     ) {
         (
-            PbrBundle {
-                mesh: gameplay_meshes.grid_ball.clone(),
+            MaterialMesh2dBundle {
+                mesh: gameplay_meshes.grid_ball.clone().into(),
                 material: gameplay_materials.from_species(species),
-                transform: Transform::from_translation(pos),
+                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
                 ..Default::default()
             },
             ProjectileBall {

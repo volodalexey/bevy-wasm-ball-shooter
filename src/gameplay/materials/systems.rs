@@ -1,4 +1,7 @@
-use bevy::prelude::{Assets, Color, Commands, NextState, ResMut, StandardMaterial};
+use bevy::{
+    prelude::{Assets, Color, Commands, NextState, ResMut},
+    sprite::ColorMaterial,
+};
 
 use crate::{components::AppState, gameplay::ball::components::Species};
 
@@ -6,7 +9,7 @@ use super::resources::GameplayMaterials;
 
 pub fn setup_resources(
     mut commands: Commands,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
 ) {
     commands.insert_resource(GameplayMaterials {

@@ -3,7 +3,7 @@ use bevy::prelude::{
     Entity, Query, Transform, Vec3, With,
 };
 
-use crate::gameplay::constants::PLAYER_SPAWN_Z;
+use crate::gameplay::constants::PROJECTILE_SPAWN;
 
 use super::components::MainLight;
 
@@ -16,7 +16,7 @@ pub fn setup_main_light(mut commands: Commands) {
                 ..default()
             },
             transform: Transform::from_xyz(10.0, 70.0, 41.0)
-                .looking_at(Vec3::new(0.0, 0.0, PLAYER_SPAWN_Z / 2.), Vec3::Y),
+                .looking_at(Vec3::new(0.0, 0.0, PROJECTILE_SPAWN / 2.), Vec3::Y),
             ..default()
         },
         MainLight,

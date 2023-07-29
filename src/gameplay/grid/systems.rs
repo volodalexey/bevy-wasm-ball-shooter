@@ -1,12 +1,12 @@
 use bevy::{
     prelude::{
         error, info, BuildChildren, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, Query, Res, ResMut, Transform, Vec2, Vec3, With,
+        EventWriter, Query, Res, ResMut, Transform, Vec2, With,
     },
     time::Time,
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier3d::prelude::{CollisionEvent, RigidBody, Velocity};
+use bevy_rapier2d::prelude::{CollisionEvent, RigidBody, Velocity};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -49,11 +49,11 @@ pub fn generate_grid(
     grid.init_cols = factor.clamp(MIN_COLS, MAX_COLS);
     grid.init_rows = factor;
     for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
-        let (x, z) = grid.layout.hex_to_world_pos(hex).into();
+        let hex_pos = grid.layout.hex_to_world_pos(hex);
         let is_first = hex.y == 0;
 
         let grid_ball_bundle = GridBallBundle::new(
-            Vec3::new(x, 0.0, z),
+            hex_pos,
             grid.layout.hex_size.x,
             Species::random_species(),
             &gameplay_meshes,
@@ -298,14 +298,14 @@ pub fn on_snap_projectile(
 
         grid.print_sorted_axial();
         let no_neighbors = grid.neighbors(hex).len() == 0;
-        let (x, z) = grid.layout.hex_to_world_pos(hex).into();
+        let hex_pos = grid.layout.hex_to_world_pos(hex);
         info!(
             "final snap hex({}, {}) pos({}, {}) no_neighbors({})",
-            hex.x, hex.y, x, z, no_neighbors
+            hex.x, hex.y, hex_pos.x, hex_pos.y, no_neighbors
         );
         let ball = commands
             .spawn(GridBallBundle::new(
-                Vec3::new(x, 0.0, z),
+                hex_pos,
                 grid.layout.hex_size.x,
                 snap_projectile.species,
                 &gameplay_meshes,
@@ -347,14 +347,17 @@ pub fn on_snap_projectile(
                             balls_query.get(*grid_ball_entity)
                         {
                             commands.spawn(OutBallBundle::new(
-                                ball_transform.translation,
+                                Vec2::new(
+                                    ball_transform.translation.x,
+                                    ball_transform.translation.y,
+                                ),
                                 *ball_species,
                                 &gameplay_meshes,
                                 &gameplay_materials,
                             ));
                         } else if c_hex.x == hex.x && c_hex.y == hex.y {
                             commands.spawn(OutBallBundle::new(
-                                Vec3::new(x, 0.0, z),
+                                hex_pos,
                                 snap_projectile.species,
                                 &gameplay_meshes,
                                 &gameplay_materials,
@@ -378,14 +381,17 @@ pub fn on_snap_projectile(
                             balls_query.get(*grid_ball_entity)
                         {
                             commands.spawn(OutBallBundle::new(
-                                ball_transform.translation,
+                                Vec2::new(
+                                    ball_transform.translation.x,
+                                    ball_transform.translation.y,
+                                ),
                                 *ball_species,
                                 &gameplay_meshes,
                                 &gameplay_materials,
                             ));
                         } else if c_hex.x == hex.x && c_hex.y == hex.y {
                             commands.spawn(OutBallBundle::new(
-                                Vec3::new(x, 0.0, z),
+                                hex_pos,
                                 snap_projectile.species,
                                 &gameplay_meshes,
                                 &gameplay_materials,

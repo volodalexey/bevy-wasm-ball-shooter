@@ -1,5 +1,8 @@
-use bevy::prelude::{default, PbrBundle, Res, Transform, Vec3};
-use bevy_rapier3d::{
+use bevy::{
+    prelude::{default, Res, Transform, Vec2, Vec3},
+    sprite::{ColorMaterial, MaterialMesh2dBundle},
+};
+use bevy_rapier2d::{
     prelude::{Collider, RigidBody},
     render::ColliderDebugColor,
 };
@@ -16,7 +19,7 @@ pub struct GridBallBundle;
 
 impl GridBallBundle {
     pub fn new(
-        pos: Vec3,
+        pos: Vec2,
         radius: f32,
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
@@ -24,7 +27,7 @@ impl GridBallBundle {
         hex: Hex,
         rigid_body: RigidBody,
     ) -> (
-        PbrBundle,
+        MaterialMesh2dBundle<ColorMaterial>,
         GridBall,
         Species,
         RigidBody,
@@ -32,10 +35,10 @@ impl GridBallBundle {
         ColliderDebugColor,
     ) {
         (
-            PbrBundle {
-                mesh: gameplay_meshes.grid_ball.clone(),
+            MaterialMesh2dBundle {
+                mesh: gameplay_meshes.grid_ball.clone().into(),
                 material: gameplay_materials.from_species(species),
-                transform: Transform::from_translation(pos),
+                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
                 ..default()
             },
             GridBall { hex },

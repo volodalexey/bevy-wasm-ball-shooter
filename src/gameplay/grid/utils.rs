@@ -1,8 +1,8 @@
 use bevy::{
-    prelude::{Entity, Vec3},
+    prelude::{Entity, Vec2},
     utils::HashSet,
 };
-use bevy_rapier3d::prelude::{ImpulseJoint, PrismaticJointBuilder};
+use bevy_rapier2d::prelude::{ImpulseJoint, PrismaticJointBuilder};
 use hexx::Hex;
 
 use crate::gameplay::{
@@ -112,8 +112,7 @@ pub fn clamp_inside_world_bounds(hex: &Hex, grid: &Grid) -> Hex {
 /// each ball in grid can have 4 max joints
 /// assume pointy-top orientation
 pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
-    let (x, z) = grid.layout.hex_to_world_pos(hex).into();
-    let hex_pos3 = Vec3::new(x, 0.0, z);
+    let hex_pos = grid.layout.hex_to_world_pos(hex);
 
     let neighbors = vec![
         hex.neighbor(hexx::Direction::TopLeft),
@@ -130,8 +129,7 @@ pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
             None
         })
         .map(|(neighbor_entity, neighbor_pos)| {
-            let neighbor_hex_pos3 = Vec3::new(neighbor_pos.x, 0.0, neighbor_pos.y);
-            let axis = hex_pos3 - neighbor_hex_pos3;
+            let axis = hex_pos - neighbor_pos;
             // println!("{:?}", axis);
             let prism = PrismaticJointBuilder::new(axis).limits([
                 2.0 * grid.layout.hex_size.y * INNER_RADIUS_COEFF,
@@ -142,6 +140,6 @@ pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
         .collect::<Vec<ImpulseJoint>>()
 }
 
-pub fn is_move_slow(linvel: Vec3) -> bool {
-    linvel.z >= 0.0 || linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY
+pub fn is_move_slow(linvel: Vec2) -> bool {
+    linvel.y >= 0.0 || linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY
 }

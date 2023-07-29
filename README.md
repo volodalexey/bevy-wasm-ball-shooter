@@ -28,6 +28,6 @@ TODO
 animation for move down
 animation for snap position
 menu button in game
-fix restitution angle and tune contact
+button to switch snap or bounce
 show next ball to shoot
 draw full line to first contact
