@@ -14,7 +14,6 @@ lto = true
 bevy = "0.11.0"
 bevy_pkv = { git = "https://github.com/idanarye/bevy_pkv.git", branch = "upgrade-to-bevy-0.11", features = ["bevy"] }
 bevy_rapier2d = { version = "0.22.0" }
-# bevy_rapier2d = { version = "0.22.0", features = ["debug-render-3d"]}
 fastrand = "2.0.0"
 hexx = "0.9.0"
 
