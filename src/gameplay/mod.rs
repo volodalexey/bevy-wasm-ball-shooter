@@ -7,7 +7,6 @@ use self::{
     events::BeginTurn,
     grid::GridPlugin,
     main_camera::MainCameraPlugin,
-    main_light::MainLightPlugin,
     materials::MaterialsPlugin,
     meshes::MeshesPlugin,
     panels::PanelsPlugin,
@@ -21,12 +20,12 @@ pub mod constants;
 mod events;
 mod grid;
 mod main_camera;
-mod main_light;
 mod materials;
 mod meshes;
 mod panels;
 mod physics;
 mod systems;
+mod utils;
 mod walls;
 
 pub struct GameplayPlugin;
@@ -35,7 +34,6 @@ impl Plugin for GameplayPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
             MainCameraPlugin,
-            MainLightPlugin,
             PhysicsPlugin,
             MeshesPlugin,
             MaterialsPlugin,

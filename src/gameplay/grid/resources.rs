@@ -9,7 +9,9 @@ use bevy::{
 };
 use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
 
-use super::constants::COLLISION_SNAP_COOLDOWN_TIME;
+use crate::utils::from_grid_2d_to_2d;
+
+use super::constants::{BALL_RADIUS, COLLISION_SNAP_COOLDOWN_TIME};
 
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Bound {
@@ -77,7 +79,7 @@ impl Default for Grid {
             offset_mode: OffsetHexMode::OddRows,
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,
-                hex_size: hexx::Vec2::ONE,
+                hex_size: hexx::Vec2::ONE * BALL_RADIUS,
                 ..Default::default()
             },
             storage: Default::default(),
@@ -133,11 +135,20 @@ impl Grid {
     pub fn empty_neighbors(&self, hex: Hex) -> Vec<Hex> {
         hex.all_neighbors()
             .iter()
-            .filter_map(|&hex| match self.get(hex) {
+            .filter_map(|&neighbor_hex| match self.get(neighbor_hex) {
                 Some(_) => None,
-                None => Some(hex),
+                None => {
+                    // println!("neighbor_hex({}, {})", neighbor_hex.x, neighbor_hex.y);
+                    Some(neighbor_hex)
+                }
             })
             .collect::<Vec<Hex>>()
+    }
+
+    pub fn check_update_bounds(&mut self) {
+        if self.bounds.dirty {
+            self.update_bounds();
+        }
     }
 
     #[inline]
@@ -159,7 +170,7 @@ impl Grid {
         let mut max_y: f32 = f32::MIN;
         let mut min_y: f32 = f32::MAX;
         for (&hex, _) in self.storage.iter() {
-            let pos = self.layout.hex_to_world_pos(hex);
+            let pos = from_grid_2d_to_2d(self.layout.hex_to_world_pos(hex));
             let offset = hex.to_offset_coordinates(self.offset_mode);
             // q
             min_axi_q = min_axi_q.min(hex.x);
@@ -244,9 +255,7 @@ impl Grid {
         print_axial: bool,
         print_position: bool,
     ) {
-        if self.bounds.dirty {
-            self.update_bounds();
-        }
+        self.check_update_bounds();
         let mut s: Vec<(i32, (Hex, u32, [i32; 2]))> = Vec::with_capacity(self.storage.len());
         let replaced: String = self
             .bounds
@@ -283,7 +292,7 @@ impl Grid {
                         result.push(format!("axi({}, {})", hex.x, hex.y));
                     }
                     if print_position {
-                        let pos = self.layout.hex_to_world_pos(*hex);
+                        let pos = from_grid_2d_to_2d(self.layout.hex_to_world_pos(*hex));
                         result.push(format!("pos({}, {})", pos.x, pos.y));
                     }
                 } else {

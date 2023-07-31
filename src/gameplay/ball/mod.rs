@@ -6,7 +6,7 @@ use self::{
     events::SnapProjectile,
     resources::ProjectileBuffer,
     systems::{
-        animate_out_ball, check_out_ball_bounds, cleanup_aim_line, cleanup_aim_target,
+        animate_out_ball, check_out_ball_for_delete, cleanup_aim_line, cleanup_aim_target,
         cleanup_projectile_ball, projectile_reload, setup_aim_line, setup_aim_target,
         shoot_projectile,
     },
@@ -37,7 +37,7 @@ impl Plugin for ProjectilePlugin {
                     projectile_reload,
                     shoot_projectile,
                     animate_out_ball,
-                    check_out_ball_bounds,
+                    check_out_ball_for_delete,
                 )
                     .run_if(in_state(AppState::Gameplay)),
             )

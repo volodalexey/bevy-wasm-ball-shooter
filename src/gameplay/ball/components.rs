@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display, Formatter, Result};
 
 use bevy::{
-    prelude::{Color, Component, Vec3},
+    prelude::{Color, Component},
     sprite::ColorMaterial,
 };
 use hexx::Hex;
@@ -20,14 +20,14 @@ pub struct GridBall {
 #[derive(Component)]
 pub struct OutBall {
     pub started: bool,
-    pub initial_velocity: Vec3,
+    pub marked_for_delete: bool,
 }
 
 impl Default for OutBall {
     fn default() -> Self {
         Self {
             started: false,
-            initial_velocity: Vec3::ZERO,
+            marked_for_delete: false,
         }
     }
 }

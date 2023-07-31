@@ -5,6 +5,7 @@ use crate::components::AppState;
 use self::systems::{cleanup_main_camera, control_camera_position, setup_main_camera};
 
 pub mod components;
+mod constants;
 mod systems;
 
 pub struct MainCameraPlugin;

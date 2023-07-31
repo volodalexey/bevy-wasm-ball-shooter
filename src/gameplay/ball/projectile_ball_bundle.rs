@@ -3,7 +3,7 @@ use bevy::{
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
 use bevy_rapier2d::{
-    prelude::{ActiveEvents, Ccd, Collider, LockedAxes, RigidBody, Sleeping, Velocity},
+    prelude::{ActiveEvents, Ccd, Collider, CollisionGroups, Group, RigidBody, Sleeping, Velocity},
     render::ColliderDebugColor,
 };
 
@@ -29,12 +29,12 @@ impl ProjectileBallBundle {
         Species,
         Collider,
         RigidBody,
-        LockedAxes,
         Velocity,
         ActiveEvents,
         Ccd,
         Sleeping,
         ColliderDebugColor,
+        CollisionGroups,
     ) {
         (
             MaterialMesh2dBundle {
@@ -50,12 +50,12 @@ impl ProjectileBallBundle {
             species,
             Collider::ball(radius * INNER_RADIUS_COEFF),
             RigidBody::Dynamic,
-            LockedAxes::TRANSLATION_LOCKED_Y,
             Velocity::default(),
             ActiveEvents::COLLISION_EVENTS,
             Ccd::enabled(),
             Sleeping::disabled(),
             ColliderDebugColor(species.into()),
+            CollisionGroups::new(Group::GROUP_3, Group::GROUP_1 | Group::GROUP_2),
         )
     }
 }

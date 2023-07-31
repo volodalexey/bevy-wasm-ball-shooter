@@ -17,8 +17,8 @@ pub fn setup_level_walls(
     gameplay_materials: Option<Res<GameplayMaterials>>,
 ) {
     if let Some(gameplay_materials) = gameplay_materials {
-        let inner_width = grid.init_cols as f32 * grid.layout.hex_size.x * INNER_RADIUS_COEFF
-            + grid.layout.hex_size.x * INNER_RADIUS_COEFF * 0.5;
+        let ball_radius = grid.layout.hex_size.x * INNER_RADIUS_COEFF;
+        let inner_width = grid.init_cols as f32 * ball_radius + ball_radius * 0.5;
         let side_x = inner_width + WALL_X_WIDTH * 0.5;
         let bottom = PROJECTILE_SPAWN + grid.layout.hex_size.y;
         commands.spawn(WallBundle::new(

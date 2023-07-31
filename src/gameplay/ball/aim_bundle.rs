@@ -38,7 +38,7 @@ impl AimBundle {
         (
             MaterialMesh2dBundle {
                 mesh: meshes
-                    .add(shape::Quad::new(Vec2::new(50., 100.)).into())
+                    .add(shape::Quad::new(Vec2::new(2., 1.0)).into())
                     .into(),
                 material: gameplay_materials.arrow_end.clone(),
                 transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),

@@ -29,6 +29,7 @@ use crate::{
     },
     loading::audio_assets::AudioAssets,
     resources::LevelCounter,
+    utils::{from_2d_to_grid_2d, from_grid_2d_to_2d},
 };
 
 use super::{
@@ -49,7 +50,7 @@ pub fn generate_grid(
     grid.init_cols = factor.clamp(MIN_COLS, MAX_COLS);
     grid.init_rows = factor;
     for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
-        let hex_pos = grid.layout.hex_to_world_pos(hex);
+        let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
         let is_first = hex.y == 0;
 
         let grid_ball_bundle = GridBallBundle::new(
@@ -84,14 +85,12 @@ pub fn generate_grid(
     }
 
     // Center grid on x-axis.
-    grid.update_bounds();
+    grid.check_update_bounds();
     let (width, _) = grid.dim();
     grid.layout.origin.x = -width / 2. + grid.layout.hex_size.x;
     adjust_grid_layout(&mut grid, &MoveCounter(0));
     update_positions.send(UpdatePositions);
 }
-
-pub const VISIBLE_ROWS: f32 = 8.0;
 
 pub fn update_hex_coord_transforms(
     mut balls_query: Query<(Entity, &mut Transform, &GridBall), With<GridBall>>,
@@ -105,14 +104,15 @@ pub fn update_hex_coord_transforms(
     event_query.clear();
 
     adjust_grid_layout(&mut grid, &move_counter);
-    grid.update_bounds();
+    grid.check_update_bounds();
 
     for (entity, mut transform, GridBall { hex }) in balls_query.iter_mut() {
         let hex = *hex;
         grid.set(hex, entity);
-        let (x, z) = grid.layout.hex_to_world_pos(hex).into();
-        transform.translation.x = x;
-        transform.translation.z = z;
+        let pos_2d = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
+        // println!("pos_2d {} {}", pos_2d.x, pos_2d.y);
+        transform.translation.x = pos_2d.x;
+        transform.translation.y = pos_2d.y;
     }
 }
 
@@ -139,6 +139,7 @@ pub fn check_projectile_out_of_grid(
     >,
     mut grid: ResMut<Grid>,
     mut snap_projectile: EventWriter<SnapProjectile>,
+    mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
 ) {
     if let Ok((projectile_entity, projectile_transform, mut projectile_ball, species)) =
         projectile_query.get_single_mut()
@@ -146,20 +147,19 @@ pub fn check_projectile_out_of_grid(
         if !projectile_ball.is_flying {
             return;
         }
-        if grid.bounds.dirty {
-            grid.update_bounds();
-        }
-        if projectile_transform.translation.z < grid.bounds.mins.y + grid.layout.hex_size.y {
+        grid.check_update_bounds();
+        if projectile_transform.translation.y > grid.bounds.maxs.y - grid.layout.hex_size.y {
             projectile_ball.is_ready_to_despawn = true;
             commands.entity(projectile_entity).despawn_recursive();
             info!(
                 "Projectile out of grid snap {} {}",
-                grid.bounds.mins.y, projectile_transform.translation.z
+                grid.bounds.mins.y, projectile_transform.translation.y
             );
+            collision_snap_cooldown.stop();
             snap_projectile.send(SnapProjectile {
                 pos: Vec2::new(
                     projectile_transform.translation.x,
-                    projectile_transform.translation.z,
+                    projectile_transform.translation.y,
                 ),
                 species: *species,
             });
@@ -223,7 +223,7 @@ pub fn on_projectile_collisions_events(
                     snap_projectile.send(SnapProjectile {
                         pos: Vec2::new(
                             projectile_transform.translation.x,
-                            projectile_transform.translation.z,
+                            projectile_transform.translation.y,
                         ),
                         species: *species,
                     });
@@ -249,42 +249,77 @@ pub fn on_snap_projectile(
     pkv: Res<PkvStore>,
 ) {
     if let Some(snap_projectile) = snap_projectile_events.iter().next() {
-        if grid.bounds.dirty {
-            grid.update_bounds();
-        }
+        grid.check_update_bounds();
 
         // println!("{}", grid.bounds);
         let projectile_position = snap_projectile.pos;
         // let projectile_position = Vec2::new(-1.0528764, 12.633377);
-        let mut hex = grid.layout.world_pos_to_hex(projectile_position);
-        info!(
-            "snap hex({}, {}) pos({}, {})",
-            hex.x, hex.y, projectile_position.x, projectile_position.y
-        );
+        let mut hex = grid
+            .layout
+            .world_pos_to_hex(from_2d_to_grid_2d(projectile_position));
+        // info!(
+        //     "snap hex({}, {}) pos({}, {})",
+        //     hex.x, hex.y, projectile_position.x, projectile_position.y
+        // );
         // check to make sure the projectile is inside the grid bounds.
-        hex = clamp_inside_world_bounds(&hex, &grid);
-        info!("was_clamped hex({}, {})", hex.x, hex.y);
+        (hex, _) = clamp_inside_world_bounds(&hex, &grid);
+        info!("was_clamped by bounds hex({}, {})", hex.x, hex.y);
 
         let mut empty_neighbors = grid
             .empty_neighbors(hex)
             .iter()
-            .map(|hex| clamp_inside_world_bounds(hex, &grid))
+            .filter_map(|hex| {
+                let (hex_clamped, was_clamped) = clamp_inside_world_bounds(hex, &grid);
+                match was_clamped {
+                    true => None,
+                    false => Some(hex_clamped),
+                }
+            })
+            .collect::<Vec<Hex>>();
+        // info!("empty_neighbors {:?}", empty_neighbors);
+        empty_neighbors.sort_by(|a_hex, b_hex| {
+            let a_hex = *a_hex;
+            let b_hex = *b_hex;
+            let a_hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(a_hex));
+            let b_hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(b_hex));
+            let a_distance = projectile_position.distance(a_hex_pos);
+            let b_distance = projectile_position.distance(b_hex_pos);
+            // println!(
+            //     "a_hex({}, {}) a_pos({}, {}) a_dist({}) b_hex({}, {}) b_pos({}, {}) b_dist({})",
+            //     a_hex.x,
+            //     a_hex.y,
+            //     a_hex_pos.x,
+            //     a_hex_pos.y,
+            //     a_distance,
+            //     b_hex.x,
+            //     b_hex.y,
+            //     b_hex_pos.x,
+            //     b_hex_pos.y,
+            //     b_distance
+            // );
+            b_distance.total_cmp(&a_distance)
+        });
+
+        empty_neighbors = empty_neighbors
+            .iter()
             .filter_map(|e_hex| {
                 // println!("e_hex({}, {})", e_hex.x, e_hex.y);
                 // get empty neighbors (free grid places)
                 // filter by min and max column (do not overflow left and right column)
                 // filter only that have neighbours in grid
-                match grid.neighbors(e_hex).len() > 0 {
-                    true => Some(e_hex),
+                match grid.neighbors(*e_hex).len() > 0 {
+                    true => Some(*e_hex),
                     false => None,
                 }
             })
             .collect::<Vec<Hex>>();
-        info!("empty_neighbors {:?}", empty_neighbors);
+        // info!(
+        //     "empty_neighbors that have neighbors in grid {:?}",
+        //     empty_neighbors
+        // );
         let mut grid_hex_option = grid.get(hex);
         while grid_hex_option.is_some() && empty_neighbors.len() > 0 {
-            // this postition is already occupied in grid
-            info!("found the same position in grid  hex({}, {})", hex.x, hex.y);
+            // info!("found the same position in grid  hex({}, {})", hex.x, hex.y);
             if let Some(pop_hex) = empty_neighbors.pop() {
                 hex = pop_hex;
                 grid_hex_option = grid.get(hex);
@@ -296,9 +331,8 @@ pub fn on_snap_projectile(
             return;
         }
 
-        grid.print_sorted_axial();
         let no_neighbors = grid.neighbors(hex).len() == 0;
-        let hex_pos = grid.layout.hex_to_world_pos(hex);
+        let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
         info!(
             "final snap hex({}, {}) pos({}, {}) no_neighbors({})",
             hex.x, hex.y, hex_pos.x, hex_pos.y, no_neighbors
@@ -324,7 +358,6 @@ pub fn on_snap_projectile(
             .id();
 
         grid.set(hex, ball); // add snapped projectile ball as grid ball
-
         let mut score_add = 0;
 
         if no_neighbors {
@@ -351,6 +384,7 @@ pub fn on_snap_projectile(
                                     ball_transform.translation.x,
                                     ball_transform.translation.y,
                                 ),
+                                grid.layout.hex_size.x,
                                 *ball_species,
                                 &gameplay_meshes,
                                 &gameplay_materials,
@@ -358,6 +392,7 @@ pub fn on_snap_projectile(
                         } else if c_hex.x == hex.x && c_hex.y == hex.y {
                             commands.spawn(OutBallBundle::new(
                                 hex_pos,
+                                grid.layout.hex_size.x,
                                 snap_projectile.species,
                                 &gameplay_meshes,
                                 &gameplay_materials,
@@ -385,6 +420,7 @@ pub fn on_snap_projectile(
                                     ball_transform.translation.x,
                                     ball_transform.translation.y,
                                 ),
+                                grid.layout.hex_size.x,
                                 *ball_species,
                                 &gameplay_meshes,
                                 &gameplay_materials,
@@ -392,6 +428,7 @@ pub fn on_snap_projectile(
                         } else if c_hex.x == hex.x && c_hex.y == hex.y {
                             commands.spawn(OutBallBundle::new(
                                 hex_pos,
+                                grid.layout.hex_size.x,
                                 snap_projectile.species,
                                 &gameplay_meshes,
                                 &gameplay_materials,
@@ -408,6 +445,8 @@ pub fn on_snap_projectile(
             }
 
             score_counter.0 += score_add;
+            grid.print_sorted_axial();
+            println!("len {} score_add {}", grid.storage.len(), score_add);
         }
 
         turn_counter.0 += 1;
@@ -455,7 +494,7 @@ pub fn tick_collision_snap_cooldown_timer(
                 snap_projectile.send(SnapProjectile {
                     pos: Vec2::new(
                         projectile_transform.translation.x,
-                        projectile_transform.translation.z,
+                        projectile_transform.translation.y,
                     ),
                     species: *species,
                 });

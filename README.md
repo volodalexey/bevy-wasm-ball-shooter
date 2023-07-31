@@ -2,7 +2,7 @@
 
 # [DEMO](https://volodalexey.github.io/bevy-wasm-ball-shooter/)
 
-Originally created by [frans](https://github.com/pyrbin) as [ball_shooter](https://github.com/pyrbin/ball_shooter)
+Inspired by [ball_shooter](https://github.com/pyrbin/ball_shooter)
 
 Refactored to use WASM with touch/mouse support
 

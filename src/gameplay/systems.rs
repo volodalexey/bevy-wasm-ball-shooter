@@ -1,10 +1,14 @@
 use bevy::prelude::{
-    warn, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, With,
+    warn, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Vec2, With,
 };
 use bevy_pkv::PkvStore;
 use hexx::Direction;
 
-use crate::{components::AppState, resources::LevelCounter, utils::increment_level};
+use crate::{
+    components::AppState,
+    resources::LevelCounter,
+    utils::{from_grid_2d_to_2d, increment_level},
+};
 
 use super::{
     ball::components::{GridBall, OutBall},
@@ -30,7 +34,7 @@ pub fn on_begin_turn(
 }
 
 pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextState<AppState>>) {
-    let projectile_hex = grid.layout.world_pos_to_hex(hexx::Vec2 {
+    let projectile_hex = grid.layout.world_pos_to_hex(Vec2 {
         x: 0.0,
         y: PROJECTILE_SPAWN,
     });
@@ -38,11 +42,11 @@ pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextSta
         .neighbor(Direction::Top)
         .neighbor(Direction::Top);
 
-    let hex_game_over_pos = grid.layout.hex_to_world_pos(hex_game_over);
+    let hex_game_over_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex_game_over));
 
     for (&hex_grid, _) in grid.storage.iter() {
-        let hex_grid_pos = grid.layout.hex_to_world_pos(hex_grid);
-        if hex_grid_pos.y >= hex_game_over_pos.y {
+        let hex_grid_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex_grid));
+        if hex_grid_pos.y.abs() >= hex_game_over_pos.y.abs() {
             warn!(
                 "GameOver because hex({}, {}) position is ({} < {})",
                 hex_grid.x, hex_grid.y, hex_grid_pos.y, hex_game_over_pos.y

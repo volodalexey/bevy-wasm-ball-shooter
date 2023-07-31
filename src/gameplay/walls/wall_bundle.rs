@@ -1,8 +1,13 @@
 use bevy::{
-    prelude::{shape, Assets, Mesh, Res, ResMut, Transform, Vec2, Vec3},
+    prelude::{shape, Assets, Color, Mesh, Res, ResMut, Transform, Vec2, Vec3},
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
-use bevy_rapier2d::prelude::{CoefficientCombineRule, Collider, Friction, Restitution, RigidBody};
+use bevy_rapier2d::{
+    prelude::{
+        CoefficientCombineRule, Collider, CollisionGroups, Friction, Group, Restitution, RigidBody,
+    },
+    render::ColliderDebugColor,
+};
 
 use crate::gameplay::materials::resources::GameplayMaterials;
 
@@ -10,7 +15,7 @@ use super::components::WallType;
 
 pub struct WallBundle;
 
-pub const WALL_X_WIDTH: f32 = 0.4;
+pub const WALL_X_WIDTH: f32 = 10.0;
 
 impl WallBundle {
     pub fn new(
@@ -26,6 +31,8 @@ impl WallBundle {
         Collider,
         Restitution,
         Friction,
+        ColliderDebugColor,
+        CollisionGroups,
     ) {
         (
             MaterialMesh2dBundle {
@@ -47,6 +54,8 @@ impl WallBundle {
                 coefficient: 0.0,
                 combine_rule: CoefficientCombineRule::Min,
             },
+            ColliderDebugColor(Color::AZURE.with_a(0.2)),
+            CollisionGroups::new(Group::GROUP_1, Group::GROUP_2 | Group::GROUP_3),
         )
     }
 }
