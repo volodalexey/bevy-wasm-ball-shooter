@@ -16,6 +16,7 @@ use super::components::WallType;
 pub struct WallBundle;
 
 pub const WALL_X_WIDTH: f32 = 10.0;
+pub const WALL_Y_HEIGHT: f32 = 2500.0;
 
 impl WallBundle {
     pub fn new(

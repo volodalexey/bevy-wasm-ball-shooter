@@ -3,12 +3,11 @@ use bevy::prelude::{
 };
 
 use crate::gameplay::ball::constants::INNER_RADIUS_COEFF;
-use crate::gameplay::constants::PROJECTILE_SPAWN;
 use crate::gameplay::grid::resources::Grid;
 use crate::gameplay::materials::resources::GameplayMaterials;
 
 use super::components::WallType;
-use super::wall_bundle::{WallBundle, WALL_X_WIDTH};
+use super::wall_bundle::{WallBundle, WALL_X_WIDTH, WALL_Y_HEIGHT};
 
 pub fn setup_level_walls(
     mut commands: Commands,
@@ -20,20 +19,19 @@ pub fn setup_level_walls(
         let ball_radius = grid.layout.hex_size.x * INNER_RADIUS_COEFF;
         let inner_width = grid.init_cols as f32 * ball_radius + ball_radius * 0.5;
         let side_x = inner_width + WALL_X_WIDTH * 0.5;
-        let bottom = PROJECTILE_SPAWN + grid.layout.hex_size.y;
         commands.spawn(WallBundle::new(
             Vec3::new(side_x, 0.0, 0.0),
             WallType::Left,
             &mut meshes,
             &gameplay_materials,
-            bottom * 2.0,
+            WALL_Y_HEIGHT,
         ));
         commands.spawn(WallBundle::new(
             Vec3::new(-side_x, 0.0, 0.0),
             WallType::Right,
             &mut meshes,
             &gameplay_materials,
-            bottom * 2.0,
+            WALL_Y_HEIGHT,
         ));
     }
 }

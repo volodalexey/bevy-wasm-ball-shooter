@@ -3,6 +3,8 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 
+use crate::{constants::MAX_LEVEL, resources::LevelCounter};
+
 use super::main_camera::components::MainCamera;
 
 pub fn detect_pointer_position(
@@ -43,4 +45,47 @@ pub fn detect_pointer_position(
         }
     }
     (pointer_position, pointer_aquired)
+}
+
+pub fn calc_init_cols_rows(level_counter: &Res<LevelCounter>) -> (i32, i32) {
+    (
+        match level_counter.0 {
+            1 => 6,
+            2 => 6,
+            3 => 6,
+            4 => 7,
+            5 => 7,
+            6 => 8,
+            7 => 8,
+            8 => 9,
+            9 => 9,
+            10 => 10,
+            11 => 10,
+            12 => 11,
+            13 => 11,
+            14 => 12,
+            15 => 12,
+            MAX_LEVEL => 14,
+            _ => 0,
+        },
+        match level_counter.0 {
+            1 => 1,
+            2 => 2,
+            3 => 4,
+            4 => 6,
+            5 => 8,
+            6 => 10,
+            7 => 12,
+            8 => 14,
+            9 => 16,
+            10 => 18,
+            11 => 20,
+            12 => 22,
+            13 => 24,
+            14 => 26,
+            15 => 28,
+            MAX_LEVEL => 30,
+            _ => 0,
+        },
+    )
 }

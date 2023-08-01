@@ -19,7 +19,7 @@ use crate::{
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
         },
-        constants::{MAX_COLS, MIN_CLUSTER_SIZE, MIN_COLS},
+        constants::MIN_CLUSTER_SIZE,
         events::BeginTurn,
         grid::utils::{
             clamp_inside_world_bounds, find_cluster, find_floating_clusters, is_move_slow,
@@ -27,6 +27,7 @@ use crate::{
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
         panels::resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
+        utils::calc_init_cols_rows,
     },
     loading::audio_assets::AudioAssets,
     resources::LevelCounter,
@@ -47,9 +48,7 @@ pub fn generate_grid(
     mut update_positions: EventWriter<UpdatePositions>,
     level_counter: Res<LevelCounter>,
 ) {
-    let factor: i32 = (level_counter.0 * 2) as i32;
-    grid.init_cols = factor.clamp(MIN_COLS, MAX_COLS);
-    grid.init_rows = factor;
+    (grid.init_cols, grid.init_rows) = calc_init_cols_rows(&level_counter);
     for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
         let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
         let is_first = hex.y == 0;

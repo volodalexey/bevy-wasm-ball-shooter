@@ -254,7 +254,7 @@ pub fn animate_out_ball(
             ball_force.force = Vec2::new(0.0, -100.0);
         } else {
             if let Some(ball_material) = materials.get_mut(&ball_material) {
-                ball_material.color.set_a(ball_material.color.a() - 0.005);
+                ball_material.color.set_a(ball_material.color.a() - 0.01);
                 if ball_material.color.a() <= 0.0 {
                     grid_ball_out.marked_for_delete = true;
                 }
