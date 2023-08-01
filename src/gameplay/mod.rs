@@ -1,4 +1,4 @@
-use bevy::prelude::{in_state, App, IntoSystemConfigs, Msaa, OnEnter, Plugin, Update};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, Plugin, Update};
 
 use crate::components::AppState;
 
@@ -43,7 +43,6 @@ impl Plugin for GameplayPlugin {
             PanelsPlugin,
         ))
         .add_event::<BeginTurn>()
-        .insert_resource(Msaa::Off)
         .add_systems(OnEnter(AppState::Gameplay), setup_gameplay)
         .add_systems(
             Update,

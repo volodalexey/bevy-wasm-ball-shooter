@@ -90,6 +90,7 @@ pub fn generate_grid(
     let (width, _) = grid.dim();
     grid.layout.origin.x = -width / 2. + grid.layout.hex_size.x;
     adjust_grid_layout(&mut grid, &MoveCounter(0));
+    grid.update_bounds();
     update_positions.send(UpdatePositions);
 }
 

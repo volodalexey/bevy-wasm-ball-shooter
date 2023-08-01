@@ -83,13 +83,18 @@ pub fn find_floating_clusters(grid: &Grid) -> Vec<Vec<Hex>> {
 
 pub fn adjust_grid_layout(grid: &mut Grid, move_counter: &MoveCounter) {
     let row_height = 1.5 * grid.layout.hex_size.y;
-    let init_layout_y = match grid.init_rows > VISIBLE_ROWS {
-        true => grid.init_rows as f32 * row_height - VISIBLE_ROWS as f32 * row_height,
+    let full_height = grid.init_rows as f32 * row_height;
+    let visible_height = VISIBLE_ROWS as f32 * row_height;
+    let init_layout_y = match full_height > visible_height {
+        true => full_height - visible_height,
         false => 0.0,
     };
     let move_layout_y = move_counter.0 as f32 * row_height;
-    grid.layout.origin.y = init_layout_y + move_layout_y;
-    // println!("Adjust grid layout {}", grid.layout.origin.y);
+    grid.layout.origin.y = move_layout_y - init_layout_y;
+    // println!(
+    //     "Adjust grid layout initr({}) full({}) visible({}) inity({}) gridy({})",
+    //     grid.init_rows, full_height, visible_height, init_layout_y, grid.layout.origin.y
+    // );
 }
 
 pub fn clamp_inside_world_bounds(hex: &Hex, grid: &Grid) -> (Hex, bool) {

@@ -33,7 +33,10 @@ pub fn on_begin_turn(
     update_positions.send(UpdatePositions);
 }
 
-pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextState<AppState>>) {
+pub fn check_game_over(
+    mut grid: ResMut<Grid>,
+    mut app_state_next_state: ResMut<NextState<AppState>>,
+) {
     let projectile_hex = grid.layout.world_pos_to_hex(Vec2 {
         x: 0.0,
         y: PROJECTILE_SPAWN,
@@ -44,16 +47,13 @@ pub fn check_game_over(grid: Res<Grid>, mut app_state_next_state: ResMut<NextSta
 
     let hex_game_over_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex_game_over));
 
-    for (&hex_grid, _) in grid.storage.iter() {
-        let hex_grid_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex_grid));
-        if hex_grid_pos.y.abs() >= hex_game_over_pos.y.abs() {
-            warn!(
-                "GameOver because hex({}, {}) position is ({} < {})",
-                hex_grid.x, hex_grid.y, hex_grid_pos.y, hex_game_over_pos.y
-            );
-            app_state_next_state.set(AppState::GameOver);
-            break;
-        }
+    grid.check_update_bounds();
+    if grid.bounds.mins.y < hex_game_over_pos.y {
+        warn!(
+            "GameOver because minimal bound ({}) less than ({})",
+            grid.bounds.mins.y, hex_game_over_pos.y
+        );
+        app_state_next_state.set(AppState::GameOver);
     }
 }
 
