@@ -233,6 +233,7 @@ pub fn animate_out_ball(
     mut balls_query: Query<
         (
             &mut OutBall,
+            &mut Transform,
             &mut Velocity,
             &mut ExternalForce,
             &Handle<ColorMaterial>,
@@ -240,11 +241,12 @@ pub fn animate_out_ball(
         With<OutBall>,
     >,
 ) {
-    for (mut grid_ball_out, mut ball_velocity, mut ball_force, ball_material) in
+    for (mut grid_ball_out, mut ball_transform, mut ball_velocity, mut ball_force, ball_material) in
         balls_query.iter_mut()
     {
         if !grid_ball_out.started {
             grid_ball_out.started = true;
+            ball_transform.translation.z = 1.0; // slightly on top of grid
             ball_velocity.linvel = Vec2::new(
                 fastrand::i32(-200..=200) as f32,
                 fastrand::i32(-200..=200) as f32,

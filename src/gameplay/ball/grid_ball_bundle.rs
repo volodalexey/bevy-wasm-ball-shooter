@@ -3,7 +3,7 @@ use bevy::{
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
 use bevy_rapier2d::{
-    prelude::{Collider, CollisionGroups, Group, RigidBody},
+    prelude::{Collider, CollisionGroups, Group, RigidBody, Velocity},
     render::ColliderDebugColor,
 };
 use hexx::Hex;
@@ -34,6 +34,7 @@ impl GridBallBundle {
         Collider,
         ColliderDebugColor,
         CollisionGroups,
+        Velocity,
     ) {
         (
             MaterialMesh2dBundle {
@@ -48,6 +49,7 @@ impl GridBallBundle {
             Collider::ball(radius * INNER_RADIUS_COEFF),
             ColliderDebugColor(species.into()),
             CollisionGroups::new(Group::GROUP_2, Group::GROUP_1 | Group::GROUP_3),
+            Velocity::default(),
         )
     }
 }

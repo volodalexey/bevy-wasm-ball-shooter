@@ -1,8 +1,9 @@
 use bevy::{
     prelude::{
-        error, info, BuildChildren, Commands, DespawnRecursiveExt, Entity, EventReader,
+        error, info, Assets, BuildChildren, Commands, DespawnRecursiveExt, Entity, EventReader,
         EventWriter, Query, Res, ResMut, Transform, Vec2, With,
     },
+    sprite::ColorMaterial,
     time::Time,
 };
 use bevy_pkv::PkvStore;
@@ -93,7 +94,7 @@ pub fn generate_grid(
 }
 
 pub fn update_hex_coord_transforms(
-    mut balls_query: Query<(Entity, &mut Transform, &GridBall), With<GridBall>>,
+    mut balls_query: Query<(Entity, &mut Transform, &mut Velocity, &GridBall), With<GridBall>>,
     mut grid: ResMut<Grid>,
     mut event_query: EventReader<UpdatePositions>,
     move_counter: Res<MoveCounter>,
@@ -106,13 +107,14 @@ pub fn update_hex_coord_transforms(
     adjust_grid_layout(&mut grid, &move_counter);
     grid.check_update_bounds();
 
-    for (entity, mut transform, GridBall { hex }) in balls_query.iter_mut() {
+    for (entity, mut transform, mut velocity, GridBall { hex }) in balls_query.iter_mut() {
         let hex = *hex;
         grid.set(hex, entity);
         let pos_2d = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
         // println!("pos_2d {} {}", pos_2d.x, pos_2d.y);
         transform.translation.x = pos_2d.x;
         transform.translation.y = pos_2d.y;
+        *velocity = Velocity::default();
     }
 }
 
@@ -238,6 +240,7 @@ pub fn on_snap_projectile(
     mut commands: Commands,
     gameplay_meshes: Res<GameplayMeshes>,
     gameplay_materials: Res<GameplayMaterials>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     mut grid: ResMut<Grid>,
     mut begin_turn: EventWriter<BeginTurn>,
     mut score_counter: ResMut<ScoreCounter>,
@@ -387,7 +390,7 @@ pub fn on_snap_projectile(
                                 grid.layout.hex_size.x,
                                 *ball_species,
                                 &gameplay_meshes,
-                                &gameplay_materials,
+                                &mut materials,
                             ));
                         } else if c_hex.x == hex.x && c_hex.y == hex.y {
                             commands.spawn(OutBallBundle::new(
@@ -395,7 +398,7 @@ pub fn on_snap_projectile(
                                 grid.layout.hex_size.x,
                                 snap_projectile.species,
                                 &gameplay_meshes,
-                                &gameplay_materials,
+                                &mut materials,
                             ));
                         }
                         commands.entity(*grid_ball_entity).despawn_recursive();
@@ -423,7 +426,7 @@ pub fn on_snap_projectile(
                                 grid.layout.hex_size.x,
                                 *ball_species,
                                 &gameplay_meshes,
-                                &gameplay_materials,
+                                &mut materials,
                             ));
                         } else if c_hex.x == hex.x && c_hex.y == hex.y {
                             commands.spawn(OutBallBundle::new(
@@ -431,7 +434,7 @@ pub fn on_snap_projectile(
                                 grid.layout.hex_size.x,
                                 snap_projectile.species,
                                 &gameplay_meshes,
-                                &gameplay_materials,
+                                &mut materials,
                             ));
                         }
                         commands.entity(*grid_ball_entity).despawn_recursive();

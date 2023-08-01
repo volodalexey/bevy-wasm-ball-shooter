@@ -150,7 +150,7 @@ pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
             // );
             let prism = PrismaticJointBuilder::new(axis).limits([
                 2.0 * grid.layout.hex_size.y * INNER_RADIUS_COEFF,
-                2.5 * grid.layout.hex_size.y * INNER_RADIUS_COEFF,
+                2.2 * grid.layout.hex_size.y * INNER_RADIUS_COEFF,
             ]);
             ImpulseJoint::new(*neighbor_entity, prism)
         })
