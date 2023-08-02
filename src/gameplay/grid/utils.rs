@@ -104,10 +104,10 @@ pub fn adjust_grid_layout(
         true => (grid.init_cols as f32 / 2.0).floor() * BALL_DIAMETER + BALL_RADIUS / 2.0,
     } - BALL_RADIUS);
     grid.layout.origin.y = init_layout_y + move_layout_y;
-    // println!(
-    //     "Adjust grid layout init_row_y({}) full_height({}) init_layout_y({}) grid.layout.origin({}, {})",
-    //     init_row_y, full_height, init_layout_y, grid.layout.origin.x, grid.layout.origin.y
-    // );
+    println!(
+        "Adjust grid layout init_row_y({}) full_height({}) init_layout_y({}) grid.layout.origin({}, {})",
+        init_row_y, full_height, init_layout_y, grid.layout.origin.x, grid.layout.origin.y
+    );
 }
 
 pub fn clamp_inside_world_bounds(hex: &Hex, grid: &Grid) -> (Hex, bool) {

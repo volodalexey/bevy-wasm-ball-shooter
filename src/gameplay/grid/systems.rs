@@ -256,10 +256,10 @@ pub fn on_snap_projectile(
         let mut hex = grid
             .layout
             .world_pos_to_hex(from_2d_to_grid_2d(projectile_position));
-        // info!(
-        //     "snap hex({}, {}) pos({}, {})",
-        //     hex.x, hex.y, projectile_position.x, projectile_position.y
-        // );
+        info!(
+            "snap hex({}, {}) pos({}, {})",
+            hex.x, hex.y, projectile_position.x, projectile_position.y
+        );
         // check to make sure the projectile is inside the grid bounds.
         (hex, _) = clamp_inside_world_bounds(&hex, &grid);
         info!("was_clamped by bounds hex({}, {})", hex.x, hex.y);
@@ -275,7 +275,7 @@ pub fn on_snap_projectile(
                 }
             })
             .collect::<Vec<Hex>>();
-        // info!("empty_neighbors {:?}", empty_neighbors);
+        info!("empty_neighbors {:?}", empty_neighbors);
         empty_neighbors.sort_by(|a_hex, b_hex| {
             let a_hex = *a_hex;
             let b_hex = *b_hex;
@@ -312,10 +312,10 @@ pub fn on_snap_projectile(
                 }
             })
             .collect::<Vec<Hex>>();
-        // info!(
-        //     "empty_neighbors that have neighbors in grid {:?}",
-        //     empty_neighbors
-        // );
+        info!(
+            "empty_neighbors that have neighbors in grid {:?}",
+            empty_neighbors
+        );
         let mut grid_hex_option = grid.get(hex);
         while grid_hex_option.is_some() && empty_neighbors.len() > 0 {
             // info!("found the same position in grid  hex({}, {})", hex.x, hex.y);
@@ -396,6 +396,7 @@ pub fn on_snap_projectile(
                         }
                         commands.entity(*grid_ball_entity).despawn_recursive();
                     }
+                    println!("removed hex({}, {})", c_hex.x, c_hex.y);
                     grid.remove(&c_hex);
                     score_add += 1;
                 });
@@ -430,6 +431,7 @@ pub fn on_snap_projectile(
                         }
                         commands.entity(*grid_ball_entity).despawn_recursive();
                     }
+                    println!("removed hex({}, {})", c_hex.x, c_hex.y);
                     grid.remove(&c_hex);
                     score_add += 1;
                 });

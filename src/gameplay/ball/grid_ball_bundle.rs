@@ -45,8 +45,8 @@ impl GridBallBundle {
             },
             GridBall {
                 hex,
-                animation_x: 0.0,
-                animation_y: 0.0,
+                animation_x: pos.x,
+                animation_y: pos.y,
             },
             species,
             rigid_body,

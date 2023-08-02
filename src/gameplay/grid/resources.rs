@@ -311,7 +311,11 @@ impl Grid {
                     }
                 }
             }
-            info!("{}", result.join(" "));
+            let is_even = (off_r + 1) & 1 == 0;
+            match is_even {
+                true => println!(" {}", result.join(" ")),
+                false => println!("{}", result.join(" ")),
+            }
         }
         info!("----Grid sorted");
     }
