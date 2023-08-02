@@ -25,7 +25,6 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-animation for move down
 animation for snap position
 menu button in game
 button to switch snap or bounce

@@ -46,11 +46,11 @@ pub fn generate_grid(
     gameplay_meshes: Res<GameplayMeshes>,
     gameplay_materials: Res<GameplayMaterials>,
     mut grid: ResMut<Grid>,
-    mut update_positions: EventWriter<UpdatePositions>,
     level_counter: Res<LevelCounter>,
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
     (grid.init_cols, grid.init_rows) = calc_init_cols_rows(&level_counter);
+    adjust_grid_layout(&window_query, &mut grid, &MoveCounter(0));
     for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
         let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
         let is_first = hex.y == 0;
@@ -84,18 +84,10 @@ pub fn generate_grid(
             .id();
         grid.set(hex, entity);
     }
-
-    // Center grid on x-axis.
-    grid.check_update_bounds();
-    let (width, _) = grid.dim();
-    grid.layout.origin.x = -width / 2. + grid.layout.hex_size.x;
-    adjust_grid_layout(&window_query, &mut grid, &MoveCounter(0));
-    grid.update_bounds();
-    update_positions.send(UpdatePositions);
 }
 
 pub fn update_hex_coord_transforms(
-    mut balls_query: Query<(Entity, &mut Transform, &mut Velocity, &GridBall), With<GridBall>>,
+    mut balls_query: Query<(Entity, &mut GridBall), With<GridBall>>,
     mut grid: ResMut<Grid>,
     mut event_query: EventReader<UpdatePositions>,
     move_counter: Res<MoveCounter>,
@@ -109,14 +101,16 @@ pub fn update_hex_coord_transforms(
     adjust_grid_layout(&window_query, &mut grid, &move_counter);
     grid.check_update_bounds();
 
-    for (entity, mut transform, mut velocity, GridBall { hex }) in balls_query.iter_mut() {
-        let hex = *hex;
+    for (entity, mut grid_ball) in balls_query.iter_mut() {
+        let hex = grid_ball.hex;
         grid.set(hex, entity);
         let pos_2d = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
-        // println!("pos_2d {} {}", pos_2d.x, pos_2d.y);
-        transform.translation.x = pos_2d.x;
-        transform.translation.y = pos_2d.y;
-        *velocity = Velocity::default();
+        grid_ball.animation_x = pos_2d.x;
+        grid_ball.animation_y = pos_2d.y;
+        // println!(
+        //     "pos_2d({}, {}) animation_y {}",
+        //     pos_2d.x, pos_2d.y, grid_ball.animation_y
+        // );
     }
 }
 
@@ -498,6 +492,43 @@ pub fn tick_collision_snap_cooldown_timer(
                     ),
                     species: *species,
                 });
+            }
+        }
+    }
+}
+
+pub fn animate_grid_ball(
+    mut grid_balls_query: Query<(&mut Transform, &mut GridBall), With<GridBall>>,
+) {
+    for (mut transform, grid_ball) in grid_balls_query.iter_mut() {
+        let diff_x = grid_ball.animation_x - transform.translation.x;
+        if diff_x.abs() > 0.01 {
+            // println!(
+            //     "grid_ball.animation_y {} transform.translation.y {} diff {}",
+            //     grid_ball.animation_y,
+            //     transform.translation.y,
+            //     diff_y.abs()
+            // );
+            if diff_x.abs() < 0.1 {
+                // println!("set final {}", grid_ball.animation_y);
+                transform.translation.x = grid_ball.animation_x;
+            } else {
+                transform.translation.x = transform.translation.x + diff_x * 0.1;
+            }
+        }
+        let diff_y = grid_ball.animation_y - transform.translation.y;
+        if diff_y.abs() > 0.01 {
+            // println!(
+            //     "grid_ball.animation_y {} transform.translation.y {} diff {}",
+            //     grid_ball.animation_y,
+            //     transform.translation.y,
+            //     diff_y.abs()
+            // );
+            if diff_y.abs() < 0.1 {
+                // println!("set final {}", grid_ball.animation_y);
+                transform.translation.y = grid_ball.animation_y;
+            } else {
+                transform.translation.y = transform.translation.y + diff_y * 0.1;
             }
         }
     }

@@ -15,6 +15,8 @@ pub struct ProjectileBall {
 #[derive(Component)]
 pub struct GridBall {
     pub hex: Hex,
+    pub animation_x: f32,
+    pub animation_y: f32,
 }
 
 #[derive(Component)]
