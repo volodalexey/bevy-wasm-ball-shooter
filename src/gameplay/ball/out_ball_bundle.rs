@@ -6,19 +6,15 @@ use bevy_rapier2d::prelude::{
     Collider, CollisionGroups, ExternalForce, Group, RigidBody, Velocity,
 };
 
-use crate::gameplay::meshes::resources::GameplayMeshes;
+use crate::gameplay::{constants::BALL_RADIUS, meshes::resources::GameplayMeshes};
 
-use super::{
-    components::{OutBall, Species},
-    constants::INNER_RADIUS_COEFF,
-};
+use super::components::{OutBall, Species};
 
 pub struct OutBallBundle;
 
 impl OutBallBundle {
     pub fn new(
         pos: Vec2,
-        radius: f32,
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         materials: &mut ResMut<Assets<ColorMaterial>>,
@@ -42,7 +38,7 @@ impl OutBallBundle {
             OutBall::default(),
             species,
             RigidBody::Dynamic,
-            Collider::ball(radius * INNER_RADIUS_COEFF),
+            Collider::ball(BALL_RADIUS),
             ExternalForce::default(),
             Velocity::default(),
             CollisionGroups::new(Group::GROUP_4, Group::NONE),

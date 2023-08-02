@@ -6,10 +6,9 @@ use bevy::{
     },
 };
 
-use super::{
-    components::MainCamera,
-    constants::{CAMERA_ROTATION_SPEED, CAMERA_SCALE, CAMERA_SPEED},
-};
+use crate::gameplay::constants::{CAMERA_ROTATION_SPEED, CAMERA_SCALE, CAMERA_SPEED};
+
+use super::components::MainCamera;
 
 pub fn setup_main_camera(mut commands: Commands) {
     commands.spawn((

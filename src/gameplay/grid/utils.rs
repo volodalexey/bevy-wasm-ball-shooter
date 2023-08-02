@@ -1,14 +1,17 @@
 use bevy::{
-    prelude::{Entity, Vec2},
+    prelude::{Entity, Query, Vec2, With},
     utils::HashSet,
+    window::{PrimaryWindow, Window},
 };
 use bevy_rapier2d::prelude::{ImpulseJoint, PrismaticJointBuilder};
 use hexx::Hex;
 
 use crate::{
     gameplay::{
-        ball::constants::{INNER_RADIUS_COEFF, MIN_PROJECTILE_SNAP_VELOCITY},
-        grid::constants::VISIBLE_ROWS,
+        constants::{
+            INNER_RADIUS_COEFF, MIN_PROJECTILE_SNAP_VELOCITY, PLAYGROUND_ROWS,
+            PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
+        },
         panels::resources::MoveCounter,
     },
     utils::{from_2d_to_grid_2d, from_grid_2d_to_2d},
@@ -81,19 +84,23 @@ pub fn find_floating_clusters(grid: &Grid) -> Vec<Vec<Hex>> {
     floating_clusters
 }
 
-pub fn adjust_grid_layout(grid: &mut Grid, move_counter: &MoveCounter) {
-    let row_height = 1.5 * grid.layout.hex_size.y;
-    let full_height = grid.init_rows as f32 * row_height;
-    let visible_height = VISIBLE_ROWS as f32 * row_height;
-    let init_layout_y = match full_height > visible_height {
-        true => full_height - visible_height,
-        false => 0.0,
-    };
-    let move_layout_y = move_counter.0 as f32 * row_height;
-    grid.layout.origin.y = move_layout_y - init_layout_y;
+pub fn adjust_grid_layout(
+    window_query: &Query<&Window, With<PrimaryWindow>>,
+    grid: &mut Grid,
+    move_counter: &MoveCounter,
+) {
+    let window = window_query.single();
+    let init_row_y = -(window.height()
+        - PROJECTILE_SPAWN_BOTTOM
+        - window.height() / 2.0
+        - ROW_HEIGHT * PLAYGROUND_ROWS as f32);
+    let full_height = ROW_HEIGHT * grid.init_rows as f32;
+    let init_layout_y = init_row_y - full_height;
+    let move_layout_y = move_counter.0 as f32 * ROW_HEIGHT;
+    grid.layout.origin.y = init_layout_y + move_layout_y;
     // println!(
-    //     "Adjust grid layout initr({}) full({}) visible({}) inity({}) gridy({})",
-    //     grid.init_rows, full_height, visible_height, init_layout_y, grid.layout.origin.y
+    //     "Adjust grid init_row_y({}) full_height({}) init_layout_y({}) grid.layout.origin.y({})",
+    //     init_row_y, full_height, init_layout_y, grid.layout.origin.y
     // );
 }
 

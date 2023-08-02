@@ -3,7 +3,7 @@ use bevy::prelude::{App, Plugin, Vec2};
 // use bevy_rapier2d::prelude::RapierDebugRenderPlugin;
 use bevy_rapier2d::prelude::{NoUserData, RapierConfiguration, RapierPhysicsPlugin};
 
-use super::grid::constants::BALL_RADIUS;
+use super::constants::BALL_RADIUS;
 
 pub struct PhysicsPlugin;
 

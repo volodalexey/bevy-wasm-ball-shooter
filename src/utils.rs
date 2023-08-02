@@ -2,7 +2,8 @@ use bevy::prelude::{ResMut, Vec2};
 use bevy_pkv::PkvStore;
 
 use crate::{
-    constants::{LEVEL_KEY, MAX_LEVEL, START_LEVEL},
+    constants::LEVEL_KEY,
+    gameplay::constants::{MAX_LEVEL, START_LEVEL},
     resources::LevelCounter,
 };
 

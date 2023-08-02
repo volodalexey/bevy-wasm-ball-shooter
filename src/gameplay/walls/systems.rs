@@ -2,7 +2,7 @@ use bevy::prelude::{
     Assets, Commands, DespawnRecursiveExt, Entity, Mesh, Query, Res, ResMut, Vec3, With,
 };
 
-use crate::gameplay::ball::constants::INNER_RADIUS_COEFF;
+use crate::gameplay::constants::BALL_RADIUS;
 use crate::gameplay::grid::resources::Grid;
 use crate::gameplay::materials::resources::GameplayMaterials;
 
@@ -16,8 +16,7 @@ pub fn setup_level_walls(
     gameplay_materials: Option<Res<GameplayMaterials>>,
 ) {
     if let Some(gameplay_materials) = gameplay_materials {
-        let ball_radius = grid.layout.hex_size.x * INNER_RADIUS_COEFF;
-        let inner_width = grid.init_cols as f32 * ball_radius + ball_radius * 0.5;
+        let inner_width = grid.init_cols as f32 * BALL_RADIUS + BALL_RADIUS * 0.5;
         let side_x = inner_width + WALL_X_WIDTH * 0.5;
         commands.spawn(WallBundle::new(
             Vec3::new(side_x, 0.0, 0.0),

@@ -1,18 +1,16 @@
-use bevy::prelude::{
-    warn, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Vec2, With,
+use bevy::{
+    prelude::{
+        warn, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, With,
+    },
+    window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use hexx::Direction;
 
-use crate::{
-    components::AppState,
-    resources::LevelCounter,
-    utils::{from_grid_2d_to_2d, increment_level},
-};
+use crate::{components::AppState, resources::LevelCounter, utils::increment_level};
 
 use super::{
     ball::components::{GridBall, OutBall},
-    constants::PROJECTILE_SPAWN,
+    constants::GAME_OVER_BOTTOM,
     events::BeginTurn,
     grid::{events::UpdatePositions, resources::Grid},
 };
@@ -36,22 +34,16 @@ pub fn on_begin_turn(
 pub fn check_game_over(
     mut grid: ResMut<Grid>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
-    let projectile_hex = grid.layout.world_pos_to_hex(Vec2 {
-        x: 0.0,
-        y: PROJECTILE_SPAWN,
-    });
-    let hex_game_over = projectile_hex
-        .neighbor(Direction::Top)
-        .neighbor(Direction::Top);
-
-    let hex_game_over_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex_game_over));
+    let window = window_query.single();
+    let game_over_bottom = -(window.height() - GAME_OVER_BOTTOM - window.height() / 2.0);
 
     grid.check_update_bounds();
-    if grid.bounds.mins.y < hex_game_over_pos.y {
+    if grid.bounds.mins.y < game_over_bottom {
         warn!(
             "GameOver because minimal bound ({}) less than ({})",
-            grid.bounds.mins.y, hex_game_over_pos.y
+            grid.bounds.mins.y, game_over_bottom
         );
         app_state_next_state.set(AppState::GameOver);
     }

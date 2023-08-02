@@ -7,19 +7,18 @@ use bevy_rapier2d::{
     render::ColliderDebugColor,
 };
 
-use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources::GameplayMeshes};
-
-use super::{
-    components::{ProjectileBall, Species},
-    constants::INNER_RADIUS_COEFF,
+use crate::gameplay::{
+    constants::BALL_RADIUS, materials::resources::GameplayMaterials,
+    meshes::resources::GameplayMeshes,
 };
+
+use super::components::{ProjectileBall, Species};
 
 pub struct ProjectileBallBundle;
 
 impl ProjectileBallBundle {
     pub fn new(
         pos: Vec2,
-        radius: f32,
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
@@ -48,7 +47,7 @@ impl ProjectileBallBundle {
                 is_ready_to_despawn: false,
             },
             species,
-            Collider::ball(radius * INNER_RADIUS_COEFF),
+            Collider::ball(BALL_RADIUS),
             RigidBody::Dynamic,
             Velocity::default(),
             ActiveEvents::COLLISION_EVENTS,

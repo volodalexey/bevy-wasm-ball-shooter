@@ -8,12 +8,13 @@ use bevy_pkv::PkvStore;
 
 use crate::{
     components::AppState,
-    constants::{LEVEL_KEY, MAX_LEVEL, START_LEVEL},
+    constants::LEVEL_KEY,
     game_audio::{
         components::MainSound,
         constants::{MAIN_SOUND_VOLUME_KEY, SFX_SOUND_VOLUME_KEY},
         utils::{play_score_audio, play_shoot_audio, toggle_main_audio},
     },
+    gameplay::constants::{MAX_LEVEL, START_LEVEL},
     loading::{audio_assets::AudioAssets, font_assets::FontAssets},
     resources::LevelCounter,
     ui::{

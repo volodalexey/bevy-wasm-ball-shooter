@@ -3,9 +3,11 @@ use bevy::{
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
 
-use crate::gameplay::{grid::resources::Grid, materials::resources::GameplayMaterials};
+use crate::gameplay::{
+    constants::INNER_RADIUS_COEFF, grid::resources::Grid, materials::resources::GameplayMaterials,
+};
 
-use super::{components::AimLine, components::AimTarget, constants::INNER_RADIUS_COEFF};
+use super::{components::AimLine, components::AimTarget};
 
 pub struct AimBundle;
 
@@ -22,7 +24,7 @@ impl AimBundle {
                     .add(shape::Circle::new(grid.layout.hex_size.y * INNER_RADIUS_COEFF).into())
                     .into(),
                 material: gameplay_materials.arrow_end.clone(),
-                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
+                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 1.0)),
                 visibility: Visibility::Hidden,
                 ..Default::default()
             },
@@ -41,7 +43,7 @@ impl AimBundle {
                     .add(shape::Quad::new(Vec2::new(2., 1.0)).into())
                     .into(),
                 material: gameplay_materials.arrow_end.clone(),
-                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
+                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 1.0)),
                 visibility: Visibility::Hidden,
                 ..Default::default()
             },

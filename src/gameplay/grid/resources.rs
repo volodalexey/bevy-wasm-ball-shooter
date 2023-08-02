@@ -9,9 +9,10 @@ use bevy::{
 };
 use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
 
-use crate::utils::from_grid_2d_to_2d;
-
-use super::constants::{BALL_RADIUS, COLLISION_SNAP_COOLDOWN_TIME};
+use crate::{
+    gameplay::constants::{COLLISION_SNAP_COOLDOWN_TIME, SIZE},
+    utils::from_grid_2d_to_2d,
+};
 
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Bound {
@@ -79,7 +80,7 @@ impl Default for Grid {
             offset_mode: OffsetHexMode::OddRows,
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,
-                hex_size: hexx::Vec2::ONE * BALL_RADIUS,
+                hex_size: hexx::Vec2::ONE * SIZE,
                 ..Default::default()
             },
             storage: Default::default(),

@@ -14,7 +14,9 @@ use bevy_rapier2d::prelude::{ExternalForce, Velocity};
 use crate::{
     game_audio::utils::pkv_play_shoot_audio,
     gameplay::{
-        constants::{PROJECTILE_SHOOT, PROJECTILE_SPAWN},
+        constants::{
+            BALL_RADIUS, PROJECTILE_SHOOT_BOTTOM, PROJECTILE_SPAWN_BOTTOM, PROJECTILE_SPEED,
+        },
         events::BeginTurn,
         grid::resources::Grid,
         main_camera::components::MainCamera,
@@ -30,7 +32,6 @@ use crate::{
 use super::{
     aim_bundle::AimBundle,
     components::{AimLine, AimTarget, GridBall, OutBall, ProjectileBall, Species},
-    constants::{INNER_RADIUS_COEFF, PROJECTILE_SPEED},
     projectile_ball_bundle::ProjectileBallBundle,
     resources::ProjectileBuffer,
 };
@@ -52,6 +53,7 @@ pub fn projectile_reload(
     mut begin_turn: EventReader<BeginTurn>,
     grid: Res<Grid>,
     balls_query: Query<&Species, With<GridBall>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
     if begin_turn.is_empty() {
         return;
@@ -91,9 +93,12 @@ pub fn projectile_reload(
         None => Species::pick_random(&colors_in_grid),
     };
 
+    let window = window_query.single();
+    let projectile_spawn_bottom =
+        -(window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0);
+
     commands.spawn(ProjectileBallBundle::new(
-        from_grid_2d_to_2d(Vec2::new(0.0, PROJECTILE_SPAWN)),
-        grid.layout.hex_size.x,
+        Vec2::new(0.0, projectile_spawn_bottom),
         species,
         &gameplay_meshes,
         &gameplay_materials,
@@ -136,12 +141,15 @@ pub fn shoot_projectile(
                 projectile_ball_query.get_single_mut()
             {
                 if pointer_aquired && !projectile_ball.is_flying {
+                    let window = window_query.single();
+                    let projectile_shoot_bottom =
+                        -(window.height() - PROJECTILE_SHOOT_BOTTOM - window.height() / 2.0);
                     *target_visibility = Visibility::Visible;
                     *line_visibility = Visibility::Visible;
 
                     let mut target_position = pointer_position;
-                    if target_position.y < -PROJECTILE_SHOOT {
-                        target_position.y = -PROJECTILE_SHOOT;
+                    if target_position.y < projectile_shoot_bottom {
+                        target_position.y = projectile_shoot_bottom;
                     }
 
                     target_transform.translation.x = target_position.x;
@@ -156,7 +164,7 @@ pub fn shoot_projectile(
                         .translation
                         .distance(target_transform.translation);
                     // println!("distance {}", distance);
-                    line_transform.scale.y = distance - INNER_RADIUS_COEFF * 2.0;
+                    line_transform.scale.y = distance - BALL_RADIUS * 2.0;
                     let diff = target_transform.translation - line_transform.translation;
                     // println!("diff({}, {})", diff.x, diff.y);
                     let angle = diff.y.atan2(diff.x);
@@ -194,7 +202,7 @@ pub fn setup_aim_target(
     grid: Res<Grid>,
 ) {
     commands.spawn(AimBundle::new_target(
-        from_grid_2d_to_2d(Vec2::new(0.0, PROJECTILE_SPAWN / 2.0)),
+        from_grid_2d_to_2d(Vec2::new(0.0, 0.0)),
         &mut meshes,
         &gameplay_materials,
         &grid,
@@ -216,7 +224,7 @@ pub fn setup_aim_line(
     gameplay_materials: Res<GameplayMaterials>,
 ) {
     commands.spawn(AimBundle::new_line(
-        from_grid_2d_to_2d(Vec2::new(0.0, PROJECTILE_SPAWN / 2.0)),
+        from_grid_2d_to_2d(Vec2::new(0.0, 0.0)),
         &mut meshes,
         &gameplay_materials,
     ));
@@ -246,7 +254,7 @@ pub fn animate_out_ball(
     {
         if !grid_ball_out.started {
             grid_ball_out.started = true;
-            ball_transform.translation.z = 1.0; // slightly on top of grid
+            ball_transform.translation.z = 2.0; // slightly on top of grid
             ball_velocity.linvel = Vec2::new(
                 fastrand::i32(-200..=200) as f32,
                 fastrand::i32(-200..=200) as f32,

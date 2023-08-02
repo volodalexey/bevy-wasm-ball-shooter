@@ -5,6 +5,7 @@ use bevy::{
     },
     sprite::ColorMaterial,
     time::Time,
+    window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
 use bevy_rapier2d::prelude::{CollisionEvent, RigidBody, Velocity};
@@ -47,6 +48,7 @@ pub fn generate_grid(
     mut grid: ResMut<Grid>,
     mut update_positions: EventWriter<UpdatePositions>,
     level_counter: Res<LevelCounter>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
     (grid.init_cols, grid.init_rows) = calc_init_cols_rows(&level_counter);
     for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
@@ -55,7 +57,6 @@ pub fn generate_grid(
 
         let grid_ball_bundle = GridBallBundle::new(
             hex_pos,
-            grid.layout.hex_size.x,
             Species::random_species(),
             &gameplay_meshes,
             &gameplay_materials,
@@ -88,7 +89,7 @@ pub fn generate_grid(
     grid.check_update_bounds();
     let (width, _) = grid.dim();
     grid.layout.origin.x = -width / 2. + grid.layout.hex_size.x;
-    adjust_grid_layout(&mut grid, &MoveCounter(0));
+    adjust_grid_layout(&window_query, &mut grid, &MoveCounter(0));
     grid.update_bounds();
     update_positions.send(UpdatePositions);
 }
@@ -98,13 +99,14 @@ pub fn update_hex_coord_transforms(
     mut grid: ResMut<Grid>,
     mut event_query: EventReader<UpdatePositions>,
     move_counter: Res<MoveCounter>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
     if event_query.is_empty() {
         return;
     }
     event_query.clear();
 
-    adjust_grid_layout(&mut grid, &move_counter);
+    adjust_grid_layout(&window_query, &mut grid, &move_counter);
     grid.check_update_bounds();
 
     for (entity, mut transform, mut velocity, GridBall { hex }) in balls_query.iter_mut() {
@@ -146,7 +148,7 @@ pub fn check_projectile_out_of_grid(
     if let Ok((projectile_entity, projectile_transform, mut projectile_ball, species)) =
         projectile_query.get_single_mut()
     {
-        if !projectile_ball.is_flying {
+        if !projectile_ball.is_flying || projectile_ball.is_ready_to_despawn {
             return;
         }
         grid.check_update_bounds();
@@ -343,7 +345,6 @@ pub fn on_snap_projectile(
         let ball = commands
             .spawn(GridBallBundle::new(
                 hex_pos,
-                grid.layout.hex_size.x,
                 snap_projectile.species,
                 &gameplay_meshes,
                 &gameplay_materials,
@@ -387,7 +388,6 @@ pub fn on_snap_projectile(
                                     ball_transform.translation.x,
                                     ball_transform.translation.y,
                                 ),
-                                grid.layout.hex_size.x,
                                 *ball_species,
                                 &gameplay_meshes,
                                 &mut materials,
@@ -395,7 +395,6 @@ pub fn on_snap_projectile(
                         } else if c_hex.x == hex.x && c_hex.y == hex.y {
                             commands.spawn(OutBallBundle::new(
                                 hex_pos,
-                                grid.layout.hex_size.x,
                                 snap_projectile.species,
                                 &gameplay_meshes,
                                 &mut materials,
@@ -423,7 +422,6 @@ pub fn on_snap_projectile(
                                     ball_transform.translation.x,
                                     ball_transform.translation.y,
                                 ),
-                                grid.layout.hex_size.x,
                                 *ball_species,
                                 &gameplay_meshes,
                                 &mut materials,
@@ -431,7 +429,6 @@ pub fn on_snap_projectile(
                         } else if c_hex.x == hex.x && c_hex.y == hex.y {
                             commands.spawn(OutBallBundle::new(
                                 hex_pos,
-                                grid.layout.hex_size.x,
                                 snap_projectile.species,
                                 &gameplay_meshes,
                                 &mut materials,

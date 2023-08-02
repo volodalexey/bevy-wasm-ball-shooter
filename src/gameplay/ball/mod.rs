@@ -14,7 +14,6 @@ use self::{
 
 pub mod aim_bundle;
 pub mod components;
-pub mod constants;
 pub mod events;
 pub mod grid_ball_bundle;
 pub mod out_ball_bundle;

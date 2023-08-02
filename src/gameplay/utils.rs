@@ -3,9 +3,9 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 
-use crate::{constants::MAX_LEVEL, resources::LevelCounter};
+use crate::resources::LevelCounter;
 
-use super::main_camera::components::MainCamera;
+use super::{constants::MAX_LEVEL, main_camera::components::MainCamera};
 
 pub fn detect_pointer_position(
     window_query: &Query<&Window, With<PrimaryWindow>>,
