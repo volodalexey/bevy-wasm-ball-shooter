@@ -20,6 +20,7 @@ pub struct GridBallBundle;
 impl GridBallBundle {
     pub fn new(
         pos: Vec2,
+        animation_pos: Vec2,
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
@@ -45,8 +46,8 @@ impl GridBallBundle {
             },
             GridBall {
                 hex,
-                animation_x: pos.x,
-                animation_y: pos.y,
+                animation_x: animation_pos.x,
+                animation_y: animation_pos.y,
             },
             species,
             rigid_body,

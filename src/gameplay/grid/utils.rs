@@ -1,16 +1,20 @@
 use bevy::{
-    prelude::{Entity, Query, Vec2, With},
+    prelude::{
+        default, ChildBuilder, Color, Commands, DespawnRecursiveExt, Entity, Query, Vec2, With,
+    },
+    text::{Text, Text2dBundle, TextSection, TextStyle},
     utils::HashSet,
     window::{PrimaryWindow, Window},
 };
-use bevy_rapier2d::prelude::{ImpulseJoint, PrismaticJointBuilder};
+use bevy_rapier2d::prelude::{ImpulseJoint, PrismaticJointBuilder, RevoluteJointBuilder};
 use hexx::Hex;
 
 use crate::{
     gameplay::{
+        ball::{components::ProjectileHelper, projectile_ball_bundle::ProjectileBallBundle},
         constants::{
-            BALL_DIAMETER, BALL_RADIUS, INNER_RADIUS_COEFF, MIN_PROJECTILE_SNAP_VELOCITY,
-            PLAYGROUND_ROWS, PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
+            BALL_DIAMETER, BALL_RADIUS, MIN_PROJECTILE_SNAP_VELOCITY, PLAYGROUND_ROWS,
+            PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
         },
         panels::resources::MoveCounter,
     },
@@ -138,6 +142,72 @@ pub fn clamp_inside_world_bounds(hex: &Hex, grid: &Grid) -> (Hex, bool) {
     )
 }
 
+pub fn build_revolute_joint(
+    anchor_entity: &Entity,
+    anchor_pos: Vec2,
+    from_pos: Vec2,
+) -> ImpulseJoint {
+    let diff = anchor_pos - from_pos;
+    let axis = diff.normalize() * BALL_DIAMETER;
+    // println!(
+    //     "from_pos({}, {}) to_pos({}, {}) diff({}, {}) axis({}, {})",
+    //     from_pos.x, from_pos.y, anchor_pos.x, anchor_pos.y, diff.x, diff.y, axis.x, axis.y
+    // );
+    let joint = RevoluteJointBuilder::new().local_anchor2(axis);
+    ImpulseJoint::new(*anchor_entity, joint)
+}
+
+pub fn build_combined_joint(
+    commands: &mut Commands,
+    projectile_entity: &Entity,
+    projectile_pos: Vec2,
+    ball_entity: &Entity,
+    ball_pos: Vec2,
+    grid: &Grid,
+) {
+    let projectile_hex = grid
+        .layout
+        .world_pos_to_hex(from_2d_to_grid_2d(projectile_pos));
+    let to_hex = grid.layout.world_pos_to_hex(from_2d_to_grid_2d(ball_pos));
+    let mut neighbors = grid
+        .neighbors(projectile_hex)
+        .iter()
+        .map(|(hex, _)| *hex)
+        .collect::<Vec<Hex>>();
+    grid.sort_neighbors(&mut neighbors, projectile_pos);
+    for neighbor in neighbors.iter() {
+        if neighbor.x == to_hex.x && neighbor.y == to_hex.y {
+            let helper_bundle = ProjectileBallBundle::new_helper();
+            let helper_postion = helper_bundle.0.translation.truncate();
+            let helper_entity = commands
+                .spawn(helper_bundle)
+                .insert(build_revolute_joint(&ball_entity, ball_pos, helper_postion))
+                .id();
+            println!("helper_entity {}", helper_entity.index());
+            commands
+                .entity(*projectile_entity)
+                .insert(build_prismatic_joint(
+                    projectile_pos,
+                    helper_postion,
+                    &helper_entity,
+                ));
+            break;
+        }
+    }
+}
+
+pub fn build_prismatic_joint(from_pos: Vec2, to_pos: Vec2, to_entity: &Entity) -> ImpulseJoint {
+    let diff = from_pos - to_pos;
+    let min_limit = BALL_DIAMETER;
+    let max_limit = BALL_DIAMETER + BALL_RADIUS;
+    println!(
+        "from_pos({}, {}) to_pos({}, {}) diff({}, {}) limits({}, {})",
+        from_pos.x, from_pos.y, to_pos.x, to_pos.y, diff.x, diff.y, min_limit, max_limit
+    );
+    let prism = PrismaticJointBuilder::new(diff).limits([min_limit, max_limit]);
+    ImpulseJoint::new(*to_entity, prism)
+}
+
 /// each ball in grid can have 4 max joints
 /// assume pointy-top orientation
 pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
@@ -161,16 +231,7 @@ pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
             None
         })
         .map(|(neighbor_entity, neighbor_pos)| {
-            let axis = hex_pos - neighbor_pos;
-            // println!(
-            //     "pos({}, {}) to({}, {}) npos({}, {})",
-            //     hex_pos.x, hex_pos.y, axis.x, axis.y, neighbor_pos.x, neighbor_pos.y
-            // );
-            let prism = PrismaticJointBuilder::new(axis).limits([
-                2.0 * grid.layout.hex_size.y * INNER_RADIUS_COEFF,
-                2.2 * grid.layout.hex_size.y * INNER_RADIUS_COEFF,
-            ]);
-            ImpulseJoint::new(*neighbor_entity, prism)
+            build_prismatic_joint(hex_pos, neighbor_pos, neighbor_entity)
         })
         .collect::<Vec<ImpulseJoint>>()
 }
@@ -182,5 +243,32 @@ pub fn is_move_slow(linvel: Vec2) -> bool {
     //     linvel.y,
     //     linvel.length()
     // );
-    linvel.y <= 0.0 || linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY
+    linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY
+}
+
+pub fn build_ball_text(parent: &mut ChildBuilder<'_, '_, '_>, hex: Hex) {
+    parent.spawn(Text2dBundle {
+        text: Text {
+            sections: vec![TextSection {
+                value: format!("{}, {}", hex.x, hex.y),
+                style: TextStyle {
+                    color: Color::BLACK,
+                    ..default()
+                },
+            }],
+            ..default()
+        },
+        ..default()
+    });
+}
+
+pub fn remove_projectile(
+    commands: &mut Commands,
+    projectile_entity: Entity,
+    projectile_helper_query: &mut Query<Entity, With<ProjectileHelper>>,
+) {
+    commands.entity(projectile_entity).despawn_recursive();
+    for projectile_helper in projectile_helper_query {
+        commands.entity(projectile_helper).despawn_recursive();
+    }
 }

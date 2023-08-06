@@ -4,7 +4,7 @@ use std::{
 };
 
 use bevy::{
-    prelude::{info, Entity, Resource},
+    prelude::{info, Entity, Resource, Vec2},
     time::{Timer, TimerMode},
 };
 use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
@@ -144,6 +144,31 @@ impl Grid {
                 }
             })
             .collect::<Vec<Hex>>()
+    }
+
+    pub fn sort_neighbors(&self, neighbors: &mut Vec<Hex>, position: Vec2) {
+        neighbors.sort_by(|a_hex, b_hex| {
+            let a_hex = *a_hex;
+            let b_hex = *b_hex;
+            let a_hex_pos = from_grid_2d_to_2d(self.layout.hex_to_world_pos(a_hex));
+            let b_hex_pos = from_grid_2d_to_2d(self.layout.hex_to_world_pos(b_hex));
+            let a_distance = position.distance(a_hex_pos);
+            let b_distance = position.distance(b_hex_pos);
+            // println!(
+            //     "a_hex({}, {}) a_pos({}, {}) a_dist({}) b_hex({}, {}) b_pos({}, {}) b_dist({})",
+            //     a_hex.x,
+            //     a_hex.y,
+            //     a_hex_pos.x,
+            //     a_hex_pos.y,
+            //     a_distance,
+            //     b_hex.x,
+            //     b_hex.y,
+            //     b_hex_pos.x,
+            //     b_hex_pos.y,
+            //     b_distance
+            // );
+            b_distance.total_cmp(&a_distance)
+        });
     }
 
     pub fn check_update_bounds(&mut self) {

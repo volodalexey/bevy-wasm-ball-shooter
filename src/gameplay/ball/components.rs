@@ -10,7 +10,21 @@ use hexx::Hex;
 pub struct ProjectileBall {
     pub is_flying: bool,
     pub is_ready_to_despawn: bool,
+    pub snap_to: Vec<Hex>,
 }
+
+impl Default for ProjectileBall {
+    fn default() -> Self {
+        Self {
+            is_flying: false,
+            is_ready_to_despawn: false,
+            snap_to: vec![],
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct ProjectileHelper {}
 
 #[derive(Component)]
 pub struct GridBall {

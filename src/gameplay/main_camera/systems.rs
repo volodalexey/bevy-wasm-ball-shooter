@@ -33,16 +33,16 @@ pub fn control_camera_position(
 ) {
     let mut direction = Vec3::ZERO;
     let mut camera_transform = camera_query.single_mut();
-    if keyboard_input_key_code.any_pressed([KeyCode::A, KeyCode::Left]) {
+    if keyboard_input_key_code.any_pressed([KeyCode::A]) {
         direction += Vec3::new(-1.0, 0.0, 0.0)
     }
-    if keyboard_input_key_code.any_pressed([KeyCode::D, KeyCode::Right]) {
+    if keyboard_input_key_code.any_pressed([KeyCode::D]) {
         direction += Vec3::new(1.0, 0.0, 0.0)
     }
-    if keyboard_input_key_code.any_pressed([KeyCode::W, KeyCode::Up]) {
+    if keyboard_input_key_code.any_pressed([KeyCode::W]) {
         direction += Vec3::new(0.0, 1.0, 0.0);
     }
-    if keyboard_input_key_code.any_pressed([KeyCode::S, KeyCode::Down]) {
+    if keyboard_input_key_code.any_pressed([KeyCode::S]) {
         direction += Vec3::new(0.0, -1.0, 0.0);
     }
 

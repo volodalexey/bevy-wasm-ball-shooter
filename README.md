@@ -27,6 +27,6 @@ cargo install wasm-bindgen-cli
 TODO
 animation for snap position
 menu button in game
-button to switch snap or bounce
+snap projectile not bounce
 show next ball to shoot
 draw full line to first contact

@@ -3,7 +3,10 @@ use bevy::{
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
 use bevy_rapier2d::{
-    prelude::{ActiveEvents, Ccd, Collider, CollisionGroups, Group, RigidBody, Sleeping, Velocity},
+    prelude::{
+        ActiveEvents, Ccd, Collider, CollisionGroups, ExternalImpulse, Group, RigidBody, Sleeping,
+        Velocity,
+    },
     render::ColliderDebugColor,
 };
 
@@ -12,7 +15,7 @@ use crate::gameplay::{
     meshes::resources::GameplayMeshes,
 };
 
-use super::components::{ProjectileBall, Species};
+use super::components::{ProjectileBall, ProjectileHelper, Species};
 
 pub struct ProjectileBallBundle;
 
@@ -34,6 +37,7 @@ impl ProjectileBallBundle {
         Sleeping,
         ColliderDebugColor,
         CollisionGroups,
+        ExternalImpulse,
     ) {
         (
             MaterialMesh2dBundle {
@@ -42,10 +46,7 @@ impl ProjectileBallBundle {
                 transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
                 ..Default::default()
             },
-            ProjectileBall {
-                is_flying: false,
-                is_ready_to_despawn: false,
-            },
+            ProjectileBall::default(),
             species,
             Collider::ball(BALL_RADIUS),
             RigidBody::Dynamic,
@@ -55,6 +56,24 @@ impl ProjectileBallBundle {
             Sleeping::disabled(),
             ColliderDebugColor(species.into()),
             CollisionGroups::new(Group::GROUP_3, Group::GROUP_1 | Group::GROUP_2),
+            ExternalImpulse::default(),
+        )
+    }
+
+    /// invisible helper for intermediate joint
+    pub fn new_helper() -> (
+        Transform,
+        RigidBody,
+        Collider,
+        CollisionGroups,
+        ProjectileHelper,
+    ) {
+        (
+            Transform::default(),
+            RigidBody::Dynamic,
+            Collider::ball(1.0),
+            CollisionGroups::new(Group::GROUP_4, Group::NONE),
+            ProjectileHelper {},
         )
     }
 }

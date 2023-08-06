@@ -1,4 +1,4 @@
-pub const POINTER_COOLDOWN_TIME: f32 = 1.0;
+pub const POINTER_COOLDOWN_TIME: f32 = 0.2;
 
 pub const MENU_ROW_GAP: f32 = 10.0;
 

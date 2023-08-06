@@ -4,9 +4,9 @@ use self::{
     events::UpdatePositions,
     resources::{CollisionSnapCooldown, Grid},
     systems::{
-        animate_grid_ball, check_projectile_out_of_grid, cleanup_grid, generate_grid,
-        on_projectile_collisions_events, on_snap_projectile, tick_collision_snap_cooldown_timer,
-        update_hex_coord_transforms,
+        animate_grid_ball, check_projectile_out_of_grid, cleanup_grid, control_projectile_position,
+        generate_grid, on_projectile_collisions_events, on_snap_projectile,
+        tick_collision_snap_cooldown_timer, update_hex_coord_transforms,
     },
 };
 
@@ -35,6 +35,7 @@ impl Plugin for GridPlugin {
                     on_snap_projectile,
                     tick_collision_snap_cooldown_timer,
                     animate_grid_ball,
+                    control_projectile_position,
                 )
                     .run_if(in_state(AppState::Gameplay)),
             )
