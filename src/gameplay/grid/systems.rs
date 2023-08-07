@@ -20,7 +20,7 @@ use crate::{
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
         },
-        constants::MIN_CLUSTER_SIZE,
+        constants::{MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT},
         events::BeginTurn,
         grid::utils::{
             build_ball_text, clamp_inside_world_bounds, find_cluster, find_floating_clusters,
@@ -215,17 +215,30 @@ pub fn on_projectile_collisions_events(
                 if !projectile_ball.is_ready_to_despawn
                     && match started {
                         true => {
-                            // if projectile_ball.snap_to.len() == 0 {
-                            if !projectile_ball.snap_to.contains(&grid_ball.hex) {
-                                collision_snap_cooldown.start();
-                                commands
-                                    .entity(projectile_entity)
-                                    .insert(build_revolute_joint(
-                                        &ball_entity,
-                                        ball_transform.translation.truncate(),
-                                        projectile_transform.translation.truncate(),
-                                    ));
-                                projectile_ball.snap_to.push(grid_ball.hex);
+                            // println!("Snap event {:?}", projectile_ball.snap_to);
+                            if projectile_ball.snap_to.len() == 0 {
+                                // if !projectile_ball.snap_to.contains(&grid_ball.hex) {
+                                let anchor_pos = ball_transform.translation.truncate();
+                                let from_pos = projectile_transform.translation.truncate();
+                                let diff = (anchor_pos - from_pos).normalize();
+                                let vel = projectile_velocity.linvel.normalize();
+                                let dot = vel.dot(diff);
+                                // println!(
+                                //     "diff({}, {}) vel({}, {}) dot({})",
+                                //     diff.x, diff.y, vel.x, vel.y, dot
+                                // );
+                                if dot > MIN_PROJECTILE_SNAP_DOT {
+                                    collision_snap_cooldown.start();
+                                    commands.entity(projectile_entity).with_children(|parent| {
+                                        parent.spawn(build_revolute_joint(
+                                            &ball_entity,
+                                            anchor_pos,
+                                            from_pos,
+                                            true,
+                                        ));
+                                    });
+                                    projectile_ball.snap_to.push(grid_ball.hex);
+                                }
                             }
                             false
                         }
@@ -233,8 +246,6 @@ pub fn on_projectile_collisions_events(
                             let is_slow = is_move_slow(projectile_velocity.linvel);
                             if is_slow {
                                 collision_snap_cooldown.stop();
-                            } else {
-                                collision_snap_cooldown.start();
                             }
                             is_slow
                         }

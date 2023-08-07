@@ -145,9 +145,13 @@ pub fn build_revolute_joint(
     anchor_entity: &Entity,
     anchor_pos: Vec2,
     from_pos: Vec2,
+    normalize: bool,
 ) -> ImpulseJoint {
     let diff = anchor_pos - from_pos;
-    let axis = diff.normalize() * BALL_DIAMETER;
+    let axis = match normalize {
+        true => diff.normalize() * BALL_DIAMETER,
+        false => diff,
+    };
     // println!(
     //     "from_pos({}, {}) to_pos({}, {}) diff({}, {}) axis({}, {})",
     //     from_pos.x, from_pos.y, anchor_pos.x, anchor_pos.y, diff.x, diff.y, axis.x, axis.y
@@ -203,7 +207,7 @@ pub fn is_move_slow(linvel: Vec2) -> bool {
     //     linvel.y,
     //     linvel.length()
     // );
-    linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY
+    linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY || linvel.y < 0.0
 }
 
 pub fn build_ball_text(parent: &mut ChildBuilder<'_, '_, '_>, hex: Hex) {

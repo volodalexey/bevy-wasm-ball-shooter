@@ -7,6 +7,7 @@ pub const ROW_HEIGHT: f32 = 1.5 * SIZE;
 pub const PLAYGROUND_ROWS: i32 = 10;
 pub const PROJECTILE_SPEED: f32 = 1000.;
 pub const MIN_PROJECTILE_SNAP_VELOCITY: f32 = 20.0;
+pub const MIN_PROJECTILE_SNAP_DOT: f32 = 0.1;
 pub const INNER_RADIUS_COEFF: f32 = 0.866025404; // √3 / 2
 pub const BALL_RADIUS: f32 = INNER_RADIUS_COEFF * SIZE;
 pub const BALL_DIAMETER: f32 = BALL_RADIUS * 2.0;
