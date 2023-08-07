@@ -1,6 +1,7 @@
 use bevy::{
     prelude::{
-        default, ChildBuilder, Color, Commands, DespawnRecursiveExt, Entity, Query, Vec2, With,
+        default, ChildBuilder, Color, Commands, DespawnRecursiveExt, Entity, Query, Transform,
+        Vec2, With, Without,
     },
     text::{Text, Text2dBundle, TextSection, TextStyle},
     utils::HashSet,
@@ -11,6 +12,7 @@ use hexx::Hex;
 
 use crate::{
     gameplay::{
+        ball::components::{GridBall, ProjectileBall},
         constants::{
             BALL_DIAMETER, BALL_RADIUS, MIN_PROJECTILE_SNAP_VELOCITY, PLAYGROUND_ROWS,
             PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
@@ -226,6 +228,56 @@ pub fn build_ball_text(parent: &mut ChildBuilder<'_, '_, '_>, hex: Hex) {
     });
 }
 
-pub fn remove_projectile(commands: &mut Commands, entity: &Entity) {
-    commands.entity(*entity).despawn_recursive();
+pub fn remove_projectile(
+    commands: &mut Commands,
+    projectile_entity: &Entity,
+    projectile_ball: &mut ProjectileBall,
+) {
+    projectile_ball.is_ready_to_despawn = true;
+    commands.entity(*projectile_entity).despawn_recursive();
+}
+
+pub fn remove_projectile_and_snap(
+    commands: &mut Commands,
+    projectile_entity: &Entity,
+    projectile_transform: &Transform,
+    projectile_ball: &mut ProjectileBall,
+    grid: &Grid,
+    balls_query: &Query<(Entity, &Transform, &GridBall), (With<GridBall>, Without<ProjectileBall>)>,
+) -> Vec2 {
+    remove_projectile(commands, projectile_entity, projectile_ball);
+    let default_snap_pos = Vec2::new(
+        projectile_transform.translation.x,
+        projectile_transform.translation.y,
+    );
+    match projectile_ball.snap_to.split_first() {
+        Some((snap_hex, _)) => {
+            let projectile_pos = projectile_transform.translation.truncate();
+            let mut snap_pos = default_snap_pos;
+            for (_, ball_transform, grid_ball) in balls_query.iter() {
+                if grid_ball.hex.x == snap_hex.x && grid_ball.hex.y == snap_hex.y {
+                    let ball_pos = ball_transform.translation.truncate();
+                    // get vector diff between actual projectile position and grid ball that is currently joined with this projectile
+                    let diff = projectile_pos - ball_pos;
+                    let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(*snap_hex));
+                    // calc ideal projectile snap position based on ideal grid ball position
+                    snap_pos = hex_pos + diff;
+                    println!(
+                        "Iter ball_pos({}, {}) diff({}, {}) snap_pos({}, {}) snap_hex({}, {})",
+                        ball_pos.x,
+                        ball_pos.y,
+                        diff.x,
+                        diff.y,
+                        snap_pos.x,
+                        snap_pos.y,
+                        snap_hex.x,
+                        snap_hex.y
+                    );
+                    break;
+                }
+            }
+            snap_pos
+        }
+        None => default_snap_pos,
+    }
 }

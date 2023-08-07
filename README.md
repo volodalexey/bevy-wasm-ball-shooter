@@ -27,6 +27,7 @@ cargo install wasm-bindgen-cli
 TODO
 animation for snap position
 menu button in game
-snap projectile not bounce
 show next ball to shoot
 draw full line to first contact
+responsive layout
+improve performance: show only visible rows + physics from visible row

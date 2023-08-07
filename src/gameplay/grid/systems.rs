@@ -24,7 +24,7 @@ use crate::{
         events::BeginTurn,
         grid::utils::{
             build_ball_text, clamp_inside_world_bounds, find_cluster, find_floating_clusters,
-            is_move_slow, remove_projectile,
+            is_move_slow, remove_projectile, remove_projectile_and_snap,
         },
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
@@ -155,12 +155,11 @@ pub fn check_projectile_out_of_grid(
         }
         grid.check_update_bounds();
         if projectile_transform.translation.y > grid.bounds.maxs.y - grid.layout.hex_size.y {
-            projectile_ball.is_ready_to_despawn = true;
-            remove_projectile(&mut commands, &projectile_entity);
             info!(
                 "Projectile out of grid snap {} {}",
                 grid.bounds.mins.y, projectile_transform.translation.y
             );
+            remove_projectile(&mut commands, &projectile_entity, &mut projectile_ball);
             collision_snap_cooldown.stop();
             snap_projectile.send(SnapProjectile {
                 pos: Vec2::new(
@@ -189,6 +188,7 @@ pub fn on_projectile_collisions_events(
     >,
     balls_query: Query<(Entity, &Transform, &GridBall), (With<GridBall>, Without<ProjectileBall>)>,
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
+    grid: Res<Grid>,
 ) {
     for (entity_a, entity_b, started) in collision_events.iter().map(|e| match e {
         CollisionEvent::Started(a, b, _) => (a, b, true),
@@ -251,15 +251,17 @@ pub fn on_projectile_collisions_events(
                         }
                     }
                 {
-                    projectile_ball.is_ready_to_despawn = true;
                     // if ball turned back
                     // or ball moves too slow
-                    remove_projectile(&mut commands, &projectile_entity);
                     info!("Projectile too slow so snap");
                     snap_projectile.send(SnapProjectile {
-                        pos: Vec2::new(
-                            projectile_transform.translation.x,
-                            projectile_transform.translation.y,
+                        pos: remove_projectile_and_snap(
+                            &mut commands,
+                            &projectile_entity,
+                            &projectile_transform,
+                            &mut projectile_ball,
+                            &grid,
+                            &balls_query,
                         ),
                         species: *species,
                     });
@@ -489,7 +491,7 @@ pub fn on_snap_projectile(
             }
 
             score_counter.0 += score_add;
-            grid.print_sorted_axial();
+            // grid.print_sorted_axial();
             println!("len {} score_add {}", grid.storage.len(), score_add);
         }
 
@@ -516,6 +518,8 @@ pub fn tick_collision_snap_cooldown_timer(
         With<ProjectileBall>,
     >,
     mut snap_projectile: EventWriter<SnapProjectile>,
+    balls_query: Query<(Entity, &Transform, &GridBall), (With<GridBall>, Without<ProjectileBall>)>,
+    grid: Res<Grid>,
 ) {
     if !collision_snap_cooldown.timer.paused() {
         collision_snap_cooldown.timer.tick(time.delta());
@@ -532,13 +536,15 @@ pub fn tick_collision_snap_cooldown_timer(
             }) {
                 // snap projectile anyway after some time
                 collision_snap_cooldown.restart();
-                projectile_ball.is_ready_to_despawn = true;
-                remove_projectile(&mut commands, &projectile_entity);
                 info!("Projectile timeout snap");
                 snap_projectile.send(SnapProjectile {
-                    pos: Vec2::new(
-                        projectile_transform.translation.x,
-                        projectile_transform.translation.y,
+                    pos: remove_projectile_and_snap(
+                        &mut commands,
+                        &projectile_entity,
+                        &projectile_transform,
+                        &mut projectile_ball,
+                        &grid,
+                        &balls_query,
                     ),
                     species: *species,
                 });
