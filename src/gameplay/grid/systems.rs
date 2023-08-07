@@ -15,7 +15,7 @@ use crate::{
     game_audio::utils::pkv_play_score_audio,
     gameplay::{
         ball::{
-            components::{GridBall, OutBall, ProjectileBall, ProjectileHelper, Species},
+            components::{GridBall, OutBall, ProjectileBall, Species},
             events::SnapProjectile,
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
@@ -39,7 +39,7 @@ use crate::{
 use super::{
     events::UpdatePositions,
     resources::{CollisionSnapCooldown, Grid},
-    utils::{adjust_grid_layout, build_combined_joint, build_joints},
+    utils::{adjust_grid_layout, build_joints, build_revolute_joint},
 };
 
 pub fn generate_grid(
@@ -146,7 +146,6 @@ pub fn check_projectile_out_of_grid(
     mut grid: ResMut<Grid>,
     mut snap_projectile: EventWriter<SnapProjectile>,
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
-    mut projectile_helper_query: Query<Entity, With<ProjectileHelper>>,
 ) {
     if let Ok((projectile_entity, projectile_transform, mut projectile_ball, species)) =
         projectile_query.get_single_mut()
@@ -157,11 +156,7 @@ pub fn check_projectile_out_of_grid(
         grid.check_update_bounds();
         if projectile_transform.translation.y > grid.bounds.maxs.y - grid.layout.hex_size.y {
             projectile_ball.is_ready_to_despawn = true;
-            remove_projectile(
-                &mut commands,
-                projectile_entity,
-                &mut projectile_helper_query,
-            );
+            remove_projectile(&mut commands, &projectile_entity);
             info!(
                 "Projectile out of grid snap {} {}",
                 grid.bounds.mins.y, projectile_transform.translation.y
@@ -194,8 +189,6 @@ pub fn on_projectile_collisions_events(
     >,
     balls_query: Query<(Entity, &Transform, &GridBall), (With<GridBall>, Without<ProjectileBall>)>,
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
-    grid: Res<Grid>,
-    mut projectile_helper_query: Query<Entity, With<ProjectileHelper>>,
 ) {
     for (entity_a, entity_b, started) in collision_events.iter().map(|e| match e {
         CollisionEvent::Started(a, b, _) => (a, b, true),
@@ -225,14 +218,13 @@ pub fn on_projectile_collisions_events(
                             // if projectile_ball.snap_to.len() == 0 {
                             if !projectile_ball.snap_to.contains(&grid_ball.hex) {
                                 collision_snap_cooldown.start();
-                                build_combined_joint(
-                                    &mut commands,
-                                    &projectile_entity,
-                                    projectile_transform.translation.truncate(),
-                                    &ball_entity,
-                                    ball_transform.translation.truncate(),
-                                    &grid,
-                                );
+                                commands
+                                    .entity(projectile_entity)
+                                    .insert(build_revolute_joint(
+                                        &ball_entity,
+                                        ball_transform.translation.truncate(),
+                                        projectile_transform.translation.truncate(),
+                                    ));
                                 projectile_ball.snap_to.push(grid_ball.hex);
                             }
                             false
@@ -251,11 +243,7 @@ pub fn on_projectile_collisions_events(
                     projectile_ball.is_ready_to_despawn = true;
                     // if ball turned back
                     // or ball moves too slow
-                    remove_projectile(
-                        &mut commands,
-                        projectile_entity,
-                        &mut projectile_helper_query,
-                    );
+                    remove_projectile(&mut commands, &projectile_entity);
                     info!("Projectile too slow so snap");
                     snap_projectile.send(SnapProjectile {
                         pos: Vec2::new(
@@ -272,10 +260,7 @@ pub fn on_projectile_collisions_events(
 
 pub fn control_projectile_position(
     keyboard_input_key_code: Res<Input<KeyCode>>,
-    mut projectile_query: Query<
-        &mut ExternalImpulse,
-        (With<ProjectileBall>, Without<ProjectileHelper>),
-    >,
+    mut projectile_query: Query<&mut ExternalImpulse, With<ProjectileBall>>,
 ) {
     for mut projectile_impulse in projectile_query.iter_mut() {
         let mut direction = Vec2::ZERO;
@@ -296,45 +281,6 @@ pub fn control_projectile_position(
         if direction.length() > 0.0 {
             projectile_impulse.impulse = direction * 10.0;
             // println!("apply impulse {:?}", projectile_impulse.impulse);
-        }
-        if keyboard_input_key_code.any_just_pressed([KeyCode::Return]) {
-            // for (ball_entity, grid_ball) in balls_query.iter() {
-            // let hex = Hex { x: 4, y: 0 };
-            // if grid_ball.hex.x == hex.x && grid_ball.hex.y == hex.y {
-            // let ball_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
-
-            // commands
-            //     .entity(projectile_entity)
-            //     .insert(build_revolute_joint(
-            //         &ball_entity,
-            //         ball_pos,
-            //         projectile_transform.translation.truncate(),
-            //         &grid,
-            //     ));
-            // commands
-            //     .entity(projectile_entity)
-            //     .insert(build_prismatic_joint(
-            //         projectile_transform.translation.truncate(),
-            //         ball_pos,
-            //         &ball_entity,
-            //         &grid,
-            //     ));
-            // commands.entity(helper_entity).insert(build_revolute_joint(
-            //     &ball_entity,
-            //     ball_pos,
-            //     helper_transform.translation.truncate(),
-            //     &grid,
-            // ));
-            // commands
-            //     .entity(projectile_entity)
-            //     .insert(build_prismatic_joint(
-            //         projectile_transform.translation.truncate(),
-            //         helper_transform.translation.truncate(),
-            //         &helper_entity,
-            //         &grid,
-            //     ));
-            // }
-            // }
         }
     }
 }
@@ -558,7 +504,6 @@ pub fn tick_collision_snap_cooldown_timer(
         (Entity, &Transform, &mut ProjectileBall, &Species, &Velocity),
         With<ProjectileBall>,
     >,
-    mut projectile_helper_query: Query<Entity, With<ProjectileHelper>>,
     mut snap_projectile: EventWriter<SnapProjectile>,
 ) {
     if !collision_snap_cooldown.timer.paused() {
@@ -577,11 +522,7 @@ pub fn tick_collision_snap_cooldown_timer(
                 // snap projectile anyway after some time
                 collision_snap_cooldown.restart();
                 projectile_ball.is_ready_to_despawn = true;
-                remove_projectile(
-                    &mut commands,
-                    projectile_entity,
-                    &mut projectile_helper_query,
-                );
+                remove_projectile(&mut commands, &projectile_entity);
                 info!("Projectile timeout snap");
                 snap_projectile.send(SnapProjectile {
                     pos: Vec2::new(

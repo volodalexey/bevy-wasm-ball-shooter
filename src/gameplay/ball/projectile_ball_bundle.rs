@@ -15,7 +15,7 @@ use crate::gameplay::{
     meshes::resources::GameplayMeshes,
 };
 
-use super::components::{ProjectileBall, ProjectileHelper, Species};
+use super::components::{ProjectileBall, Species};
 
 pub struct ProjectileBallBundle;
 
@@ -57,23 +57,6 @@ impl ProjectileBallBundle {
             ColliderDebugColor(species.into()),
             CollisionGroups::new(Group::GROUP_3, Group::GROUP_1 | Group::GROUP_2),
             ExternalImpulse::default(),
-        )
-    }
-
-    /// invisible helper for intermediate joint
-    pub fn new_helper() -> (
-        Transform,
-        RigidBody,
-        Collider,
-        CollisionGroups,
-        ProjectileHelper,
-    ) {
-        (
-            Transform::default(),
-            RigidBody::Dynamic,
-            Collider::ball(1.0),
-            CollisionGroups::new(Group::GROUP_4, Group::NONE),
-            ProjectileHelper {},
         )
     }
 }
