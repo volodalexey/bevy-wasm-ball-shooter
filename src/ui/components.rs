@@ -20,3 +20,12 @@ pub struct NextStateButton {
     pub color_type: ColorType,
     pub next_state: AppState,
 }
+
+#[derive(Component)]
+pub struct NoneComponent {}
+
+#[derive(Component)]
+pub struct UIFullRow {}
+
+#[derive(Component)]
+pub struct ResponsiveText {}

@@ -2,11 +2,11 @@ use bevy::prelude::{App, Plugin, Update};
 
 use self::{
     resources::{PointerCooldown, UIMenuButtonColors, UIMenuTextColors},
-    systems::tick_pointer_cooldown_timer,
+    systems::{resize_responsive_text, tick_pointer_cooldown_timer},
 };
 
 pub mod components;
-mod constants;
+pub mod constants;
 pub mod resources;
 pub mod systems;
 pub mod utils;
@@ -17,6 +17,9 @@ impl Plugin for UIPlugin {
         app.init_resource::<PointerCooldown>()
             .init_resource::<UIMenuButtonColors>()
             .init_resource::<UIMenuTextColors>()
-            .add_systems(Update, tick_pointer_cooldown_timer);
+            .add_systems(
+                Update,
+                (tick_pointer_cooldown_timer, resize_responsive_text),
+            );
     }
 }

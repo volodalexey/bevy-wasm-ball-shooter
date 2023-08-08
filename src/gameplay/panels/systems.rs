@@ -1,18 +1,22 @@
 use bevy::{
-    prelude::{
-        default, BuildChildren, Commands, DespawnRecursiveExt, Entity, NodeBundle, Query, Res,
-        ResMut, TextBundle, With, Without,
-    },
-    text::{Text, TextSection},
-    ui::{AlignItems, Display, FlexDirection, JustifyContent, Style, Val},
+    prelude::{Commands, Query, Res, ResMut, With, Without},
+    text::Text,
+    window::{PrimaryWindow, Window},
 };
 
-use crate::{loading::font_assets::FontAssets, resources::LevelCounter};
+use crate::{
+    loading::font_assets::FontAssets,
+    resources::LevelCounter,
+    ui::{
+        components::ResponsiveText,
+        resources::UIMenuTextColors,
+        utils::{build_flex_full_row_evenly, build_responsive_text_component},
+    },
+};
 
 use super::{
-    components::{LevelText, ScoreText, StatusBar, TurnText},
+    components::{LevelText, ScoreText, TurnText},
     resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
-    utils::get_text_style,
 };
 
 pub fn setup_resources(
@@ -28,64 +32,39 @@ pub fn setup_resources(
     commands.insert_resource(CooldownMoveCounter::from_level(level_counter.0));
 }
 
-pub fn setup_ui(mut commands: Commands, font_assets: Res<FontAssets>) {
-    commands
-        .spawn((
-            NodeBundle {
-                style: Style {
-                    display: Display::Flex,
-                    flex_direction: FlexDirection::Row,
-                    justify_content: JustifyContent::SpaceAround,
-                    align_items: AlignItems::FlexStart,
-                    width: Val::Percent(100.0),
-                    height: Val::Auto,
-                    ..default()
-                },
-                ..default()
-            },
-            StatusBar {},
-        ))
-        .with_children(|parent| {
-            parent.spawn((
-                TextBundle {
-                    text: Text {
-                        sections: vec![TextSection {
-                            value: "".to_string(),
-                            style: get_text_style(&font_assets),
-                        }],
-                        ..default()
-                    },
-                    ..default()
-                },
-                ScoreText {},
-            ));
-            parent.spawn((
-                TextBundle {
-                    text: Text {
-                        sections: vec![TextSection {
-                            value: "".to_string(),
-                            style: get_text_style(&font_assets),
-                        }],
-                        ..default()
-                    },
-                    ..default()
-                },
-                TurnText {},
-            ));
-            parent.spawn((
-                TextBundle {
-                    text: Text {
-                        sections: vec![TextSection {
-                            value: "".to_string(),
-                            style: get_text_style(&font_assets),
-                        }],
-                        ..default()
-                    },
-                    ..default()
-                },
-                LevelText {},
-            ));
-        });
+pub fn setup_ui(
+    mut commands: Commands,
+    font_assets: Res<FontAssets>,
+    text_colors: Res<UIMenuTextColors>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+) {
+    let window_width = window_query.single().width();
+    build_flex_full_row_evenly(&mut commands, |parent| {
+        build_responsive_text_component(
+            window_width,
+            parent,
+            "",
+            &font_assets,
+            &text_colors,
+            (ScoreText {}, ResponsiveText {}),
+        );
+        build_responsive_text_component(
+            window_width,
+            parent,
+            "",
+            &font_assets,
+            &text_colors,
+            (TurnText {}, ResponsiveText {}),
+        );
+        build_responsive_text_component(
+            window_width,
+            parent,
+            "",
+            &font_assets,
+            &text_colors,
+            (LevelText {}, ResponsiveText {}),
+        );
+    });
 }
 
 pub fn update_ui(
@@ -114,11 +93,5 @@ pub fn update_ui(
     }
     for mut level_text in &mut level_text_query {
         level_text.sections[0].value = format!("Уровень: {}", level_counter.0);
-    }
-}
-
-pub fn cleanup_ui(mut commands: Commands, query: Query<Entity, With<StatusBar>>) {
-    for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
     }
 }

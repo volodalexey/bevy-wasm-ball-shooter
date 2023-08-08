@@ -1,8 +1,8 @@
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
     prelude::{
-        default, BuildChildren, ButtonBundle, Camera2d, Camera2dBundle, ChildBuilder, Color,
-        Commands, Component, NodeBundle, Res, TextBundle,
+        default, BuildChildren, Bundle, ButtonBundle, Camera2d, Camera2dBundle, ChildBuilder,
+        Color, Commands, Component, NodeBundle, Res, TextBundle,
     },
     text::{Text, TextSection, TextStyle},
     ui::{AlignItems, Display, FlexDirection, Interaction, JustifyContent, Style, UiRect, Val},
@@ -12,7 +12,7 @@ use bevy::{
 #[allow(dead_code)]
 use super::components::QuitButton;
 use super::{
-    components::{UICamera, UIMenu},
+    components::{NoneComponent, UICamera, UIFullRow, UIMenu},
     constants::{
         COLUMN_ROW_GAP, LARGE_BUTTON_FONT_SIZE, LARGE_BUTTON_PADDING, LARGE_FONT_SIZE,
         MENU_ROW_GAP, MIDDLE_BUTTON_FONT_SIZE, MIDDLE_BUTTON_PADDING, MIDDLE_FONT_SIZE,
@@ -67,6 +67,24 @@ pub fn build_large_text(
         LARGE_FONT_SIZE,
         font_assets,
         &text_colors.title,
+        NoneComponent {},
+    );
+}
+
+pub fn build_large_text_component(
+    parent: &mut ChildBuilder<'_, '_, '_>,
+    text: &str,
+    font_assets: &Res<FontAssets>,
+    text_colors: &Res<UIMenuTextColors>,
+    bundle: impl Bundle,
+) {
+    build_sized_text(
+        parent,
+        text,
+        LARGE_FONT_SIZE,
+        font_assets,
+        &text_colors.title,
+        bundle,
     );
 }
 
@@ -82,7 +100,44 @@ pub fn build_middle_text(
         MIDDLE_FONT_SIZE,
         font_assets,
         &text_colors.title,
+        NoneComponent {},
     );
+}
+
+pub fn build_middle_text_component(
+    parent: &mut ChildBuilder<'_, '_, '_>,
+    text: &str,
+    font_assets: &Res<FontAssets>,
+    text_colors: &Res<UIMenuTextColors>,
+    bundle: impl Bundle,
+) {
+    build_sized_text(
+        parent,
+        text,
+        MIDDLE_FONT_SIZE,
+        font_assets,
+        &text_colors.title,
+        bundle,
+    );
+}
+
+pub fn is_mobile(window_width: f32) -> bool {
+    window_width < 700.0
+}
+
+pub fn build_responsive_text_component(
+    window_width: f32,
+    parent: &mut ChildBuilder<'_, '_, '_>,
+    text: &str,
+    font_assets: &Res<FontAssets>,
+    text_colors: &Res<UIMenuTextColors>,
+    bundle: impl Bundle,
+) {
+    if is_mobile(window_width) {
+        build_middle_text_component(parent, text, font_assets, text_colors, bundle)
+    } else {
+        build_large_text_component(parent, text, font_assets, text_colors, bundle)
+    }
 }
 
 fn build_sized_text(
@@ -91,8 +146,9 @@ fn build_sized_text(
     font_size: f32,
     font_assets: &Res<FontAssets>,
     text_color: &Color,
+    bundle: impl Bundle,
 ) {
-    parent.spawn(TextBundle {
+    let mut spawned = parent.spawn(TextBundle {
         text: Text {
             sections: vec![TextSection {
                 value: text.to_string(),
@@ -106,6 +162,7 @@ fn build_sized_text(
         },
         ..default()
     });
+    spawned.insert(bundle);
 }
 
 pub fn build_large_button(
@@ -301,35 +358,80 @@ pub fn build_flex_column_stretch(
 }
 
 fn build_flex_row(
+    justify_content: JustifyContent,
+    align_items: AlignItems,
+    width: Val,
+    height: Val,
+) -> NodeBundle {
+    NodeBundle {
+        style: Style {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(ROW_COLUMN_GAP),
+            justify_content,
+            align_items,
+            width,
+            height,
+            ..default()
+        },
+        ..default()
+    }
+}
+
+pub fn append_flex_row(
     parent: &mut ChildBuilder<'_, '_, '_>,
     children: impl FnOnce(&mut ChildBuilder),
     justify_content: JustifyContent,
+    align_items: AlignItems,
+    width: Val,
+    height: Val,
 ) {
     parent
-        .spawn(NodeBundle {
-            style: Style {
-                display: Display::Flex,
-                flex_direction: FlexDirection::Row,
-                column_gap: Val::Px(ROW_COLUMN_GAP),
-                justify_content,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            ..default()
-        })
+        .spawn(build_flex_row(justify_content, align_items, width, height))
         .with_children(children);
 }
 
-pub fn build_flex_row_evenly(
+pub fn append_flex_row_evenly(
     parent: &mut ChildBuilder<'_, '_, '_>,
     children: impl FnOnce(&mut ChildBuilder),
 ) {
-    build_flex_row(parent, children, JustifyContent::SpaceEvenly)
+    append_flex_row(
+        parent,
+        children,
+        JustifyContent::SpaceEvenly,
+        AlignItems::Center,
+        Val::Auto,
+        Val::Auto,
+    )
 }
 
-pub fn build_flex_row_between(
+pub fn build_flex_full_row_evenly(
+    commands: &mut Commands,
+    children: impl FnOnce(&mut ChildBuilder),
+) {
+    commands
+        .spawn((
+            build_flex_row(
+                JustifyContent::SpaceEvenly,
+                AlignItems::FlexStart,
+                Val::Percent(100.0),
+                Val::Auto,
+            ),
+            UIFullRow {},
+        ))
+        .with_children(children);
+}
+
+pub fn append_flex_row_between(
     parent: &mut ChildBuilder<'_, '_, '_>,
     children: impl FnOnce(&mut ChildBuilder),
 ) {
-    build_flex_row(parent, children, JustifyContent::SpaceBetween)
+    append_flex_row(
+        parent,
+        children,
+        JustifyContent::SpaceBetween,
+        AlignItems::Center,
+        Val::Auto,
+        Val::Auto,
+    )
 }

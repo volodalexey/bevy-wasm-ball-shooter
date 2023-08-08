@@ -3,19 +3,23 @@
 use bevy::{app::AppExit, prelude::EventWriter};
 use bevy::{
     prelude::{
-        Changed, Commands, DespawnRecursiveExt, Entity, NextState, Query, Res, ResMut, With,
+        Changed, Commands, DespawnRecursiveExt, Entity, EventReader, NextState, Query, Res, ResMut,
+        With,
     },
+    text::Text,
     time::Time,
     ui::{BackgroundColor, Interaction},
+    window::WindowResized,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(dead_code)]
 use super::components::QuitButton;
 use super::{
-    components::{NextStateButton, UICamera, UIMenu},
+    components::{NextStateButton, ResponsiveText, UICamera, UIFullRow, UIMenu},
+    constants::{LARGE_FONT_SIZE, MIDDLE_FONT_SIZE},
     resources::{PointerCooldown, UIMenuButtonColors},
-    utils::button_color_by_interaction,
+    utils::{button_color_by_interaction, is_mobile},
 };
 use crate::components::AppState;
 
@@ -38,6 +42,12 @@ pub fn cleanup_menu(
     }
     for menu_entity in menu_query.iter() {
         commands.entity(menu_entity).despawn_recursive();
+    }
+}
+
+pub fn cleanup_full_row(mut commands: Commands, rows_query: Query<Entity, With<UIFullRow>>) {
+    for entity in rows_query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }
 
@@ -107,5 +117,23 @@ pub fn interact_with_quit_button(
                 .into();
             }
         }
+    }
+}
+
+pub fn resize_responsive_text(
+    mut resize_reader: EventReader<WindowResized>,
+    mut text_query: Query<&mut Text, With<ResponsiveText>>,
+) {
+    if let Some(e) = resize_reader.iter().next() {
+        let font_size = match is_mobile(e.width) {
+            true => MIDDLE_FONT_SIZE,
+            false => LARGE_FONT_SIZE,
+        };
+        for mut text in &mut text_query {
+            for mut section in text.sections.iter_mut() {
+                section.style.font_size = font_size;
+            }
+        }
+        resize_reader.clear();
     }
 }

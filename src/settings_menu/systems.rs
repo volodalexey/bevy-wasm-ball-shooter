@@ -21,8 +21,8 @@ use crate::{
         components::NextStateButton,
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
         utils::{
-            build_flex_column_start, build_flex_column_stretch, build_flex_row_between,
-            build_flex_row_evenly, build_large_text, build_menu, build_middle_button,
+            append_flex_row_between, append_flex_row_evenly, build_flex_column_start,
+            build_flex_column_stretch, build_large_text, build_menu, build_middle_button,
             build_middle_text, build_ui_camera, button_color_by_interaction,
         },
     },
@@ -94,7 +94,7 @@ pub fn build_volume_row(
 ) {
     build_flex_column_start(parent, |parent| {
         build_middle_text(parent, title, font_assets, text_colors);
-        build_flex_row_evenly(parent, |parent| {
+        append_flex_row_evenly(parent, |parent| {
             [0.0, 0.01, 0.1, 0.3, 0.5, 1.0].map(|v| {
                 let selected = match pkv.get::<String>(key) {
                     Ok(sound_volume) => {
@@ -249,7 +249,7 @@ pub fn build_level_line(
     font_assets: &Res<FontAssets>,
     text_colors: &Res<UIMenuTextColors>,
 ) {
-    build_flex_row_between(parent, |parent| {
+    append_flex_row_between(parent, |parent| {
         range.for_each(|l| {
             build_level_button(
                 saved_level,

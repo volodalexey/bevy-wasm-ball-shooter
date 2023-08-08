@@ -25,7 +25,6 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-animation for snap position
 menu button in game
 show next ball to shoot
 draw full line to first contact
