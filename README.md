@@ -25,8 +25,6 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-menu button in game
-show next ball to shoot
 draw full line to first contact
 responsive layout
 improve performance: show only visible rows + physics from visible row

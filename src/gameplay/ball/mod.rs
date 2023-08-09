@@ -7,8 +7,8 @@ use self::{
     resources::ProjectileBuffer,
     systems::{
         animate_out_ball, check_out_ball_for_delete, cleanup_aim_line, cleanup_aim_target,
-        cleanup_projectile_ball, projectile_reload, setup_aim_line, setup_aim_target,
-        shoot_projectile,
+        cleanup_next_projectile_ball, cleanup_projectile_ball, projectile_reload, setup_aim_line,
+        setup_aim_target, shoot_projectile,
     },
 };
 
@@ -20,6 +20,7 @@ pub mod out_ball_bundle;
 pub mod projectile_ball_bundle;
 mod resources;
 mod systems;
+mod utils;
 pub struct ProjectilePlugin;
 
 impl Plugin for ProjectilePlugin {
@@ -46,6 +47,7 @@ impl Plugin for ProjectilePlugin {
                     cleanup_projectile_ball,
                     cleanup_aim_target,
                     cleanup_aim_line,
+                    cleanup_next_projectile_ball,
                 ),
             );
     }

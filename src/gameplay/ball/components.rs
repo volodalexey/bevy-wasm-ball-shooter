@@ -24,6 +24,9 @@ impl Default for ProjectileBall {
 }
 
 #[derive(Component)]
+pub struct NextProjectileBall {}
+
+#[derive(Component)]
 pub struct GridBall {
     pub hex: Hex,
     pub animation_x: f32,

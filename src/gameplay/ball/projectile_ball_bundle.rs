@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{Res, Transform, Vec2, Vec3},
+    prelude::{default, Res, Transform, Vec2, Vec3},
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
 use bevy_rapier2d::{
@@ -15,7 +15,7 @@ use crate::gameplay::{
     meshes::resources::GameplayMeshes,
 };
 
-use super::components::{ProjectileBall, Species};
+use super::components::{NextProjectileBall, ProjectileBall, Species};
 
 pub struct ProjectileBallBundle;
 
@@ -41,10 +41,10 @@ impl ProjectileBallBundle {
     ) {
         (
             MaterialMesh2dBundle {
-                mesh: gameplay_meshes.grid_ball.clone().into(),
+                mesh: gameplay_meshes.projectile_ball.clone().into(),
                 material: gameplay_materials.from_species(species),
-                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
-                ..Default::default()
+                transform: Transform::from_translation(pos.extend(0.0)),
+                ..default()
             },
             ProjectileBall::default(),
             species,
@@ -57,6 +57,32 @@ impl ProjectileBallBundle {
             ColliderDebugColor(species.into()),
             CollisionGroups::new(Group::GROUP_3, Group::GROUP_1 | Group::GROUP_2),
             ExternalImpulse::default(),
+        )
+    }
+}
+
+pub struct NextProjectileBallBundle;
+
+impl NextProjectileBallBundle {
+    pub fn new(
+        pos: Vec2,
+        species: Species,
+        gameplay_meshes: &Res<GameplayMeshes>,
+        gameplay_materials: &Res<GameplayMaterials>,
+    ) -> (
+        MaterialMesh2dBundle<ColorMaterial>,
+        NextProjectileBall,
+        Species,
+    ) {
+        (
+            MaterialMesh2dBundle {
+                mesh: gameplay_meshes.next_projectile_ball.clone().into(),
+                material: gameplay_materials.from_species(species),
+                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
+                ..default()
+            },
+            NextProjectileBall {},
+            species,
         )
     }
 }

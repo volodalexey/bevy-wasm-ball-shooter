@@ -15,7 +15,8 @@ use crate::{
     game_audio::utils::pkv_play_shoot_audio,
     gameplay::{
         constants::{
-            BALL_RADIUS, PROJECTILE_SHOOT_BOTTOM, PROJECTILE_SPAWN_BOTTOM, PROJECTILE_SPEED,
+            BALL_RADIUS, NEXT_PROJECTILE_SPAWN_BOTTOM, NEXT_PROJECTILE_SPAWN_SIDE,
+            PROJECTILE_SHOOT_BOTTOM, PROJECTILE_SPAWN_BOTTOM, PROJECTILE_SPEED,
         },
         events::BeginTurn,
         grid::resources::Grid,
@@ -31,9 +32,12 @@ use crate::{
 
 use super::{
     aim_bundle::AimBundle,
-    components::{AimLine, AimTarget, GridBall, OutBall, ProjectileBall, Species},
-    projectile_ball_bundle::ProjectileBallBundle,
+    components::{
+        AimLine, AimTarget, GridBall, NextProjectileBall, OutBall, ProjectileBall, Species,
+    },
+    projectile_ball_bundle::{NextProjectileBallBundle, ProjectileBallBundle},
     resources::ProjectileBuffer,
+    utils::cleanup_next_projectile_ball_utils,
 };
 
 pub fn cleanup_projectile_ball(
@@ -54,6 +58,7 @@ pub fn projectile_reload(
     grid: Res<Grid>,
     balls_query: Query<&Species, With<GridBall>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
+    next_projectile_query: Query<Entity, With<NextProjectileBall>>,
 ) {
     if begin_turn.is_empty() {
         return;
@@ -105,6 +110,26 @@ pub fn projectile_reload(
     ));
 
     buffer.0.push(Species::pick_random(&colors_in_grid));
+
+    cleanup_next_projectile_ball_utils(&mut commands, &next_projectile_query);
+    if let Some(species) = buffer.0.last() {
+        let next_projectile_spawn_bottom: f32 =
+            -(window.height() - NEXT_PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0);
+
+        commands.spawn(NextProjectileBallBundle::new(
+            Vec2::new(-NEXT_PROJECTILE_SPAWN_SIDE, next_projectile_spawn_bottom),
+            *species,
+            &gameplay_meshes,
+            &gameplay_materials,
+        ));
+
+        commands.spawn(NextProjectileBallBundle::new(
+            Vec2::new(NEXT_PROJECTILE_SPAWN_SIDE, next_projectile_spawn_bottom),
+            *species,
+            &gameplay_meshes,
+            &gameplay_materials,
+        ));
+    }
 }
 
 pub fn shoot_projectile(
@@ -281,4 +306,11 @@ pub fn check_out_ball_for_delete(
             commands.entity(ball_entity).despawn_recursive();
         }
     }
+}
+
+pub fn cleanup_next_projectile_ball(
+    mut commands: Commands,
+    query: Query<Entity, With<NextProjectileBall>>,
+) {
+    cleanup_next_projectile_ball_utils(&mut commands, &query)
 }

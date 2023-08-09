@@ -33,7 +33,7 @@ fn main() {
             DefaultPlugins.set(WindowPlugin {
                 primary_window: Some(Window {
                     title: "Bevy+WASM Ball Shooter".into(),
-                    resolution: (1000., 1000.).into(),
+                    resolution: (408., 755.).into(),
                     fit_canvas_to_parent: true,
                     prevent_default_event_handling: false,
                     ..default()
