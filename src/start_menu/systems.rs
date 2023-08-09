@@ -13,7 +13,8 @@ use crate::{
         components::NextStateButton,
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
         utils::{
-            build_large_button, build_large_text, build_menu, build_middle_button, build_ui_camera,
+            append_large_text_button, append_middle_text_button, build_large_text, build_menu,
+            build_ui_camera,
         },
     },
 };
@@ -27,7 +28,7 @@ pub fn setup_menu(
     build_ui_camera(&mut commands);
     build_menu(&mut commands, |parent| {
         build_large_text(parent, "Шарики веселяшки", &font_assets, &text_colors);
-        build_large_button(
+        append_large_text_button(
             parent,
             NextStateButton {
                 color_type: ColorType::Green,
@@ -40,7 +41,7 @@ pub fn setup_menu(
             &button_colors,
             false,
         );
-        build_middle_button(
+        append_middle_text_button(
             parent,
             NextStateButton {
                 color_type: ColorType::Gray,

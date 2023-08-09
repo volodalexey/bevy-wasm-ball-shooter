@@ -5,12 +5,15 @@ use bevy::{
 };
 
 use crate::{
-    loading::font_assets::FontAssets,
+    components::AppState,
+    loading::{font_assets::FontAssets, sprite_assets::SpriteAssets},
     resources::LevelCounter,
     ui::{
-        components::ResponsiveText,
-        resources::UIMenuTextColors,
-        utils::{build_flex_full_row_evenly, build_responsive_text_component},
+        components::{NextStateButton, ResponsiveText},
+        resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
+        utils::{
+            append_middle_icon_button, build_flex_full_row_evenly, build_responsive_text_component,
+        },
     },
 };
 
@@ -35,11 +38,24 @@ pub fn setup_resources(
 pub fn setup_ui(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
+    sprite_assets: Res<SpriteAssets>,
     text_colors: Res<UIMenuTextColors>,
     window_query: Query<&Window, With<PrimaryWindow>>,
+    button_colors: Res<UIMenuButtonColors>,
 ) {
     let window_width = window_query.single().width();
     build_flex_full_row_evenly(&mut commands, |parent| {
+        append_middle_icon_button(
+            parent,
+            NextStateButton {
+                color_type: ColorType::Gray,
+                next_state: AppState::GameOver,
+            },
+            &ColorType::Gray,
+            &sprite_assets,
+            &button_colors,
+            false,
+        );
         build_responsive_text_component(
             window_width,
             parent,

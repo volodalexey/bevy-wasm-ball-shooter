@@ -2,7 +2,7 @@ use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
     prelude::{
         default, BuildChildren, Bundle, ButtonBundle, Camera2d, Camera2dBundle, ChildBuilder,
-        Color, Commands, Component, NodeBundle, Res, TextBundle,
+        Color, Commands, Component, ImageBundle, NodeBundle, Res, TextBundle,
     },
     text::{Text, TextSection, TextStyle},
     ui::{AlignItems, Display, FlexDirection, Interaction, JustifyContent, Style, UiRect, Val},
@@ -14,13 +14,14 @@ use super::components::QuitButton;
 use super::{
     components::{NoneComponent, UICamera, UIFullRow, UIMenu},
     constants::{
-        COLUMN_ROW_GAP, LARGE_BUTTON_FONT_SIZE, LARGE_BUTTON_PADDING, LARGE_FONT_SIZE,
-        MENU_ROW_GAP, MIDDLE_BUTTON_FONT_SIZE, MIDDLE_BUTTON_PADDING, MIDDLE_FONT_SIZE,
-        ROW_COLUMN_GAP,
+        COLUMN_ROW_GAP, LARGE_BUTTON_FONT_SIZE, LARGE_BUTTON_ICON_WIDTH, LARGE_BUTTON_PADDING,
+        LARGE_FONT_SIZE, MENU_ROW_GAP, MIDDLE_BUTTON_FONT_SIZE, MIDDLE_BUTTON_ICON_WIDTH,
+        MIDDLE_BUTTON_PADDING, MIDDLE_FONT_SIZE, ROW_COLUMN_GAP,
     },
     resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
 };
 use crate::loading::font_assets::FontAssets;
+use crate::loading::sprite_assets::SpriteAssets;
 
 pub fn build_ui_camera(commands: &mut Commands) {
     commands.spawn((
@@ -165,7 +166,7 @@ fn build_sized_text(
     spawned.insert(bundle);
 }
 
-pub fn build_large_button(
+pub fn append_large_text_button(
     parent: &mut ChildBuilder<'_, '_, '_>,
     component: impl Component,
     color_type: &ColorType,
@@ -175,7 +176,7 @@ pub fn build_large_button(
     button_colors: &Res<UIMenuButtonColors>,
     selected: bool,
 ) {
-    build_size_button(
+    append_size_text_button(
         UiRect::all(Val::Px(LARGE_BUTTON_PADDING)),
         LARGE_BUTTON_FONT_SIZE,
         parent,
@@ -189,7 +190,7 @@ pub fn build_large_button(
     )
 }
 
-pub fn build_middle_button(
+pub fn append_middle_text_button(
     parent: &mut ChildBuilder<'_, '_, '_>,
     component: impl Component,
     color_type: &ColorType,
@@ -199,7 +200,7 @@ pub fn build_middle_button(
     button_colors: &Res<UIMenuButtonColors>,
     selected: bool,
 ) {
-    build_size_button(
+    append_size_text_button(
         UiRect::all(Val::Px(MIDDLE_BUTTON_PADDING)),
         MIDDLE_BUTTON_FONT_SIZE,
         parent,
@@ -213,7 +214,31 @@ pub fn build_middle_button(
     )
 }
 
-pub fn build_size_button(
+pub fn build_button_bundle(
+    padding: UiRect,
+    selected: bool,
+    button_colors: &Res<UIMenuButtonColors>,
+    color_type: &ColorType,
+) -> ButtonBundle {
+    ButtonBundle {
+        style: Style {
+            padding,
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..Default::default()
+        },
+        background_color: button_color_by_interaction(
+            selected,
+            button_colors,
+            color_type,
+            &Interaction::None,
+        )
+        .into(),
+        ..Default::default()
+    }
+}
+
+pub fn append_size_text_button(
     padding: UiRect,
     font_size: f32,
     parent: &mut ChildBuilder<'_, '_, '_>,
@@ -227,22 +252,7 @@ pub fn build_size_button(
 ) {
     parent
         .spawn((
-            ButtonBundle {
-                style: Style {
-                    padding,
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..Default::default()
-                },
-                background_color: button_color_by_interaction(
-                    selected,
-                    button_colors,
-                    color_type,
-                    &Interaction::None,
-                )
-                .into(),
-                ..Default::default()
-            },
+            build_button_bundle(padding, selected, button_colors, color_type),
             component,
         ))
         .with_children(|parent| {
@@ -262,6 +272,75 @@ pub fn build_size_button(
             });
         });
 }
+
+pub fn append_size_icon_button(
+    padding: UiRect,
+    parent: &mut ChildBuilder<'_, '_, '_>,
+    bundle: impl Bundle,
+    color_type: &ColorType,
+    sprite_assets: &Res<SpriteAssets>,
+    button_colors: &Res<UIMenuButtonColors>,
+    selected: bool,
+    width: f32,
+) {
+    parent
+        .spawn((
+            build_button_bundle(padding, selected, button_colors, color_type),
+            bundle,
+        ))
+        .with_children(|parent| {
+            parent.spawn(ImageBundle {
+                image: sprite_assets.arrow_up_right_from_square.clone().into(),
+                style: Style {
+                    width: Val::Px(width),
+                    ..default()
+                },
+                ..default()
+            });
+        });
+}
+
+#[allow(dead_code)]
+pub fn append_large_icon_button(
+    parent: &mut ChildBuilder<'_, '_, '_>,
+    bundle: impl Bundle,
+    color_type: &ColorType,
+    sprite_assets: &Res<SpriteAssets>,
+    button_colors: &Res<UIMenuButtonColors>,
+    selected: bool,
+) {
+    append_size_icon_button(
+        UiRect::all(Val::Px(LARGE_BUTTON_PADDING)),
+        parent,
+        bundle,
+        color_type,
+        sprite_assets,
+        button_colors,
+        selected,
+        LARGE_BUTTON_ICON_WIDTH,
+    )
+}
+
+pub fn append_middle_icon_button(
+    parent: &mut ChildBuilder<'_, '_, '_>,
+    bundle: impl Bundle,
+    color_type: &ColorType,
+    sprite_assets: &Res<SpriteAssets>,
+    button_colors: &Res<UIMenuButtonColors>,
+    selected: bool,
+) {
+    append_size_icon_button(
+        UiRect::all(Val::Px(MIDDLE_BUTTON_PADDING)),
+        parent,
+        bundle,
+        color_type,
+        sprite_assets,
+        button_colors,
+        selected,
+        MIDDLE_BUTTON_ICON_WIDTH,
+    )
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 #[allow(dead_code)]
 pub fn build_quit_button(
@@ -270,7 +349,7 @@ pub fn build_quit_button(
     text_colors: &Res<UIMenuTextColors>,
     button_colors: &Res<UIMenuButtonColors>,
 ) {
-    build_middle_button(
+    append_middle_text_button(
         parent,
         QuitButton {
             color_type: ColorType::Gray,

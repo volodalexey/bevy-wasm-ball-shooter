@@ -1,6 +1,6 @@
 use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, Plugin, Update};
 
-use crate::components::AppState;
+use crate::{components::AppState, ui::systems::interact_with_next_state_button};
 
 use self::{
     ball::ProjectilePlugin,
@@ -51,6 +51,7 @@ impl Plugin for GameplayPlugin {
                 check_game_over,
                 check_game_win.after(check_game_over),
                 keydown_detect,
+                interact_with_next_state_button,
             )
                 .run_if(in_state(AppState::Gameplay)),
         );

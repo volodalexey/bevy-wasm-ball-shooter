@@ -21,8 +21,8 @@ use crate::{
         components::NextStateButton,
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
         utils::{
-            append_flex_row_between, append_flex_row_evenly, build_flex_column_start,
-            build_flex_column_stretch, build_large_text, build_menu, build_middle_button,
+            append_flex_row_between, append_flex_row_evenly, append_middle_text_button,
+            build_flex_column_start, build_flex_column_stretch, build_large_text, build_menu,
             build_middle_text, build_ui_camera, button_color_by_interaction,
         },
     },
@@ -67,7 +67,7 @@ pub fn setup_menu(
             &text_colors,
             &pkv,
         );
-        build_middle_button(
+        append_middle_text_button(
             parent,
             NextStateButton {
                 color_type: ColorType::Gray,
@@ -106,7 +106,7 @@ pub fn build_volume_row(
                     }
                     Err(_) => false,
                 };
-                build_middle_button(
+                append_middle_text_button(
                     parent,
                     VolumeButton {
                         value: v,
@@ -225,7 +225,7 @@ pub fn build_level_button(
     text_colors: &Res<UIMenuTextColors>,
 ) {
     let selected = saved_level == iter_level;
-    build_middle_button(
+    append_middle_text_button(
         parent,
         LevelButton {
             level: iter_level,
