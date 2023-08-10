@@ -6,12 +6,13 @@ use self::{
     ball::ProjectilePlugin,
     events::BeginTurn,
     grid::GridPlugin,
+    lines::LinesPlugin,
     main_camera::MainCameraPlugin,
     materials::MaterialsPlugin,
     meshes::MeshesPlugin,
     panels::PanelsPlugin,
     physics::PhysicsPlugin,
-    systems::{check_game_over, check_game_win, keydown_detect, on_begin_turn, setup_gameplay},
+    systems::{check_game_over, check_game_win, keydown_detect, on_begin_turn, setup_first_turn},
     walls::WallsPlugin,
 };
 
@@ -19,6 +20,7 @@ mod ball;
 pub mod constants;
 mod events;
 mod grid;
+mod lines;
 mod main_camera;
 mod materials;
 mod meshes;
@@ -38,12 +40,13 @@ impl Plugin for GameplayPlugin {
             MeshesPlugin,
             MaterialsPlugin,
             WallsPlugin,
+            LinesPlugin,
             GridPlugin,
             ProjectilePlugin,
             PanelsPlugin,
         ))
         .add_event::<BeginTurn>()
-        .add_systems(OnEnter(AppState::Gameplay), setup_gameplay)
+        .add_systems(OnEnter(AppState::Gameplay), setup_first_turn)
         .add_systems(
             Update,
             (

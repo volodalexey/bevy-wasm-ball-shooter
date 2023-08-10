@@ -1,6 +1,7 @@
 use bevy::{
     prelude::{
-        warn, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, With,
+        warn, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Transform,
+        With,
     },
     window::{PrimaryWindow, Window},
 };
@@ -13,9 +14,10 @@ use super::{
     constants::GAME_OVER_BOTTOM,
     events::BeginTurn,
     grid::{events::UpdatePositions, resources::Grid},
+    lines::components::LineType,
 };
 
-pub fn setup_gameplay(mut begin_turn: EventWriter<BeginTurn>) {
+pub fn setup_first_turn(mut begin_turn: EventWriter<BeginTurn>) {
     begin_turn.send(BeginTurn);
 }
 
@@ -35,9 +37,17 @@ pub fn check_game_over(
     mut grid: ResMut<Grid>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
+    mut lines_query: Query<(&LineType, &mut Transform), With<LineType>>,
 ) {
     let window = window_query.single();
     let game_over_bottom = -(window.height() - GAME_OVER_BOTTOM - window.height() / 2.0);
+
+    for (line_type, mut line_transform) in lines_query.iter_mut() {
+        match line_type {
+            LineType::GridTop | LineType::GridBottom => {}
+            LineType::GameOver => line_transform.translation.y = game_over_bottom,
+        }
+    }
 
     grid.check_update_bounds();
     if grid.bounds.mins.y < game_over_bottom {

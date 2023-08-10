@@ -1,13 +1,8 @@
-use bevy::prelude::{
-    any_with_component, in_state, not, App, Condition, IntoSystemConfigs, OnExit, Plugin, Update,
-};
+use bevy::prelude::{App, OnEnter, OnExit, Plugin};
 
 use crate::AppState;
 
-use self::{
-    components::WallType,
-    systems::{cleanup_level_walls, setup_level_walls},
-};
+use self::systems::{cleanup_level_walls, setup_level_walls};
 
 pub mod components;
 mod systems;
@@ -17,12 +12,7 @@ pub struct WallsPlugin;
 
 impl Plugin for WallsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            setup_level_walls.run_if(
-                in_state(AppState::Gameplay).and_then(not(any_with_component::<WallType>())),
-            ),
-        )
-        .add_systems(OnExit(AppState::Gameplay), cleanup_level_walls);
+        app.add_systems(OnEnter(AppState::Gameplay), setup_level_walls)
+            .add_systems(OnExit(AppState::Gameplay), cleanup_level_walls);
     }
 }

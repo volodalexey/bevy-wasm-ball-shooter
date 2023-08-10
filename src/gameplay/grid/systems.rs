@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
         error, info, Assets, BuildChildren, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, Input, KeyCode, Query, Res, ResMut, Transform, Vec2, With, Without,
+        EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Transform, Vec2, With, Without,
     },
     sprite::ColorMaterial,
     time::Time,
@@ -12,6 +12,7 @@ use bevy_rapier2d::prelude::{CollisionEvent, ExternalImpulse, RigidBody, Velocit
 use hexx::{shapes, Hex};
 
 use crate::{
+    components::AppState,
     game_audio::utils::pkv_play_score_audio,
     gameplay::{
         ball::{
@@ -26,6 +27,7 @@ use crate::{
             build_ball_text, clamp_inside_world_bounds, find_cluster, find_floating_clusters,
             is_move_slow, remove_projectile, remove_projectile_and_snap,
         },
+        lines::components::LineType,
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
         panels::resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
@@ -49,6 +51,7 @@ pub fn generate_grid(
     mut grid: ResMut<Grid>,
     level_counter: Res<LevelCounter>,
     window_query: Query<&Window, With<PrimaryWindow>>,
+    mut app_state_next_state: ResMut<NextState<AppState>>,
 ) {
     (grid.init_cols, grid.init_rows) = calc_init_cols_rows(&level_counter);
     adjust_grid_layout(&window_query, &mut grid, &MoveCounter(0));
@@ -92,14 +95,16 @@ pub fn generate_grid(
             .id();
         grid.set(hex, entity);
     }
+    app_state_next_state.set(AppState::Gameplay);
 }
 
 pub fn update_hex_coord_transforms(
-    mut balls_query: Query<(Entity, &mut GridBall), With<GridBall>>,
+    mut balls_query: Query<&mut GridBall, With<GridBall>>,
     mut grid: ResMut<Grid>,
     mut event_query: EventReader<UpdatePositions>,
     move_counter: Res<MoveCounter>,
     window_query: Query<&Window, With<PrimaryWindow>>,
+    mut lines_query: Query<(&LineType, &mut Transform), With<LineType>>,
 ) {
     if event_query.is_empty() {
         return;
@@ -109,9 +114,16 @@ pub fn update_hex_coord_transforms(
     adjust_grid_layout(&window_query, &mut grid, &move_counter);
     grid.check_update_bounds();
 
-    for (entity, mut grid_ball) in balls_query.iter_mut() {
+    for (line_type, mut line_transform) in lines_query.iter_mut() {
+        match line_type {
+            LineType::GridTop => line_transform.translation.y = grid.bounds.maxs.y,
+            LineType::GridBottom => line_transform.translation.y = grid.bounds.mins.y,
+            LineType::GameOver => {}
+        }
+    }
+
+    for mut grid_ball in balls_query.iter_mut() {
         let hex = grid_ball.hex;
-        grid.set(hex, entity);
         let pos_2d = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
         grid_ball.animation_x = pos_2d.x;
         grid_ball.animation_y = pos_2d.y;

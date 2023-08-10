@@ -25,7 +25,7 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-draw full line to first contact
+TransformTranslation for animation ?
 improve collision: second collision is snap?
 improve clusters: use only physics connections?
 responsive layout

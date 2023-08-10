@@ -25,7 +25,7 @@ impl Plugin for GridPlugin {
         app.init_resource::<Grid>()
             .insert_resource(CollisionSnapCooldown::default())
             .add_event::<UpdatePositions>()
-            .add_systems(OnEnter(AppState::Gameplay), generate_grid)
+            .add_systems(OnEnter(AppState::GameplayInit), generate_grid)
             .add_systems(
                 Update,
                 (

@@ -40,7 +40,7 @@ impl WallBundle {
                 mesh: meshes
                     .add(shape::Quad::new(Vec2::new(WALL_X_WIDTH, length)).into())
                     .into(),
-                material: gameplay_materials.wall.clone(),
+                material: gameplay_materials.side_wall.clone(),
                 transform: Transform::from_translation(pos),
                 ..Default::default()
             },

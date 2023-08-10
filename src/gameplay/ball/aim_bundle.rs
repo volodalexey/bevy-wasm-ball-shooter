@@ -25,7 +25,7 @@ impl AimBundle {
                 mesh: meshes
                     .add(shape::Circle::new(grid.layout.hex_size.y * INNER_RADIUS_COEFF).into())
                     .into(),
-                material: gameplay_materials.arrow_end.clone(),
+                material: gameplay_materials.aim_target.clone(),
                 transform: Transform::from_translation(Vec3::new(pos.x, pos.y, AIM_TARGET_Z_INDEX)),
                 visibility: Visibility::Hidden,
                 ..Default::default()
@@ -59,7 +59,7 @@ impl AimBundle {
                 mesh: meshes
                     .add(shape::Quad::new(Vec2::new(BALL_DIAMETER, 1.0)).into())
                     .into(),
-                material: gameplay_materials.arrow_end.clone(),
+                material: gameplay_materials.aim_target.clone(),
                 transform: Transform::from_translation(line_center.extend(AIM_LINE_Z_INDEX))
                     .with_scale(Vec3::new(1.0, scale_y, 1.0))
                     .with_rotation(rotation),

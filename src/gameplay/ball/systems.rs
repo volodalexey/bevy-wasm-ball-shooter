@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bevy::{
     prelude::{
-        Assets, Camera, ColorMaterial, Commands, DespawnRecursiveExt, Entity, EventReader,
+        warn, Assets, Camera, ColorMaterial, Commands, DespawnRecursiveExt, Entity, EventReader,
         GlobalTransform, Handle, Input, Mesh, MouseButton, Query, Res, ResMut, Touches, Transform,
         Vec2, Visibility, With, Without,
     },
@@ -23,6 +23,7 @@ use crate::{
         },
         events::BeginTurn,
         grid::resources::Grid,
+        lines::components::LineType,
         main_camera::components::MainCamera,
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
@@ -147,10 +148,6 @@ pub fn shoot_projectile(
         (With<ProjectileBall>, Without<AimTarget>, Without<AimLine>),
     >,
     audio_assets: Res<AudioAssets>,
-    mut aim_target_query: Query<
-        (&mut Transform, &mut Visibility),
-        (With<AimTarget>, Without<ProjectileBall>, Without<AimLine>),
-    >,
     pointer_cooldown: Res<PointerCooldown>,
     pkv: Res<PkvStore>,
     mut aim_query: Query<&mut Aim, With<Aim>>,
@@ -161,60 +158,49 @@ pub fn shoot_projectile(
     let (pointer_position, pointer_aquired) =
         detect_pointer_position(&window_query, &camera_query, &mouse_button_input, &touches);
 
-    if let Ok((mut target_transform, mut target_visibility)) = aim_target_query.get_single_mut() {
-        if let Ok((projectile_transform, mut vel, mut projectile_ball)) =
-            projectile_ball_query.get_single_mut()
-        {
-            let window = window_query.single();
-            let projectile_shoot_bottom =
-                -(window.height() - PROJECTILE_SHOOT_BOTTOM - window.height() / 2.0);
+    if let Ok((projectile_transform, mut vel, mut projectile_ball)) =
+        projectile_ball_query.get_single_mut()
+    {
+        let window = window_query.single();
+        let projectile_shoot_bottom =
+            -(window.height() - PROJECTILE_SHOOT_BOTTOM - window.height() / 2.0);
 
-            let mut target_position = pointer_position;
-            if target_position.y < projectile_shoot_bottom {
-                target_position.y = projectile_shoot_bottom;
-            }
+        let mut target_position = pointer_position;
+        if target_position.y < projectile_shoot_bottom {
+            target_position.y = projectile_shoot_bottom;
+        }
 
-            if let Ok(mut aim) = aim_query.get_single_mut() {
-                aim.started = pointer_aquired;
-                if pointer_aquired {
-                    if !projectile_ball.is_flying {
-                        aim.aim_pos = projectile_transform.translation.truncate();
-                        aim.aim_vel =
-                            (target_position - aim.aim_pos).normalize() * CAST_RAY_VELOCITY;
-                        aim.draw_vel = Vec2::ZERO;
-                        // println!(
-                        //     "pointer_aquired target_pos({:?}) projectile_pos({})",
-                        //     target_position, aim.aim_pos
-                        // );
-                    }
-                } else {
-                    aim.aim_pos = Vec2::ZERO;
-                    aim.aim_vel = Vec2::ZERO;
+        if let Ok(mut aim) = aim_query.get_single_mut() {
+            aim.started = pointer_aquired;
+            if pointer_aquired {
+                if !projectile_ball.is_flying {
+                    aim.aim_pos = projectile_transform.translation.truncate();
+                    aim.aim_vel = (target_position - aim.aim_pos).normalize() * CAST_RAY_VELOCITY;
+                    aim.draw_vel = Vec2::ZERO;
+                    // println!(
+                    //     "pointer_aquired target_pos({:?}) projectile_pos({})",
+                    //     target_position, aim.aim_pos
+                    // );
                 }
-            }
-
-            if pointer_aquired && !projectile_ball.is_flying {
-                *target_visibility = Visibility::Visible;
-
-                target_transform.translation =
-                    target_position.extend(target_transform.translation.z);
-
-                if !(mouse_button_input.just_released(MouseButton::Left)
-                    || touches.any_just_released())
-                {
-                    return;
-                }
-
-                let aim_direction = target_position - projectile_transform.translation.truncate();
-                vel.linvel = aim_direction.normalize() * PROJECTILE_SPEED;
-                // println!("aim_direction ({}, {})", aim_direction.x, aim_direction.y);
-
-                projectile_ball.is_flying = true;
-
-                pkv_play_shoot_audio(&mut commands, &audio_assets, &pkv);
             } else {
-                *target_visibility = Visibility::Hidden;
+                aim.aim_pos = Vec2::ZERO;
+                aim.aim_vel = Vec2::ZERO;
             }
+        }
+
+        if pointer_aquired && !projectile_ball.is_flying {
+            if !(mouse_button_input.just_released(MouseButton::Left) || touches.any_just_released())
+            {
+                return;
+            }
+
+            let aim_direction = target_position - projectile_transform.translation.truncate();
+            vel.linvel = aim_direction.normalize() * PROJECTILE_SPEED;
+            // println!("aim_direction ({}, {})", aim_direction.x, aim_direction.y);
+
+            projectile_ball.is_flying = true;
+
+            pkv_play_shoot_audio(&mut commands, &audio_assets, &pkv);
         }
     }
 }
@@ -229,57 +215,84 @@ pub fn draw_aim(
     rapier_context: Res<RapierContext>,
     aim_line_query: Query<Entity, With<AimLine>>,
     grid: Res<Grid>,
+    lines_query: Query<(&LineType, &Transform), With<LineType>>,
+    mut aim_target_query: Query<
+        (&mut Transform, &mut Visibility),
+        (With<AimTarget>, Without<LineType>),
+    >,
 ) {
     if let Ok(mut aim) = aim_query.get_single_mut() {
         if aim.draw_vel != aim.aim_vel {
-            cleanup_aim_line_utils(&mut commands, &aim_line_query);
-            aim.draw_vel = aim.aim_vel;
-            if aim.started {
-                let wall_filter = QueryFilter::default().groups(CollisionGroups::new(
-                    Group::GROUP_1 | Group::GROUP_2,
-                    Group::GROUP_1 | Group::GROUP_2,
-                ));
+            if let Ok((mut target_transform, mut target_visibility)) =
+                aim_target_query.get_single_mut()
+            {
+                cleanup_aim_line_utils(&mut commands, &aim_line_query);
+                aim.draw_vel = aim.aim_vel;
+                if aim.started {
+                    *target_visibility = Visibility::Visible;
+                    let kinematic_filter = QueryFilter::default().groups(CollisionGroups::new(
+                        Group::GROUP_1 | Group::GROUP_2 | Group::GROUP_5,
+                        Group::GROUP_1 | Group::GROUP_2 | Group::GROUP_5,
+                    ));
 
-                let shape = Collider::ball(BALL_RADIUS);
-                let start_y = aim.aim_pos.y;
-                let mut ray_start = aim.aim_pos;
-                let mut ray_vel = aim.aim_vel;
-                let mut count = 0;
+                    let shape = Collider::ball(BALL_RADIUS);
+                    let start_y = aim.aim_pos.y;
+                    let mut ray_start = aim.aim_pos;
+                    let mut ray_vel = aim.aim_vel;
+                    let mut count = 0;
 
-                while start_y <= grid.bounds.maxs.y - grid.layout.hex_size.y {
-                    count = count + 1;
-                    if count > 5 {
-                        println!("break count");
-                        break;
-                    }
-                    if let Some((entity, hit)) = rapier_context.cast_shape(
-                        ray_start,
-                        0.0,
-                        ray_vel,
-                        &shape,
-                        CAST_RAY_MAX_TOI,
-                        wall_filter,
-                    ) {
-                        if let Ok(_) = wall_query.get(entity) {
-                            let center = hit.witness1 - hit.witness2;
-                            commands.spawn(AimBundle::new_line(
-                                ray_start,
-                                center,
-                                &mut meshes,
-                                &gameplay_materials,
-                            ));
-                            ray_start = center;
-                            ray_vel = Vec2::new(-ray_vel.x, ray_vel.y);
-                        } else if let Ok(_) = balls_query.get(entity) {
-                            commands.spawn(AimBundle::new_line(
-                                ray_start,
-                                hit.witness1,
-                                &mut meshes,
-                                &gameplay_materials,
-                            ));
+                    while start_y <= grid.bounds.maxs.y - grid.layout.hex_size.y {
+                        count = count + 1;
+                        if count > 10 {
+                            warn!("Break aim iteration draw, reached max iteration count");
                             break;
                         }
+                        if let Some((entity, hit)) = rapier_context.cast_shape(
+                            ray_start,
+                            0.0,
+                            ray_vel,
+                            &shape,
+                            CAST_RAY_MAX_TOI,
+                            kinematic_filter,
+                        ) {
+                            // println!("entity_id({}) hit {:?}", entity.index(), hit);
+                            if let Ok(_) = wall_query.get(entity) {
+                                let center = hit.witness1 - hit.witness2;
+                                commands.spawn(AimBundle::new_line(
+                                    ray_start,
+                                    center,
+                                    &mut meshes,
+                                    &gameplay_materials,
+                                ));
+                                ray_start = center;
+                                ray_vel = Vec2::new(-ray_vel.x, ray_vel.y);
+                            } else if let Ok(_) = balls_query.get(entity) {
+                                let center = hit.witness1 - hit.witness2;
+                                target_transform.translation =
+                                    center.extend(target_transform.translation.z);
+                                commands.spawn(AimBundle::new_line(
+                                    ray_start,
+                                    center,
+                                    &mut meshes,
+                                    &gameplay_materials,
+                                ));
+                                break;
+                            } else if let Ok(_) = lines_query.get(entity) {
+                                let center = hit.witness1 - hit.witness2;
+                                target_transform.translation =
+                                    center.extend(target_transform.translation.z);
+                                commands.spawn(AimBundle::new_line(
+                                    ray_start,
+                                    center,
+                                    &mut meshes,
+                                    &gameplay_materials,
+                                ));
+                                break;
+                            }
+                        }
                     }
+                } else {
+                    *target_visibility = Visibility::Hidden;
                 }
             }
         }
