@@ -3,20 +3,23 @@ use std::collections::HashMap;
 use bevy::{
     prelude::{
         Assets, Camera, ColorMaterial, Commands, DespawnRecursiveExt, Entity, EventReader,
-        GlobalTransform, Handle, Input, Mesh, MouseButton, Quat, Query, Res, ResMut, Touches,
-        Transform, Vec2, Visibility, With, Without,
+        GlobalTransform, Handle, Input, Mesh, MouseButton, Query, Res, ResMut, Touches, Transform,
+        Vec2, Visibility, With, Without,
     },
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier2d::prelude::{ExternalForce, Velocity};
+use bevy_rapier2d::prelude::{
+    Collider, CollisionGroups, ExternalForce, Group, QueryFilter, RapierContext, Velocity,
+};
 
 use crate::{
     game_audio::utils::pkv_play_shoot_audio,
     gameplay::{
         constants::{
-            BALL_RADIUS, NEXT_PROJECTILE_SPAWN_BOTTOM, NEXT_PROJECTILE_SPAWN_SIDE,
-            PROJECTILE_SHOOT_BOTTOM, PROJECTILE_SPAWN_BOTTOM, PROJECTILE_SPEED,
+            BALL_RADIUS, CAST_RAY_MAX_TOI, CAST_RAY_VELOCITY, NEXT_PROJECTILE_SPAWN_BOTTOM,
+            NEXT_PROJECTILE_SPAWN_SIDE, PROJECTILE_SHOOT_BOTTOM, PROJECTILE_SPAWN_BOTTOM,
+            PROJECTILE_SPEED,
         },
         events::BeginTurn,
         grid::resources::Grid,
@@ -24,6 +27,7 @@ use crate::{
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
         utils::detect_pointer_position,
+        walls::components::WallType,
     },
     loading::audio_assets::AudioAssets,
     ui::resources::PointerCooldown,
@@ -33,11 +37,11 @@ use crate::{
 use super::{
     aim_bundle::AimBundle,
     components::{
-        AimLine, AimTarget, GridBall, NextProjectileBall, OutBall, ProjectileBall, Species,
+        Aim, AimLine, AimTarget, GridBall, NextProjectileBall, OutBall, ProjectileBall, Species,
     },
     projectile_ball_bundle::{NextProjectileBallBundle, ProjectileBallBundle},
     resources::ProjectileBuffer,
-    utils::cleanup_next_projectile_ball_utils,
+    utils::{cleanup_aim_line_utils, cleanup_next_projectile_ball_utils},
 };
 
 pub fn cleanup_projectile_ball(
@@ -147,12 +151,9 @@ pub fn shoot_projectile(
         (&mut Transform, &mut Visibility),
         (With<AimTarget>, Without<ProjectileBall>, Without<AimLine>),
     >,
-    mut aim_line_query: Query<
-        (&mut Transform, &mut Visibility),
-        (With<AimLine>, Without<ProjectileBall>, Without<AimTarget>),
-    >,
     pointer_cooldown: Res<PointerCooldown>,
     pkv: Res<PkvStore>,
+    mut aim_query: Query<&mut Aim, With<Aim>>,
 ) {
     if pointer_cooldown.started {
         return;
@@ -161,59 +162,124 @@ pub fn shoot_projectile(
         detect_pointer_position(&window_query, &camera_query, &mouse_button_input, &touches);
 
     if let Ok((mut target_transform, mut target_visibility)) = aim_target_query.get_single_mut() {
-        if let Ok((mut line_transform, mut line_visibility)) = aim_line_query.get_single_mut() {
-            if let Ok((projectile_transform, mut vel, mut projectile_ball)) =
-                projectile_ball_query.get_single_mut()
-            {
-                if pointer_aquired && !projectile_ball.is_flying {
-                    let window = window_query.single();
-                    let projectile_shoot_bottom =
-                        -(window.height() - PROJECTILE_SHOOT_BOTTOM - window.height() / 2.0);
-                    *target_visibility = Visibility::Visible;
-                    *line_visibility = Visibility::Visible;
+        if let Ok((projectile_transform, mut vel, mut projectile_ball)) =
+            projectile_ball_query.get_single_mut()
+        {
+            let window = window_query.single();
+            let projectile_shoot_bottom =
+                -(window.height() - PROJECTILE_SHOOT_BOTTOM - window.height() / 2.0);
 
-                    let mut target_position = pointer_position;
-                    if target_position.y < projectile_shoot_bottom {
-                        target_position.y = projectile_shoot_bottom;
+            let mut target_position = pointer_position;
+            if target_position.y < projectile_shoot_bottom {
+                target_position.y = projectile_shoot_bottom;
+            }
+
+            if let Ok(mut aim) = aim_query.get_single_mut() {
+                aim.started = pointer_aquired;
+                if pointer_aquired {
+                    if !projectile_ball.is_flying {
+                        aim.aim_pos = projectile_transform.translation.truncate();
+                        aim.aim_vel =
+                            (target_position - aim.aim_pos).normalize() * CAST_RAY_VELOCITY;
+                        aim.draw_vel = Vec2::ZERO;
+                        // println!(
+                        //     "pointer_aquired target_pos({:?}) projectile_pos({})",
+                        //     target_position, aim.aim_pos
+                        // );
                     }
-
-                    target_transform.translation.x = target_position.x;
-                    target_transform.translation.y = target_position.y;
-
-                    line_transform.translation.x =
-                        (target_position.x - projectile_transform.translation.x) / 2.0;
-                    line_transform.translation.y = target_position.y
-                        + (projectile_transform.translation.y - target_position.y) / 2.0;
-
-                    let distance = projectile_transform
-                        .translation
-                        .distance(target_transform.translation);
-                    // println!("distance {}", distance);
-                    line_transform.scale.y = distance - BALL_RADIUS * 2.0;
-                    let diff = target_transform.translation - line_transform.translation;
-                    // println!("diff({}, {})", diff.x, diff.y);
-                    let angle = diff.y.atan2(diff.x);
-                    // println!("angle {}", angle);
-                    line_transform.rotation =
-                        Quat::from_rotation_z(angle + core::f32::consts::PI / 2.0);
-
-                    if !(mouse_button_input.just_released(MouseButton::Left)
-                        || touches.any_just_released())
-                    {
-                        return;
-                    }
-
-                    let aim_direction =
-                        target_position - projectile_transform.translation.truncate();
-                    vel.linvel = aim_direction.normalize() * PROJECTILE_SPEED;
-                    // println!("aim_direction ({}, {})", aim_direction.x, aim_direction.y);
-
-                    projectile_ball.is_flying = true;
-
-                    pkv_play_shoot_audio(&mut commands, &audio_assets, &pkv);
                 } else {
-                    *target_visibility = Visibility::Hidden;
-                    *line_visibility = Visibility::Hidden;
+                    aim.aim_pos = Vec2::ZERO;
+                    aim.aim_vel = Vec2::ZERO;
+                }
+            }
+
+            if pointer_aquired && !projectile_ball.is_flying {
+                *target_visibility = Visibility::Visible;
+
+                target_transform.translation =
+                    target_position.extend(target_transform.translation.z);
+
+                if !(mouse_button_input.just_released(MouseButton::Left)
+                    || touches.any_just_released())
+                {
+                    return;
+                }
+
+                let aim_direction = target_position - projectile_transform.translation.truncate();
+                vel.linvel = aim_direction.normalize() * PROJECTILE_SPEED;
+                // println!("aim_direction ({}, {})", aim_direction.x, aim_direction.y);
+
+                projectile_ball.is_flying = true;
+
+                pkv_play_shoot_audio(&mut commands, &audio_assets, &pkv);
+            } else {
+                *target_visibility = Visibility::Hidden;
+            }
+        }
+    }
+}
+
+pub fn draw_aim(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    gameplay_materials: Res<GameplayMaterials>,
+    mut aim_query: Query<&mut Aim, With<Aim>>,
+    wall_query: Query<Entity, With<WallType>>,
+    balls_query: Query<Entity, With<GridBall>>,
+    rapier_context: Res<RapierContext>,
+    aim_line_query: Query<Entity, With<AimLine>>,
+    grid: Res<Grid>,
+) {
+    if let Ok(mut aim) = aim_query.get_single_mut() {
+        if aim.draw_vel != aim.aim_vel {
+            cleanup_aim_line_utils(&mut commands, &aim_line_query);
+            aim.draw_vel = aim.aim_vel;
+            if aim.started {
+                let wall_filter = QueryFilter::default().groups(CollisionGroups::new(
+                    Group::GROUP_1 | Group::GROUP_2,
+                    Group::GROUP_1 | Group::GROUP_2,
+                ));
+
+                let shape = Collider::ball(BALL_RADIUS);
+                let start_y = aim.aim_pos.y;
+                let mut ray_start = aim.aim_pos;
+                let mut ray_vel = aim.aim_vel;
+                let mut count = 0;
+
+                while start_y <= grid.bounds.maxs.y - grid.layout.hex_size.y {
+                    count = count + 1;
+                    if count > 5 {
+                        println!("break count");
+                        break;
+                    }
+                    if let Some((entity, hit)) = rapier_context.cast_shape(
+                        ray_start,
+                        0.0,
+                        ray_vel,
+                        &shape,
+                        CAST_RAY_MAX_TOI,
+                        wall_filter,
+                    ) {
+                        if let Ok(_) = wall_query.get(entity) {
+                            let center = hit.witness1 - hit.witness2;
+                            commands.spawn(AimBundle::new_line(
+                                ray_start,
+                                center,
+                                &mut meshes,
+                                &gameplay_materials,
+                            ));
+                            ray_start = center;
+                            ray_vel = Vec2::new(-ray_vel.x, ray_vel.y);
+                        } else if let Ok(_) = balls_query.get(entity) {
+                            commands.spawn(AimBundle::new_line(
+                                ray_start,
+                                hit.witness1,
+                                &mut meshes,
+                                &gameplay_materials,
+                            ));
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -243,22 +309,8 @@ pub fn cleanup_aim_target(
     }
 }
 
-pub fn setup_aim_line(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    gameplay_materials: Res<GameplayMaterials>,
-) {
-    commands.spawn(AimBundle::new_line(
-        from_grid_2d_to_2d(Vec2::new(0.0, 0.0)),
-        &mut meshes,
-        &gameplay_materials,
-    ));
-}
-
-pub fn cleanup_aim_line(mut commands: Commands, aim_line_query: Query<Entity, With<AimLine>>) {
-    for projectile_entity in aim_line_query.iter() {
-        commands.entity(projectile_entity).despawn_recursive();
-    }
+pub fn cleanup_aim_lines(mut commands: Commands, aim_line_query: Query<Entity, With<AimLine>>) {
+    cleanup_aim_line_utils(&mut commands, &aim_line_query);
 }
 
 pub fn animate_out_ball(

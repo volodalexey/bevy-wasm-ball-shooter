@@ -14,7 +14,7 @@ use crate::{
     gameplay::{
         ball::components::{GridBall, ProjectileBall},
         constants::{
-            BALL_DIAMETER, BALL_RADIUS, MIN_PROJECTILE_SNAP_VELOCITY, PLAYGROUND_ROWS,
+            BALL_DIAMETER, BALL_RADIUS, MIN_PROJECTILE_SNAP_VELOCITY, PLAYGROUND_HEIGHT,
             PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
         },
         panels::resources::MoveCounter,
@@ -95,10 +95,8 @@ pub fn adjust_grid_layout(
     move_counter: &MoveCounter,
 ) {
     let window = window_query.single();
-    let init_row_y = -(window.height()
-        - PROJECTILE_SPAWN_BOTTOM
-        - window.height() / 2.0
-        - ROW_HEIGHT * PLAYGROUND_ROWS as f32);
+    let init_row_y =
+        -(window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0 - PLAYGROUND_HEIGHT);
     let full_height = ROW_HEIGHT * grid.init_rows as f32;
     let init_layout_y = init_row_y - full_height;
     let move_layout_y = move_counter.0 as f32 * ROW_HEIGHT;

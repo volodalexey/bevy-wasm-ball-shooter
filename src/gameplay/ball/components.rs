@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display, Formatter, Result};
 
 use bevy::{
-    prelude::{Color, Component},
+    prelude::{Color, Component, Vec2},
     sprite::ColorMaterial,
 };
 use hexx::Hex;
@@ -132,6 +132,25 @@ impl Species {
             colors_in_grid[i]
         } else {
             Species::random_species()
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct Aim {
+    pub started: bool,
+    pub draw_vel: Vec2,
+    pub aim_pos: Vec2,
+    pub aim_vel: Vec2,
+}
+
+impl Default for Aim {
+    fn default() -> Self {
+        Self {
+            started: false,
+            draw_vel: Vec2::ZERO,
+            aim_pos: Vec2::ZERO,
+            aim_vel: Vec2::ZERO,
         }
     }
 }

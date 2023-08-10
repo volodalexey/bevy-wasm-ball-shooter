@@ -6,8 +6,8 @@ use self::{
     events::SnapProjectile,
     resources::ProjectileBuffer,
     systems::{
-        animate_out_ball, check_out_ball_for_delete, cleanup_aim_line, cleanup_aim_target,
-        cleanup_next_projectile_ball, cleanup_projectile_ball, projectile_reload, setup_aim_line,
+        animate_out_ball, check_out_ball_for_delete, cleanup_aim_lines, cleanup_aim_target,
+        cleanup_next_projectile_ball, cleanup_projectile_ball, draw_aim, projectile_reload,
         setup_aim_target, shoot_projectile,
     },
 };
@@ -27,10 +27,7 @@ impl Plugin for ProjectilePlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SnapProjectile>()
             .insert_resource(ProjectileBuffer(vec![]))
-            .add_systems(
-                OnEnter(AppState::Gameplay),
-                (setup_aim_target, setup_aim_line),
-            )
+            .add_systems(OnEnter(AppState::Gameplay), setup_aim_target)
             .add_systems(
                 Update,
                 (
@@ -38,6 +35,7 @@ impl Plugin for ProjectilePlugin {
                     shoot_projectile,
                     animate_out_ball,
                     check_out_ball_for_delete,
+                    draw_aim,
                 )
                     .run_if(in_state(AppState::Gameplay)),
             )
@@ -46,7 +44,7 @@ impl Plugin for ProjectilePlugin {
                 (
                     cleanup_projectile_ball,
                     cleanup_aim_target,
-                    cleanup_aim_line,
+                    cleanup_aim_lines,
                     cleanup_next_projectile_ball,
                 ),
             );
