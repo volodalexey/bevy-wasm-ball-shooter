@@ -172,42 +172,66 @@ pub fn build_prismatic_joint(from_pos: Vec2, to_pos: Vec2, to_entity: &Entity) -
     ImpulseJoint::new(*to_entity, prism)
 }
 
-/// each ball in grid can have 4 max joints
-/// assume pointy-top orientation
 pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
     let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
 
-    let neighbors = vec![
-        hex.neighbor(hexx::Direction::TopLeft),
-        hex.neighbor(hexx::Direction::Top),
-        hex.neighbor(hexx::Direction::TopRight),
-        hex.neighbor(hexx::Direction::BottomRight),
-    ];
-    neighbors
+    grid.neighbors(hex)
         .iter()
-        .filter_map(|neighbor_hex| {
-            if let Some(grid_neighbor) = grid.get(*neighbor_hex) {
-                return Some((
-                    grid_neighbor,
-                    from_2d_to_grid_2d(grid.layout.hex_to_world_pos(*neighbor_hex)),
-                ));
-            }
-            None
-        })
-        .map(|(neighbor_entity, neighbor_pos)| {
+        .map(|(neighbor_hex, neighbor_entity)| {
+            let neighbor_pos = from_2d_to_grid_2d(grid.layout.hex_to_world_pos(*neighbor_hex));
+            // println!(
+            //     "Join hex({}, {}) with neighbor_hex({}, {})",
+            //     hex.x, hex.y, neighbor_hex.x, neighbor_hex.y
+            // );
             build_prismatic_joint(hex_pos, neighbor_pos, neighbor_entity)
         })
         .collect::<Vec<ImpulseJoint>>()
 }
 
-pub fn is_move_slow(linvel: Vec2) -> bool {
+pub fn is_move_slow(velocity: Vec2) -> bool {
     // println!(
     //     "is_move_slow x({}) y({}) len({})",
     //     linvel.x,
     //     linvel.y,
     //     linvel.length()
     // );
-    linvel.length() <= MIN_PROJECTILE_SNAP_VELOCITY || linvel.y < 0.0
+    velocity.length() <= MIN_PROJECTILE_SNAP_VELOCITY
+}
+
+pub fn get_grid_ball_position(
+    snap_hex: Option<&Hex>,
+    balls_query: &Query<(Entity, &Transform, &GridBall), (With<GridBall>, Without<ProjectileBall>)>,
+) -> Option<Vec2> {
+    if let Some(snap_hex) = snap_hex {
+        for (_, ball_transform, grid_ball) in balls_query.iter() {
+            if grid_ball.hex.x == snap_hex.x && grid_ball.hex.y == snap_hex.y {
+                return Some(ball_transform.translation.truncate());
+            }
+        }
+    }
+    None
+}
+
+/// detect that projectile after snap is moving into the same clockwise/counterclockwise direction around snap grid ball
+pub fn is_move_reverse(projectile_ball: &mut ProjectileBall, projectile_velocity: Vec2) -> bool {
+    if projectile_ball.snap_vel == Vec2::ZERO {
+        projectile_ball.snap_vel = projectile_velocity.normalize();
+        // println!("snap_vel {:?}", projectile_ball.snap_vel);
+    } else {
+        let dot = projectile_ball
+            .snap_vel
+            .dot(projectile_velocity.normalize());
+        // println!(
+        //     "snap_vel {:?} projectile_velocity {:?} dot {}",
+        //     projectile_ball.snap_vel, projectile_velocity, dot
+        // );
+        if dot < 0.0 {
+            // println!("TRUE");
+            return true;
+        }
+        // projectile_ball.snap_vel = projectile_velocity;
+    }
+    false
 }
 
 pub fn build_ball_text(parent: &mut ChildBuilder<'_, '_, '_>, hex: Hex) {
@@ -248,31 +272,27 @@ pub fn remove_projectile_and_snap(
         projectile_transform.translation.x,
         projectile_transform.translation.y,
     );
-    match projectile_ball.snap_to.split_first() {
-        Some((snap_hex, _)) => {
-            let projectile_pos = projectile_transform.translation.truncate();
+    match projectile_ball.snap_to.iter().next() {
+        Some(snap_hex) => {
             let mut snap_pos = default_snap_pos;
-            for (_, ball_transform, grid_ball) in balls_query.iter() {
-                if grid_ball.hex.x == snap_hex.x && grid_ball.hex.y == snap_hex.y {
-                    let ball_pos = ball_transform.translation.truncate();
-                    // get vector diff between actual projectile position and grid ball that is currently joined with this projectile
-                    let diff = projectile_pos - ball_pos;
-                    let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(*snap_hex));
-                    // calc ideal projectile snap position based on ideal grid ball position
-                    snap_pos = hex_pos + diff;
-                    println!(
-                        "Iter ball_pos({}, {}) diff({}, {}) snap_pos({}, {}) snap_hex({}, {})",
-                        ball_pos.x,
-                        ball_pos.y,
-                        diff.x,
-                        diff.y,
-                        snap_pos.x,
-                        snap_pos.y,
-                        snap_hex.x,
-                        snap_hex.y
-                    );
-                    break;
-                }
+            if let Some(ball_pos) = get_grid_ball_position(Some(snap_hex), balls_query) {
+                let projectile_pos = projectile_transform.translation.truncate();
+                // get vector diff between actual projectile position and grid ball that is currently joined with this projectile
+                let diff = projectile_pos - ball_pos;
+                let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(*snap_hex));
+                // calc ideal projectile snap position based on ideal grid ball position
+                snap_pos = hex_pos + diff;
+                println!(
+                    "Iter ball_pos({}, {}) diff({}, {}) snap_pos({}, {}) snap_hex({}, {})",
+                    ball_pos.x,
+                    ball_pos.y,
+                    diff.x,
+                    diff.y,
+                    snap_pos.x,
+                    snap_pos.y,
+                    snap_hex.x,
+                    snap_hex.y
+                );
             }
             snap_pos
         }

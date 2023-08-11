@@ -41,7 +41,7 @@ use crate::{
 use super::{
     events::UpdatePositions,
     resources::{CollisionSnapCooldown, Grid},
-    utils::{adjust_grid_layout, build_joints, build_revolute_joint},
+    utils::{adjust_grid_layout, build_joints, build_revolute_joint, is_move_reverse},
 };
 
 pub fn generate_grid(
@@ -222,6 +222,10 @@ pub fn on_projectile_collisions_events(
                 mut projectile_ball,
             )) = p1
             {
+                // println!(
+                //     "\ncollision phase {} with hex({}, {})\n",
+                //     started, grid_ball.hex.x, grid_ball.hex.y
+                // );
                 // take into account only collision between projectile and grid ball
                 // println!("velocity {:?} len {}", velocity, velocity.linvel.length());
                 if !projectile_ball.is_ready_to_despawn
@@ -229,6 +233,7 @@ pub fn on_projectile_collisions_events(
                         true => {
                             // println!("Snap event {:?}", projectile_ball.snap_to);
                             if projectile_ball.snap_to.len() == 0 {
+                                // snap with revolute joint only to the first grid ball
                                 // if !projectile_ball.snap_to.contains(&grid_ball.hex) {
                                 let anchor_pos = ball_transform.translation.truncate();
                                 let from_pos = projectile_transform.translation.truncate();
@@ -241,6 +246,11 @@ pub fn on_projectile_collisions_events(
                                 // );
                                 if dot > MIN_PROJECTILE_SNAP_DOT {
                                     collision_snap_cooldown.start();
+                                    // save first touch position
+                                    is_move_reverse(
+                                        &mut projectile_ball,
+                                        projectile_velocity.linvel,
+                                    );
                                     commands.entity(projectile_entity).with_children(|parent| {
                                         parent.spawn(build_revolute_joint(
                                             &ball_entity,
@@ -251,18 +261,18 @@ pub fn on_projectile_collisions_events(
                                     });
                                     projectile_ball.snap_to.push(grid_ball.hex);
                                 }
+                                false
+                            } else {
+                                is_move_reverse(&mut projectile_ball, projectile_velocity.linvel)
                             }
-                            false
                         }
                         false => {
-                            let is_slow = is_move_slow(projectile_velocity.linvel);
-                            if is_slow {
-                                collision_snap_cooldown.stop();
-                            }
-                            is_slow
+                            is_move_slow(projectile_velocity.linvel)
+                                || is_move_reverse(&mut projectile_ball, projectile_velocity.linvel)
                         }
                     }
                 {
+                    collision_snap_cooldown.stop();
                     // if ball turned back
                     // or ball moves too slow
                     info!("Projectile too slow so snap");
@@ -540,15 +550,16 @@ pub fn tick_collision_snap_cooldown_timer(
             projectile_transform,
             mut projectile_ball,
             species,
-            velocity,
+            projectile_velocity,
         )) = projectile_query.get_single_mut()
         {
             if collision_snap_cooldown.is_ready_for_check(|| {
-                return is_move_slow(velocity.linvel);
+                is_move_slow(projectile_velocity.linvel)
+                    || is_move_reverse(&mut projectile_ball, projectile_velocity.linvel)
             }) {
                 // snap projectile anyway after some time
-                collision_snap_cooldown.restart();
-                info!("Projectile timeout snap");
+                collision_snap_cooldown.stop();
+                info!("Projectile cooldown snap");
                 snap_projectile.send(SnapProjectile {
                     pos: remove_projectile_and_snap(
                         &mut commands,

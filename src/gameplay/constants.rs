@@ -1,14 +1,14 @@
 pub const CAMERA_SPEED: f32 = 10.0;
 pub const CAMERA_ROTATION_SPEED: f32 = 0.05;
 pub const CAMERA_SCALE: f32 = 0.01;
-pub const COLLISION_SNAP_COOLDOWN_TIME: f32 = 5.0;
+pub const COLLISION_SNAP_COOLDOWN_TIME: f32 = 5.0; // seconds
 pub const SIZE: f32 = 20.0;
 pub const ROW_HEIGHT: f32 = 1.5 * SIZE;
 pub const PLAYGROUND_ROWS: i32 = 10;
 pub const PLAYGROUND_HEIGHT: f32 = ROW_HEIGHT * PLAYGROUND_ROWS as f32;
 pub const PROJECTILE_SPEED: f32 = 1000.;
 pub const MIN_PROJECTILE_SNAP_VELOCITY: f32 = 20.0;
-pub const MIN_PROJECTILE_SNAP_DOT: f32 = 0.1;
+pub const MIN_PROJECTILE_SNAP_DOT: f32 = 0.2;
 pub const INNER_RADIUS_COEFF: f32 = 0.866025404; // √3 / 2
 pub const BALL_RADIUS: f32 = INNER_RADIUS_COEFF * SIZE;
 pub const NEXT_PROJECTILE_SIZE: f32 = 10.0;

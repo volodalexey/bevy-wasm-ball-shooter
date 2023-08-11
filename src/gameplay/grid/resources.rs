@@ -395,34 +395,33 @@ impl CollisionSnapCooldown {
     pub fn restart(&mut self) {
         self.timer.reset();
         self.timer.pause();
-        self.check_at = vec![
-            CheckAt::new(1000),
-            CheckAt::new(2000),
-            CheckAt::new(3000),
-            CheckAt::new(4000),
-        ];
+        self.check_at = (0u32..=(COLLISION_SNAP_COOLDOWN_TIME * 1000.0).round() as u32)
+            // each 100 ms check
+            .step_by(100)
+            .map(|t| CheckAt::new(t))
+            .collect::<Vec<CheckAt>>();
+        // for check_at in self.check_at.iter() {
+        //     println!("check_at {}", check_at.ms_time);
+        // }
     }
 
-    pub fn is_ready_for_check(&mut self, check_fn: impl Fn() -> bool) -> bool {
+    pub fn is_ready_for_check(&mut self, mut check_fn: impl FnMut() -> bool) -> bool {
         let elapsed_ms = self.timer.elapsed().as_millis() as u32;
-        self.timer.finished()
-            || (self
-                .check_at
-                .iter_mut()
-                .filter_map(|mut check_at| {
-                    if !check_at.checked && elapsed_ms > check_at.ms_time {
-                        (*check_at).checked = true;
-                        // println!(
-                        //     "is ready for check at={} el={}",
-                        //     check_at.ms_time, elapsed_ms
-                        // );
-                        return Some(true);
-                    }
-                    None
-                })
-                .collect::<Vec<bool>>()
-                .len()
-                > 0
-                && check_fn())
+        let mut is_ready = self.timer.finished();
+        if !is_ready {
+            for check_at in self.check_at.iter_mut() {
+                if !check_at.checked && elapsed_ms > check_at.ms_time {
+                    (*check_at).checked = true;
+                    println!(
+                        "is ready for check at={} el={}",
+                        check_at.ms_time, elapsed_ms
+                    );
+                    is_ready = check_fn();
+                    // check only once per function call
+                    break;
+                }
+            }
+        }
+        is_ready
     }
 }

@@ -11,6 +11,7 @@ pub struct ProjectileBall {
     pub is_flying: bool,
     pub is_ready_to_despawn: bool,
     pub snap_to: Vec<Hex>,
+    pub snap_vel: Vec2,
 }
 
 impl Default for ProjectileBall {
@@ -19,6 +20,7 @@ impl Default for ProjectileBall {
             is_flying: false,
             is_ready_to_despawn: false,
             snap_to: vec![],
+            snap_vel: Vec2::ZERO,
         }
     }
 }

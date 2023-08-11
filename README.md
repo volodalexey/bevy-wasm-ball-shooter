@@ -25,8 +25,6 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-TransformTranslation for animation ?
-improve collision: second collision is snap?
 improve clusters: use only physics connections?
 responsive layout
 improve performance: show only visible rows + physics from visible row
