@@ -139,17 +139,19 @@ impl Species {
 }
 
 #[derive(Component)]
-pub struct Aim {
-    pub started: bool,
+pub struct AimTarget {
+    pub pointer_pressed: bool,
+    pub pointer_released: bool,
     pub draw_vel: Vec2,
     pub aim_pos: Vec2,
     pub aim_vel: Vec2,
 }
 
-impl Default for Aim {
+impl Default for AimTarget {
     fn default() -> Self {
         Self {
-            started: false,
+            pointer_pressed: false,
+            pointer_released: false,
             draw_vel: Vec2::ZERO,
             aim_pos: Vec2::ZERO,
             aim_vel: Vec2::ZERO,
@@ -159,6 +161,3 @@ impl Default for Aim {
 
 #[derive(Component)]
 pub struct AimLine;
-
-#[derive(Component)]
-pub struct AimTarget;

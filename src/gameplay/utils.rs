@@ -12,39 +12,44 @@ pub fn detect_pointer_position(
     camera_query: &Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mouse_button_input: &Res<Input<MouseButton>>,
     touches: &Res<Touches>,
-) -> (Vec2, bool) {
+) -> (Vec2, bool, bool, bool) {
+    let mut some_global_pointer_position: Option<Vec2> = None;
     let mut pointer_position = Vec2::ZERO;
     let mut pointer_aquired = false;
-    if let Ok(window) = window_query.get_single() {
-        if let Ok((camera, camera_transform)) = camera_query.get_single() {
-            if mouse_button_input.pressed(MouseButton::Left)
-                || mouse_button_input.just_released(MouseButton::Left)
-            {
-                if let Some(cursor_position) = window.cursor_position() {
-                    if let Some(ray) =
-                        camera.viewport_to_world_2d(camera_transform, cursor_position)
-                    {
-                        pointer_position = ray;
-                        pointer_aquired = true;
-                    }
+    let is_mouse_down = mouse_button_input.pressed(MouseButton::Left)
+        || mouse_button_input.just_pressed(MouseButton::Left);
+    let is_mouse_up = mouse_button_input.just_released(MouseButton::Left);
+    let mut is_pressed = false;
+    let mut is_released = is_mouse_up;
+    if is_mouse_down || is_mouse_up {
+        if let Ok(window) = window_query.get_single() {
+            if let Some(cursor_position) = window.cursor_position() {
+                if is_mouse_down {
+                    is_pressed = true;
                 }
+                some_global_pointer_position = Some(cursor_position);
             }
-            if let Some(touch) = touches.iter().next() {
-                let touch_position = touch.position();
-                if let Some(ray) = camera.viewport_to_world_2d(camera_transform, touch_position) {
-                    pointer_position = ray;
-                    pointer_aquired = true;
-                }
-            } else if let Some(touch) = touches.iter_just_released().next() {
-                let touch_position = touch.position();
-                if let Some(ray) = camera.viewport_to_world_2d(camera_transform, touch_position) {
-                    pointer_position = ray;
-                    pointer_aquired = true;
-                }
+        }
+    } else if let Some(touch) = touches.iter().next() {
+        let touch_position = touch.position();
+        some_global_pointer_position = Some(touch_position);
+        is_pressed = true;
+    } else if let Some(touch) = touches.iter_just_released().next() {
+        let touch_position = touch.position();
+        some_global_pointer_position = Some(touch_position);
+        is_released = true;
+    }
+    if let Ok((camera, camera_transform)) = camera_query.get_single() {
+        if let Some(global_pointer_position) = some_global_pointer_position {
+            if let Some(ray) =
+                camera.viewport_to_world_2d(camera_transform, global_pointer_position)
+            {
+                pointer_position = ray;
+                pointer_aquired = true;
             }
         }
     }
-    (pointer_position, pointer_aquired)
+    (pointer_position, is_pressed, is_released, pointer_aquired)
 }
 
 pub fn calc_init_cols_rows(level_counter: &Res<LevelCounter>) -> (i32, i32) {

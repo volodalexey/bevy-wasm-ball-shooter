@@ -15,7 +15,7 @@ use crate::gameplay::{
     meshes::resources::GameplayMeshes,
 };
 
-use super::components::{Aim, NextProjectileBall, ProjectileBall, Species};
+use super::components::{NextProjectileBall, ProjectileBall, Species};
 
 pub struct ProjectileBallBundle;
 
@@ -38,7 +38,6 @@ impl ProjectileBallBundle {
         ColliderDebugColor,
         CollisionGroups,
         ExternalImpulse,
-        Aim,
     ) {
         (
             MaterialMesh2dBundle {
@@ -58,7 +57,6 @@ impl ProjectileBallBundle {
             ColliderDebugColor(species.into()),
             CollisionGroups::new(Group::GROUP_3, Group::GROUP_1 | Group::GROUP_2),
             ExternalImpulse::default(),
-            Aim::default(),
         )
     }
 }

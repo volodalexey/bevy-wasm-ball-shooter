@@ -30,7 +30,7 @@ impl AimBundle {
                 visibility: Visibility::Hidden,
                 ..Default::default()
             },
-            AimTarget,
+            AimTarget::default(),
         )
     }
 
@@ -41,19 +41,11 @@ impl AimBundle {
         gameplay_materials: &Res<GameplayMaterials>,
     ) -> (MaterialMesh2dBundle<ColorMaterial>, AimLine) {
         let line_center = from_pos + (to_pos - from_pos) / 2.0;
-        // println!(
-        //     "from_pos({}, {}) to_pos({}, {}) line_center({}, {})",
-        //     from_pos.x, from_pos.y, to_pos.x, to_pos.y, line_center.x, line_center.y
-        // );
         let distance = to_pos.distance(from_pos);
         let scale_y = distance;
         let diff_center = to_pos - line_center;
         let angle = diff_center.y.atan2(diff_center.x);
         let rotation = Quat::from_rotation_z(angle + core::f32::consts::PI / 2.0);
-        // println!(
-        //     "distance({}) scale_y({}) diff({}, {}) angle({})",
-        //     distance, scale_y, diff_center.x, diff_center.y, angle
-        // );
         (
             MaterialMesh2dBundle {
                 mesh: meshes
