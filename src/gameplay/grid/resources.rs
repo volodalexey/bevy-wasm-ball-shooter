@@ -9,10 +9,7 @@ use bevy::{
 };
 use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
 
-use crate::{
-    gameplay::constants::{COLLISION_SNAP_COOLDOWN_TIME, SIZE},
-    utils::from_grid_2d_to_2d,
-};
+use crate::gameplay::constants::{COLLISION_SNAP_COOLDOWN_TIME, SIZE};
 
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Bound {
@@ -150,8 +147,8 @@ impl Grid {
         neighbors.sort_by(|a_hex, b_hex| {
             let a_hex = *a_hex;
             let b_hex = *b_hex;
-            let a_hex_pos = from_grid_2d_to_2d(self.layout.hex_to_world_pos(a_hex));
-            let b_hex_pos = from_grid_2d_to_2d(self.layout.hex_to_world_pos(b_hex));
+            let a_hex_pos = self.layout.hex_to_world_pos(a_hex);
+            let b_hex_pos = self.layout.hex_to_world_pos(b_hex);
             let a_distance = position.distance(a_hex_pos);
             let b_distance = position.distance(b_hex_pos);
             // println!(
@@ -196,7 +193,7 @@ impl Grid {
         let mut max_y: f32 = f32::MIN;
         let mut min_y: f32 = f32::MAX;
         for (&hex, _) in self.storage.iter() {
-            let pos = from_grid_2d_to_2d(self.layout.hex_to_world_pos(hex));
+            let pos = self.layout.hex_to_world_pos(hex);
             let offset = hex.to_offset_coordinates(self.offset_mode);
             // q
             min_axi_q = min_axi_q.min(hex.x);
@@ -318,7 +315,7 @@ impl Grid {
                         result.push(format!("axi({}, {})", hex.x, hex.y));
                     }
                     if print_position {
-                        let pos = from_grid_2d_to_2d(self.layout.hex_to_world_pos(*hex));
+                        let pos = self.layout.hex_to_world_pos(*hex);
                         result.push(format!("pos({}, {})", pos.x, pos.y));
                     }
                 } else {
@@ -400,9 +397,6 @@ impl CollisionSnapCooldown {
             .step_by(100)
             .map(|t| CheckAt::new(t))
             .collect::<Vec<CheckAt>>();
-        // for check_at in self.check_at.iter() {
-        //     println!("check_at {}", check_at.ms_time);
-        // }
     }
 
     pub fn is_ready_for_check(&mut self, mut check_fn: impl FnMut() -> bool) -> bool {
@@ -412,10 +406,6 @@ impl CollisionSnapCooldown {
             for check_at in self.check_at.iter_mut() {
                 if !check_at.checked && elapsed_ms > check_at.ms_time {
                     (*check_at).checked = true;
-                    println!(
-                        "is ready for check at={} el={}",
-                        check_at.ms_time, elapsed_ms
-                    );
                     is_ready = check_fn();
                     // check only once per function call
                     break;

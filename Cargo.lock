@@ -709,8 +709,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_pkv"
-version = "0.7.0"
-source = "git+https://github.com/idanarye/bevy_pkv.git?branch=upgrade-to-bevy-0.11#7935f75c1b7facaab5922860311f240e6d6849d8"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1e0e807560d0660c1e54b139e05ad03cff3ec5773fd87baaaafef0cd3317d73"
 dependencies = [
  "bevy_ecs",
  "cfg_aliases",
@@ -1928,9 +1929,9 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
 name = "hexx"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a388ebb815ee6e24261477ed5892d6b699e9afa2e6f92e467ba93a96744a88f9"
+checksum = "ef347b9cc5e36f79c16d9be27a72c42faff29d67b3c4c183e3674830f345dd0e"
 dependencies = [
  "glam",
  "serde",

@@ -33,7 +33,6 @@ use crate::{
     },
     loading::audio_assets::AudioAssets,
     ui::resources::PointerCooldown,
-    utils::from_grid_2d_to_2d,
 };
 
 use super::{
@@ -307,7 +306,7 @@ pub fn setup_aim_target(
     grid: Res<Grid>,
 ) {
     commands.spawn(AimBundle::new_target(
-        from_grid_2d_to_2d(Vec2::new(0.0, 0.0)),
+        Vec2::new(0.0, 0.0),
         &mut meshes,
         &gameplay_materials,
         &grid,

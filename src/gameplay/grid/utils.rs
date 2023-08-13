@@ -10,16 +10,13 @@ use bevy::{
 use bevy_rapier2d::prelude::{ImpulseJoint, PrismaticJointBuilder, RevoluteJointBuilder};
 use hexx::Hex;
 
-use crate::{
-    gameplay::{
-        ball::components::{GridBall, ProjectileBall},
-        constants::{
-            BALL_DIAMETER, BALL_RADIUS, MIN_PROJECTILE_SNAP_VELOCITY, PLAYGROUND_HEIGHT,
-            PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
-        },
-        panels::resources::MoveCounter,
+use crate::gameplay::{
+    ball::components::{GridBall, ProjectileBall},
+    constants::{
+        BALL_DIAMETER, BALL_RADIUS, MIN_PROJECTILE_SNAP_VELOCITY, PLAYGROUND_HEIGHT,
+        PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
     },
-    utils::{from_2d_to_grid_2d, from_grid_2d_to_2d},
+    panels::resources::MoveCounter,
 };
 
 use super::resources::Grid;
@@ -96,9 +93,9 @@ pub fn adjust_grid_layout(
 ) {
     let window = window_query.single();
     let init_row_y =
-        -(window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0 - PLAYGROUND_HEIGHT);
+        window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0 - PLAYGROUND_HEIGHT;
     let full_height = ROW_HEIGHT * grid.init_rows as f32;
-    let init_layout_y = init_row_y - full_height;
+    let init_layout_y = init_row_y + full_height;
     let move_layout_y = move_counter.0 as f32 * ROW_HEIGHT;
     grid.layout.origin.x = -(match grid.init_cols & 1 == 0 {
         false => {
@@ -106,7 +103,7 @@ pub fn adjust_grid_layout(
         }
         true => (grid.init_cols as f32 / 2.0).floor() * BALL_DIAMETER + BALL_RADIUS / 2.0,
     } - BALL_RADIUS);
-    grid.layout.origin.y = init_layout_y + move_layout_y;
+    grid.layout.origin.y = init_layout_y - move_layout_y;
     println!(
         "Adjust grid layout init_row_y({}) full_height({}) init_layout_y({}) grid.layout.origin({}, {})",
         init_row_y, full_height, init_layout_y, grid.layout.origin.x, grid.layout.origin.y
@@ -173,12 +170,12 @@ pub fn build_prismatic_joint(from_pos: Vec2, to_pos: Vec2, to_entity: &Entity) -
 }
 
 pub fn build_joints(hex: Hex, grid: &Grid) -> Vec<ImpulseJoint> {
-    let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
+    let hex_pos = grid.layout.hex_to_world_pos(hex);
 
     grid.neighbors(hex)
         .iter()
         .map(|(neighbor_hex, neighbor_entity)| {
-            let neighbor_pos = from_2d_to_grid_2d(grid.layout.hex_to_world_pos(*neighbor_hex));
+            let neighbor_pos = grid.layout.hex_to_world_pos(*neighbor_hex);
             // println!(
             //     "Join hex({}, {}) with neighbor_hex({}, {})",
             //     hex.x, hex.y, neighbor_hex.x, neighbor_hex.y
@@ -279,7 +276,7 @@ pub fn remove_projectile_and_snap(
                 let projectile_pos = projectile_transform.translation.truncate();
                 // get vector diff between actual projectile position and grid ball that is currently joined with this projectile
                 let diff = projectile_pos - ball_pos;
-                let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(*snap_hex));
+                let hex_pos = grid.layout.hex_to_world_pos(*snap_hex);
                 // calc ideal projectile snap position based on ideal grid ball position
                 snap_pos = hex_pos + diff;
                 println!(

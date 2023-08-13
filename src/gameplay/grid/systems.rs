@@ -35,7 +35,6 @@ use crate::{
     },
     loading::audio_assets::AudioAssets,
     resources::LevelCounter,
-    utils::{from_2d_to_grid_2d, from_grid_2d_to_2d},
 };
 
 use super::{
@@ -56,7 +55,7 @@ pub fn generate_grid(
     (grid.init_cols, grid.init_rows) = calc_init_cols_rows(&level_counter);
     adjust_grid_layout(&window_query, &mut grid, &MoveCounter(0));
     for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
-        let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
+        let hex_pos = grid.layout.hex_to_world_pos(hex);
         let is_first = hex.y == 0;
 
         let grid_ball_bundle = GridBallBundle::new(
@@ -124,7 +123,7 @@ pub fn update_hex_coord_transforms(
 
     for mut grid_ball in balls_query.iter_mut() {
         let hex = grid_ball.hex;
-        let pos_2d = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
+        let pos_2d = grid.layout.hex_to_world_pos(hex);
         grid_ball.animation_x = pos_2d.x;
         grid_ball.animation_y = pos_2d.y;
         // println!(
@@ -342,9 +341,7 @@ pub fn on_snap_projectile(
         // println!("{}", grid.bounds);
         let projectile_position = snap_projectile.pos;
         // let projectile_position = Vec2::new(-1.0528764, 12.633377);
-        let mut hex = grid
-            .layout
-            .world_pos_to_hex(from_2d_to_grid_2d(projectile_position));
+        let mut hex = grid.layout.world_pos_to_hex(projectile_position);
         info!(
             "snap hex({}, {}) pos({}, {})",
             hex.x, hex.y, projectile_position.x, projectile_position.y
@@ -401,7 +398,7 @@ pub fn on_snap_projectile(
         }
 
         let no_neighbors = grid.neighbors(hex).len() == 0;
-        let hex_pos = from_grid_2d_to_2d(grid.layout.hex_to_world_pos(hex));
+        let hex_pos = grid.layout.hex_to_world_pos(hex);
         info!(
             "final snap hex({}, {}) pos({}, {}) no_neighbors({})",
             hex.x, hex.y, hex_pos.x, hex_pos.y, no_neighbors
