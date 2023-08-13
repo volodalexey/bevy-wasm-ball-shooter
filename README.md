@@ -4,7 +4,7 @@
 
 Inspired by [ball_shooter](https://github.com/pyrbin/ball_shooter)
 
-Refactored to use WASM with touch/mouse support
+Main goal is WASM with touch/mouse support
 
 ## Compile to WASM (WebAssembly) and build for browser
 

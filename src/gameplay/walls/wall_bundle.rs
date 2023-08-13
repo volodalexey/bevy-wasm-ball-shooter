@@ -9,14 +9,11 @@ use bevy_rapier2d::{
     render::ColliderDebugColor,
 };
 
-use crate::gameplay::materials::resources::GameplayMaterials;
+use crate::gameplay::{constants::WALL_X_WIDTH, materials::resources::GameplayMaterials};
 
 use super::components::WallType;
 
 pub struct WallBundle;
-
-pub const WALL_X_WIDTH: f32 = 10.0;
-pub const WALL_Y_HEIGHT: f32 = 2500.0;
 
 impl WallBundle {
     pub fn new(

@@ -2,12 +2,12 @@ use bevy::prelude::{
     Assets, Commands, DespawnRecursiveExt, Entity, Mesh, Query, Res, ResMut, Vec3, With,
 };
 
-use crate::gameplay::constants::BALL_RADIUS;
+use crate::gameplay::constants::{BALL_RADIUS, WALL_X_WIDTH, WALL_Y_HEIGHT};
 use crate::gameplay::grid::resources::Grid;
 use crate::gameplay::materials::resources::GameplayMaterials;
 
 use super::components::WallType;
-use super::wall_bundle::{WallBundle, WALL_X_WIDTH, WALL_Y_HEIGHT};
+use super::wall_bundle::WallBundle;
 
 pub fn setup_level_walls(
     mut commands: Commands,

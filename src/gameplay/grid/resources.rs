@@ -78,7 +78,9 @@ impl Default for Grid {
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,
                 hex_size: hexx::Vec2::ONE * SIZE,
-                ..Default::default()
+                invert_x: false,
+                invert_y: false,
+                origin: Vec2::ZERO,
             },
             storage: Default::default(),
             bounds: Default::default(),

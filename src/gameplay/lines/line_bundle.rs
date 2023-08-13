@@ -4,13 +4,14 @@ use bevy::{
 };
 use bevy_rapier2d::prelude::{Collider, CollisionGroups, Group, RigidBody};
 
-use crate::gameplay::{constants::LINE_Z_INDEX, materials::resources::GameplayMaterials};
+use crate::gameplay::{
+    constants::{LINE_WIDTH, LINE_Z_INDEX},
+    materials::resources::GameplayMaterials,
+};
 
 use super::components::LineType;
 
 pub struct LineBundle;
-
-pub const LINE_WIDTH: f32 = 4.0;
 
 impl LineBundle {
     pub fn new(
