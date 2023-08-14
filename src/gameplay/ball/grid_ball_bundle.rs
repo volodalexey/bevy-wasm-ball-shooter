@@ -18,13 +18,13 @@ use crate::gameplay::{
     meshes::resources::GameplayMeshes,
 };
 
-use super::components::{GridBall, LastActiveGridBall, Species};
+use super::components::{GridBall, GridBallScaleAnimate, LastActiveGridBall, Species};
 
 pub struct GridBallBundle;
 
 impl GridBallBundle {
     fn new(
-        pos: Vec2,
+        transform: Transform,
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
@@ -35,7 +35,7 @@ impl GridBallBundle {
             MaterialMesh2dBundle {
                 mesh: gameplay_meshes.grid_ball.clone().into(),
                 material: gameplay_materials.from_species(species),
-                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
+                transform,
                 ..default()
             },
             GridBall { hex },
@@ -60,11 +60,17 @@ impl GridBallBundle {
         hex: Hex,
         is_last_active: bool,
         some_species: Option<Species>,
+        is_appear_animation: bool,
     ) -> Entity {
         let hex_pos = grid.layout.hex_to_world_pos(hex);
 
+        let mut transform = Transform::from_translation(Vec3::new(hex_pos.x, hex_pos.y, 0.0));
+        if is_appear_animation {
+            transform = transform.with_scale(Vec3::ZERO);
+        }
+
         let mut entity_commands = commands.spawn(Self::new(
-            hex_pos,
+            transform,
             match some_species {
                 Some(species) => species,
                 None => Species::random_species(),
@@ -81,6 +87,9 @@ impl GridBallBundle {
         if is_last_active {
             println!("insert LastActiveGridBall {:?}", hex);
             entity_commands.insert(LastActiveGridBall {});
+        }
+        if is_appear_animation {
+            entity_commands.insert(GridBallScaleAnimate::from_scale(Vec2::ONE));
         }
 
         entity_commands

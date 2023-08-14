@@ -6,6 +6,7 @@ use bevy::{
         GlobalTransform, Handle, Input, Mesh, MouseButton, Query, Res, ResMut, Touches, Transform,
         Vec2, Visibility, With, Without,
     },
+    time::Time,
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
@@ -17,7 +18,7 @@ use crate::{
     game_audio::utils::pkv_play_shoot_audio,
     gameplay::{
         constants::{
-            BALL_RADIUS, CAST_RAY_BOUNCE_Y_ADD, CAST_RAY_MAX_TOI, CAST_RAY_TRIES,
+            APPEAR_TOLERANCE, BALL_RADIUS, CAST_RAY_BOUNCE_Y_ADD, CAST_RAY_MAX_TOI, CAST_RAY_TRIES,
             CAST_RAY_VELOCITY, CAST_RAY_VELOCITY_TOLERANCE, NEXT_PROJECTILE_SPAWN_BOTTOM,
             NEXT_PROJECTILE_SPAWN_SIDE, PROJECTILE_SHOOT_BOTTOM, PROJECTILE_SPAWN_BOTTOM,
             PROJECTILE_SPEED,
@@ -38,7 +39,8 @@ use crate::{
 use super::{
     aim_bundle::AimBundle,
     components::{
-        AimLine, AimTarget, GridBall, NextProjectileBall, OutBall, ProjectileBall, Species,
+        AimLine, AimTarget, GridBall, GridBallScaleAnimate, NextProjectileBall, OutBall,
+        ProjectileBall, Species,
     },
     projectile_ball_bundle::{NextProjectileBallBundle, ProjectileBallBundle},
     resources::ProjectileBuffer,
@@ -378,4 +380,31 @@ pub fn cleanup_next_projectile_ball(
     query: Query<Entity, With<NextProjectileBall>>,
 ) {
     cleanup_next_projectile_ball_utils(&mut commands, &query)
+}
+
+pub fn animate_grid_ball_scale(
+    mut commands: Commands,
+    mut grid_balls_query: Query<
+        (Entity, &mut Transform, &mut GridBallScaleAnimate),
+        With<GridBallScaleAnimate>,
+    >,
+    time: Res<Time>,
+) {
+    for (ball_entity, mut grid_ball_transform, mut grid_ball_animate) in grid_balls_query.iter_mut()
+    {
+        grid_ball_animate.timer.tick(time.delta());
+        grid_ball_transform.scale = grid_ball_transform
+            .scale
+            .truncate()
+            .lerp(grid_ball_animate.scale, grid_ball_animate.timer.percent())
+            .extend(grid_ball_transform.scale.z);
+        if (grid_ball_transform.scale.truncate() - grid_ball_animate.scale).length()
+            < APPEAR_TOLERANCE
+        {
+            grid_ball_transform.scale = grid_ball_animate.scale.extend(grid_ball_transform.scale.z);
+            commands
+                .entity(ball_entity)
+                .remove::<GridBallScaleAnimate>();
+        }
+    }
 }

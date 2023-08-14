@@ -37,3 +37,5 @@ pub const WALL_X_WIDTH: f32 = 10.0;
 pub const WALL_Y_HEIGHT: f32 = 2500.0;
 pub const MOVE_DOWN_TIME: f32 = 2.0;
 pub const MOVE_DOWN_TOLERANCE: f32 = 0.1;
+pub const MAX_APPEAR_TIME: f32 = 2.0;
+pub const APPEAR_TOLERANCE: f32 = 0.1;

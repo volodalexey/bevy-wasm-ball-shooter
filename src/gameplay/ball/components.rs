@@ -7,7 +7,7 @@ use bevy::{
 };
 use hexx::Hex;
 
-use crate::gameplay::constants::MOVE_DOWN_TIME;
+use crate::gameplay::constants::{MAX_APPEAR_TIME, MOVE_DOWN_TIME};
 
 #[derive(Component)]
 pub struct ProjectileBall {
@@ -40,16 +40,31 @@ pub struct GridBall {
 pub struct LastActiveGridBall {}
 
 #[derive(Component)]
-pub struct GridBallAnimate {
+pub struct GridBallPositionAnimate {
     pub position: Vec2,
     pub timer: Timer,
 }
 
-impl GridBallAnimate {
+impl GridBallPositionAnimate {
     pub fn from_position(position: Vec2) -> Self {
         Self {
             position,
             timer: Timer::from_seconds(MOVE_DOWN_TIME, TimerMode::Once),
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct GridBallScaleAnimate {
+    pub scale: Vec2,
+    pub timer: Timer,
+}
+
+impl GridBallScaleAnimate {
+    pub fn from_scale(scale: Vec2) -> Self {
+        Self {
+            scale,
+            timer: Timer::from_seconds(fastrand::f32() * MAX_APPEAR_TIME, TimerMode::Once),
         }
     }
 }

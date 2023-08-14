@@ -17,7 +17,8 @@ use crate::{
     gameplay::{
         ball::{
             components::{
-                GridBall, GridBallAnimate, LastActiveGridBall, OutBall, ProjectileBall, Species,
+                GridBall, GridBallPositionAnimate, LastActiveGridBall, OutBall, ProjectileBall,
+                Species,
             },
             events::SnapProjectile,
             grid_ball_bundle::GridBallBundle,
@@ -73,6 +74,7 @@ pub fn generate_grid(
             hex,
             is_last_active,
             None,
+            true,
         );
         grid.set(hex, entity);
     }
@@ -85,7 +87,7 @@ pub fn update_hex_coord_transforms(
         (Entity, &mut GridBall),
         (
             With<LastActiveGridBall>,
-            Without<GridBallAnimate>,
+            Without<GridBallPositionAnimate>,
             Without<LineType>,
         ),
     >,
@@ -114,7 +116,7 @@ pub fn update_hex_coord_transforms(
         let position = grid.layout.hex_to_world_pos(hex);
         commands
             .entity(ball_entity)
-            .insert(GridBallAnimate::from_position(position));
+            .insert(GridBallPositionAnimate::from_position(position));
     }
 }
 
@@ -395,6 +397,7 @@ pub fn on_snap_projectile(
             hex,
             hex.y == 0,
             Some(snap_projectile.species),
+            false,
         );
 
         grid.set(hex, entity); // add snapped projectile ball as grid ball
@@ -562,11 +565,11 @@ pub fn tick_collision_snap_cooldown_timer(
     }
 }
 
-pub fn animate_grid_ball(
+pub fn animate_grid_ball_position(
     mut commands: Commands,
     mut grid_balls_query: Query<
-        (Entity, &mut Transform, &mut GridBallAnimate),
-        With<GridBallAnimate>,
+        (Entity, &mut Transform, &mut GridBallPositionAnimate),
+        With<GridBallPositionAnimate>,
     >,
     time: Res<Time>,
     grid: Res<Grid>,
@@ -592,7 +595,9 @@ pub fn animate_grid_ball(
             grid_ball_transform.translation = grid_ball_animate
                 .position
                 .extend(grid_ball_transform.translation.z);
-            commands.entity(ball_entity).remove::<GridBallAnimate>();
+            commands
+                .entity(ball_entity)
+                .remove::<GridBallPositionAnimate>();
             completed_count += 1;
         }
     }
@@ -632,6 +637,7 @@ pub fn on_spawn_row(
             hex,
             true,
             None,
+            true,
         );
         grid.set(hex, entity);
     }
