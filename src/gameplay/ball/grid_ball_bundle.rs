@@ -3,7 +3,7 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
 };
 use bevy_rapier2d::{
-    prelude::{Collider, CollisionGroups, Damping, Group, RigidBody, Velocity},
+    prelude::{Collider, CollisionGroups, Damping, Group, LockedAxes, RigidBody, Velocity},
     render::ColliderDebugColor,
 };
 use hexx::Hex;
@@ -29,7 +29,6 @@ impl GridBallBundle {
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
         hex: Hex,
-        rigid_body: RigidBody,
     ) -> impl Bundle {
         (
             MaterialMesh2dBundle {
@@ -40,7 +39,7 @@ impl GridBallBundle {
             },
             GridBall { hex },
             species,
-            rigid_body,
+            RigidBody::Dynamic,
             Collider::ball(BALL_RADIUS),
             ColliderDebugColor(species.into()),
             CollisionGroups::new(Group::GROUP_2, Group::GROUP_1 | Group::GROUP_3),
@@ -78,15 +77,13 @@ impl GridBallBundle {
             &gameplay_meshes,
             &gameplay_materials,
             hex,
-            match is_last_active {
-                true => RigidBody::KinematicPositionBased,
-                false => RigidBody::Dynamic,
-            },
         ));
 
         if is_last_active {
             println!("insert LastActiveGridBall {:?}", hex);
-            entity_commands.insert(LastActiveGridBall {});
+            entity_commands
+                .insert(LastActiveGridBall {})
+                .insert(LockedAxes::all());
         }
         if is_appear_animation {
             entity_commands.insert(GridBallScaleAnimate::from_scale(Vec2::ONE));

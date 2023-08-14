@@ -8,7 +8,7 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier2d::prelude::{CollisionEvent, ExternalImpulse, Velocity};
+use bevy_rapier2d::prelude::{CollisionEvent, ExternalImpulse, LockedAxes, Velocity};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -614,11 +614,16 @@ pub fn on_spawn_row(
     gameplay_materials: Res<GameplayMaterials>,
     mut spawn_row_events: EventReader<SpawnRow>,
     mut grid: ResMut<Grid>,
+    mut grid_balls_query: Query<Entity, With<LockedAxes>>,
 ) {
     if spawn_row_events.is_empty() {
         return;
     }
     spawn_row_events.clear();
+
+    for ball_entity in grid_balls_query.iter_mut() {
+        commands.entity(ball_entity).remove::<LockedAxes>();
+    }
 
     grid.last_active_row -= 1;
     let max_side_x = grid.init_cols / 2;
