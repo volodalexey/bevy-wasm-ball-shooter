@@ -34,4 +34,5 @@ pub const LINE_WIDTH: f32 = 4.0;
 pub const LINE_Z_INDEX: f32 = 1.0;
 pub const WALL_X_WIDTH: f32 = 10.0;
 pub const WALL_Y_HEIGHT: f32 = 2500.0;
-pub const MOVE_DOWN_VELOCITY: f32 = 5.0;
+pub const MOVE_DOWN_TIME: f32 = 2.0;
+pub const MOVE_DOWN_TOLERANCE: f32 = 0.1;

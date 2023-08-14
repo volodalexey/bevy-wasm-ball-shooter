@@ -23,7 +23,7 @@ use crate::{
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
         },
-        constants::{MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_VELOCITY},
+        constants::{MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_TOLERANCE},
         events::{BeginTurn, UpdateCooldownCounter, UpdateMoveDown},
         grid::utils::{
             clamp_inside_world_bounds, find_cluster, find_floating_clusters, is_move_slow,
@@ -112,7 +112,7 @@ pub fn update_hex_coord_transforms(
         let position = grid.layout.hex_to_world_pos(hex);
         commands
             .entity(ball_entity)
-            .insert(GridBallAnimate { position });
+            .insert(GridBallAnimate::from_position(position));
     }
 }
 
@@ -564,19 +564,29 @@ pub fn tick_collision_snap_cooldown_timer(
 pub fn animate_grid_ball(
     mut commands: Commands,
     mut grid_balls_query: Query<
-        (Entity, &mut Transform, &mut GridBallAnimate, &mut Velocity),
+        (Entity, &mut Transform, &mut GridBallAnimate),
         With<GridBallAnimate>,
     >,
+    time: Res<Time>,
 ) {
-    for (ball_entity, mut grid_ball_transform, grid_ball_animate, mut velocity) in
-        grid_balls_query.iter_mut()
+    for (ball_entity, mut grid_ball_transform, mut grid_ball_animate) in grid_balls_query.iter_mut()
     {
-        let diff = grid_ball_transform.translation.y - grid_ball_animate.position.y;
-        // println!("animate grid ball {} {:?}", diff, diff.length());
-        if diff.abs() > 0.1 {
-            velocity.linvel.y = -diff * MOVE_DOWN_VELOCITY;
-        } else {
-            grid_ball_transform.translation.y = grid_ball_animate.position.y;
+        grid_ball_animate.timer.tick(time.delta());
+        grid_ball_transform.translation = grid_ball_transform
+            .translation
+            .truncate()
+            .lerp(
+                grid_ball_animate.position,
+                grid_ball_animate.timer.percent(),
+            )
+            .extend(grid_ball_transform.translation.z);
+        if (grid_ball_transform.translation.truncate() - grid_ball_animate.position).length()
+            < MOVE_DOWN_TOLERANCE
+        {
+            // velocity.linvel.y = -diff * MOVE_DOWN_VELOCITY;
+            grid_ball_transform.translation = grid_ball_animate
+                .position
+                .extend(grid_ball_transform.translation.z);
             commands.entity(ball_entity).remove::<GridBallAnimate>();
         }
     }

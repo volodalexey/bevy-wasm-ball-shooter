@@ -3,8 +3,11 @@ use std::fmt::{Debug, Display, Formatter, Result};
 use bevy::{
     prelude::{Color, Component, Vec2},
     sprite::ColorMaterial,
+    time::{Timer, TimerMode},
 };
 use hexx::Hex;
+
+use crate::gameplay::constants::MOVE_DOWN_TIME;
 
 #[derive(Component)]
 pub struct ProjectileBall {
@@ -39,6 +42,16 @@ pub struct LastActiveGridBall {}
 #[derive(Component)]
 pub struct GridBallAnimate {
     pub position: Vec2,
+    pub timer: Timer,
+}
+
+impl GridBallAnimate {
+    pub fn from_position(position: Vec2) -> Self {
+        Self {
+            position,
+            timer: Timer::from_seconds(MOVE_DOWN_TIME, TimerMode::Once),
+        }
+    }
 }
 
 #[derive(Component)]

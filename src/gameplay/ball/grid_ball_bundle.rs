@@ -73,7 +73,7 @@ impl GridBallBundle {
             &gameplay_materials,
             hex,
             match is_last_active {
-                true => RigidBody::KinematicVelocityBased,
+                true => RigidBody::KinematicPositionBased,
                 false => RigidBody::Dynamic,
             },
         ));
