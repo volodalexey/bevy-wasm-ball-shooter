@@ -4,7 +4,7 @@ use crate::{components::AppState, ui::systems::interact_with_next_state_button};
 
 use self::{
     ball::ProjectilePlugin,
-    events::{BeginTurn, UpdateCooldownCounter, UpdateMoveDown},
+    events::{BeginTurn, SpawnRow, UpdateCooldownCounter, UpdateMoveDown},
     grid::GridPlugin,
     lines::LinesPlugin,
     main_camera::MainCameraPlugin,
@@ -48,6 +48,7 @@ impl Plugin for GameplayPlugin {
         .add_event::<BeginTurn>()
         .add_event::<UpdateCooldownCounter>()
         .add_event::<UpdateMoveDown>()
+        .add_event::<SpawnRow>()
         .add_systems(OnEnter(AppState::Gameplay), setup_first_turn)
         .add_systems(
             Update,

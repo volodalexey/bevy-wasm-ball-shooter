@@ -8,3 +8,6 @@ pub struct UpdateCooldownCounter;
 
 #[derive(Event)]
 pub struct UpdateMoveDown;
+
+#[derive(Event)]
+pub struct SpawnRow;

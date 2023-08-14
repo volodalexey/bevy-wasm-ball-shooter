@@ -4,7 +4,7 @@ use self::{
     resources::{CollisionSnapCooldown, Grid},
     systems::{
         animate_grid_ball, check_projectile_out_of_grid, cleanup_grid, control_projectile_position,
-        generate_grid, on_projectile_collisions_events, on_snap_projectile,
+        generate_grid, on_projectile_collisions_events, on_snap_projectile, on_spawn_row,
         tick_collision_snap_cooldown_timer, update_cooldown_move_counter,
         update_hex_coord_transforms,
     },
@@ -35,6 +35,7 @@ impl Plugin for GridPlugin {
                     animate_grid_ball,
                     control_projectile_position,
                     update_cooldown_move_counter,
+                    on_spawn_row,
                 )
                     .run_if(in_state(AppState::Gameplay)),
             )

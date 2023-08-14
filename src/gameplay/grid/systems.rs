@@ -23,8 +23,10 @@ use crate::{
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
         },
-        constants::{MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_TOLERANCE},
-        events::{BeginTurn, UpdateCooldownCounter, UpdateMoveDown},
+        constants::{
+            FILL_PLAYGROUND_ROWS, MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_TOLERANCE,
+        },
+        events::{BeginTurn, SpawnRow, UpdateCooldownCounter, UpdateMoveDown},
         grid::utils::{
             clamp_inside_world_bounds, find_cluster, find_floating_clusters, is_move_slow,
             remove_projectile, remove_projectile_and_snap,
@@ -499,7 +501,7 @@ pub fn update_cooldown_move_counter(
     mut update_cooldown_counter_events: EventReader<UpdateCooldownCounter>,
     mut cooldown_move_counter: ResMut<CooldownMoveCounter>,
     mut move_counter: ResMut<MoveCounter>,
-    mut grid: ResMut<Grid>,
+
     mut writer_update_move_down: EventWriter<UpdateMoveDown>,
 ) {
     if let Some(_) = update_cooldown_counter_events.iter().next() {
@@ -507,7 +509,6 @@ pub fn update_cooldown_move_counter(
             cooldown_move_counter.value -= 1;
             if cooldown_move_counter.value == 0 {
                 move_counter.0 += 1;
-                grid.last_active_row -= 1;
                 cooldown_move_counter.value = cooldown_move_counter.init_value;
                 writer_update_move_down.send(UpdateMoveDown {});
             }
@@ -568,7 +569,12 @@ pub fn animate_grid_ball(
         With<GridBallAnimate>,
     >,
     time: Res<Time>,
+    grid: Res<Grid>,
+    move_counter: Res<MoveCounter>,
+    mut writer_spawn_row: EventWriter<SpawnRow>,
 ) {
+    let total_count = grid_balls_query.iter().len();
+    let mut completed_count: usize = 0;
     for (ball_entity, mut grid_ball_transform, mut grid_ball_animate) in grid_balls_query.iter_mut()
     {
         grid_ball_animate.timer.tick(time.delta());
@@ -583,11 +589,50 @@ pub fn animate_grid_ball(
         if (grid_ball_transform.translation.truncate() - grid_ball_animate.position).length()
             < MOVE_DOWN_TOLERANCE
         {
-            // velocity.linvel.y = -diff * MOVE_DOWN_VELOCITY;
             grid_ball_transform.translation = grid_ball_animate
                 .position
                 .extend(grid_ball_transform.translation.z);
             commands.entity(ball_entity).remove::<GridBallAnimate>();
+            completed_count += 1;
         }
+    }
+    if completed_count == total_count && total_count > 0 {
+        if grid.init_rows - FILL_PLAYGROUND_ROWS > move_counter.0 as i32 - 1 {
+            writer_spawn_row.send(SpawnRow);
+        }
+    }
+}
+
+pub fn on_spawn_row(
+    mut commands: Commands,
+    gameplay_meshes: Res<GameplayMeshes>,
+    gameplay_materials: Res<GameplayMaterials>,
+    mut spawn_row_events: EventReader<SpawnRow>,
+    mut grid: ResMut<Grid>,
+) {
+    if spawn_row_events.is_empty() {
+        return;
+    }
+    spawn_row_events.clear();
+
+    grid.last_active_row -= 1;
+    let max_side_x = grid.init_cols / 2;
+    for hex_x in -max_side_x..=max_side_x {
+        let is_even = grid.last_active_row % 2 == 0;
+        let hex = Hex::from_offset_coordinates([hex_x, grid.last_active_row], grid.offset_mode);
+        let offset = hex.to_offset_coordinates(grid.offset_mode);
+        if (!is_even && offset[0] == max_side_x) || hex.y < grid.last_active_row {
+            continue;
+        }
+        let entity = GridBallBundle::spawn(
+            &mut commands,
+            grid.as_ref(),
+            &gameplay_meshes,
+            &gameplay_materials,
+            hex,
+            true,
+            None,
+        );
+        grid.set(hex, entity);
     }
 }

@@ -10,7 +10,7 @@ use bevy::{
 use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
 
 use crate::gameplay::constants::{
-    ALL_PLAYGROUND_ROWS, COLLISION_SNAP_COOLDOWN_TIME, EMPTY_PLAYGROUND_ROWS, MAX_LEVEL, SIZE,
+    COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS, MAX_LEVEL, SIZE,
 };
 
 #[derive(Default, Debug, Copy, Clone)]
@@ -103,8 +103,8 @@ impl Grid {
         };
         self.init_rows = match level {
             1 => 1,
-            2 => 2,
-            3 => 4,
+            2 => 6,
+            3 => 8,
             4 => 6,
             5 => 8,
             6 => 10,
@@ -120,7 +120,7 @@ impl Grid {
             MAX_LEVEL => 30,
             _ => 0,
         };
-        let fill_rows = ALL_PLAYGROUND_ROWS - EMPTY_PLAYGROUND_ROWS;
+        let fill_rows = FILL_PLAYGROUND_ROWS;
         self.last_active_row = -(match self.init_rows < fill_rows {
             true => self.init_rows,
             false => fill_rows,
