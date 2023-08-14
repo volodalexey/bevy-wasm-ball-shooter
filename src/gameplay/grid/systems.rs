@@ -8,7 +8,7 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier2d::prelude::{CollisionEvent, ExternalImpulse, RigidBody, Velocity};
+use bevy_rapier2d::prelude::{CollisionEvent, ExternalImpulse, Velocity};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -16,31 +16,31 @@ use crate::{
     game_audio::utils::pkv_play_score_audio,
     gameplay::{
         ball::{
-            components::{GridBall, OutBall, ProjectileBall, Species},
+            components::{
+                GridBall, GridBallAnimate, LastActiveGridBall, OutBall, ProjectileBall, Species,
+            },
             events::SnapProjectile,
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
         },
-        constants::{MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT},
-        events::BeginTurn,
+        constants::{MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_VELOCITY},
+        events::{BeginTurn, UpdateCooldownCounter, UpdateMoveDown},
         grid::utils::{
-            build_ball_text, clamp_inside_world_bounds, find_cluster, find_floating_clusters,
-            is_move_slow, remove_projectile, remove_projectile_and_snap,
+            clamp_inside_world_bounds, find_cluster, find_floating_clusters, is_move_slow,
+            remove_projectile, remove_projectile_and_snap,
         },
         lines::components::LineType,
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
         panels::resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
-        utils::calc_init_cols_rows,
     },
     loading::audio_assets::AudioAssets,
     resources::LevelCounter,
 };
 
 use super::{
-    events::UpdatePositions,
     resources::{CollisionSnapCooldown, Grid},
-    utils::{adjust_grid_layout, build_joints, build_revolute_joint, is_move_reverse},
+    utils::{adjust_grid_layout, build_revolute_joint, is_move_reverse},
 };
 
 pub fn generate_grid(
@@ -52,55 +52,43 @@ pub fn generate_grid(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
 ) {
-    (grid.init_cols, grid.init_rows) = calc_init_cols_rows(&level_counter);
+    grid.calc_init_cols_rows(level_counter.0);
     adjust_grid_layout(&window_query, &mut grid, &MoveCounter(0));
-    for hex in shapes::pointy_rectangle([0, grid.init_cols - 1, 0, grid.init_rows - 1]) {
-        let hex_pos = grid.layout.hex_to_world_pos(hex);
-        let is_first = hex.y == 0;
+    let max_side_x = grid.init_cols / 2;
+    for hex in shapes::pointy_rectangle([-max_side_x, max_side_x, -grid.init_rows + 1, 0]) {
+        let is_even = hex.y % 2 == 0;
+        let offset = hex.to_offset_coordinates(grid.offset_mode);
+        if (!is_even && offset[0] == max_side_x) || hex.y < grid.last_active_row {
+            continue;
+        }
+        let is_last_active = hex.y == grid.last_active_row;
 
-        let grid_ball_bundle = GridBallBundle::new(
-            hex_pos,
-            hex_pos,
-            Species::random_species(),
+        let entity = GridBallBundle::spawn(
+            &mut commands,
+            grid.as_ref(),
             &gameplay_meshes,
             &gameplay_materials,
             hex,
-            match is_first {
-                true => RigidBody::KinematicPositionBased,
-                false => RigidBody::Dynamic,
-            },
+            is_last_active,
+            None,
         );
-
-        if is_first {
-            let entity = commands
-                .spawn(grid_ball_bundle)
-                .with_children(|parent| {
-                    build_ball_text(parent, hex);
-                })
-                .id();
-
-            grid.set(hex, entity);
-            continue;
-        }
-
-        let entity = commands
-            .spawn(grid_ball_bundle)
-            .with_children(|parent| {
-                for joint in build_joints(hex, &grid) {
-                    parent.spawn(joint);
-                }
-                build_ball_text(parent, hex);
-            })
-            .id();
         grid.set(hex, entity);
     }
     app_state_next_state.set(AppState::Gameplay);
 }
 
 pub fn update_hex_coord_transforms(
-    mut balls_query: Query<&mut GridBall, With<GridBall>>,
+    mut commands: Commands,
+    mut balls_query: Query<
+        (Entity, &mut GridBall),
+        (
+            With<LastActiveGridBall>,
+            Without<GridBallAnimate>,
+            Without<LineType>,
+        ),
+    >,
     mut grid: ResMut<Grid>,
-    mut event_query: EventReader<UpdatePositions>,
+    mut event_query: EventReader<UpdateMoveDown>,
     move_counter: Res<MoveCounter>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut lines_query: Query<(&LineType, &mut Transform), With<LineType>>,
@@ -110,9 +98,6 @@ pub fn update_hex_coord_transforms(
     }
     event_query.clear();
 
-    adjust_grid_layout(&window_query, &mut grid, &move_counter);
-    grid.check_update_bounds();
-
     for (line_type, mut line_transform) in lines_query.iter_mut() {
         match line_type {
             LineType::GridTop => line_transform.translation.y = grid.bounds.maxs.y,
@@ -121,15 +106,13 @@ pub fn update_hex_coord_transforms(
         }
     }
 
-    for mut grid_ball in balls_query.iter_mut() {
+    adjust_grid_layout(&window_query, &mut grid, &move_counter);
+    for (ball_entity, grid_ball) in balls_query.iter_mut() {
         let hex = grid_ball.hex;
-        let pos_2d = grid.layout.hex_to_world_pos(hex);
-        grid_ball.animation_x = pos_2d.x;
-        grid_ball.animation_y = pos_2d.y;
-        // println!(
-        //     "pos_2d({}, {}) animation_y {}",
-        //     pos_2d.x, pos_2d.y, grid_ball.animation_y
-        // );
+        let position = grid.layout.hex_to_world_pos(hex);
+        commands
+            .entity(ball_entity)
+            .insert(GridBallAnimate { position });
     }
 }
 
@@ -329,11 +312,10 @@ pub fn on_snap_projectile(
     mut begin_turn: EventWriter<BeginTurn>,
     mut score_counter: ResMut<ScoreCounter>,
     mut turn_counter: ResMut<TurnCounter>,
-    mut move_counter: ResMut<MoveCounter>,
-    mut cooldown_move_counter: ResMut<CooldownMoveCounter>,
     balls_query: Query<(&Transform, &Species, &mut GridBall), With<GridBall>>,
     audio_assets: Res<AudioAssets>,
     pkv: Res<PkvStore>,
+    mut writer_update_cooldown_counter: EventWriter<UpdateCooldownCounter>,
 ) {
     if let Some(snap_projectile) = snap_projectile_events.iter().next() {
         grid.check_update_bounds();
@@ -403,28 +385,17 @@ pub fn on_snap_projectile(
             "final snap hex({}, {}) pos({}, {}) no_neighbors({})",
             hex.x, hex.y, hex_pos.x, hex_pos.y, no_neighbors
         );
-        let ball = commands
-            .spawn(GridBallBundle::new(
-                hex_pos,
-                projectile_position,
-                snap_projectile.species,
-                &gameplay_meshes,
-                &gameplay_materials,
-                hex,
-                match hex.y == 0 {
-                    true => RigidBody::KinematicPositionBased,
-                    false => RigidBody::Dynamic,
-                },
-            ))
-            .with_children(|parent| {
-                for joint in build_joints(hex, &grid) {
-                    parent.spawn(joint);
-                }
-                build_ball_text(parent, hex);
-            })
-            .id();
+        let entity = GridBallBundle::spawn(
+            &mut commands,
+            grid.as_ref(),
+            &gameplay_meshes,
+            &gameplay_materials,
+            hex,
+            hex.y == 0,
+            Some(snap_projectile.species),
+        );
 
-        grid.set(hex, ball); // add snapped projectile ball as grid ball
+        grid.set(hex, entity); // add snapped projectile ball as grid ball
         let mut score_add = 0;
 
         if no_neighbors {
@@ -432,7 +403,7 @@ pub fn on_snap_projectile(
             // do not calc floating clusters
         } else {
             let (cluster, _) = find_cluster(&grid, hex, |&e| {
-                e == ball
+                e == entity
                     || match balls_query.get(e) {
                         Ok((_, other, _)) => *other == snap_projectile.species,
                         Err(_) => false,
@@ -515,17 +486,34 @@ pub fn on_snap_projectile(
         }
 
         turn_counter.0 += 1;
-        if score_add == 0 && cooldown_move_counter.init_value != 0 {
-            cooldown_move_counter.value -= 1;
-            if cooldown_move_counter.value == 0 {
-                move_counter.0 += 1;
-                cooldown_move_counter.value = cooldown_move_counter.init_value;
-            }
+        if score_add == 0 {
+            writer_update_cooldown_counter.send(UpdateCooldownCounter);
         }
 
         begin_turn.send(BeginTurn);
     }
     snap_projectile_events.clear();
+}
+
+pub fn update_cooldown_move_counter(
+    mut update_cooldown_counter_events: EventReader<UpdateCooldownCounter>,
+    mut cooldown_move_counter: ResMut<CooldownMoveCounter>,
+    mut move_counter: ResMut<MoveCounter>,
+    mut grid: ResMut<Grid>,
+    mut writer_update_move_down: EventWriter<UpdateMoveDown>,
+) {
+    if let Some(_) = update_cooldown_counter_events.iter().next() {
+        if cooldown_move_counter.init_value != 0 {
+            cooldown_move_counter.value -= 1;
+            if cooldown_move_counter.value == 0 {
+                move_counter.0 += 1;
+                grid.last_active_row -= 1;
+                cooldown_move_counter.value = cooldown_move_counter.init_value;
+                writer_update_move_down.send(UpdateMoveDown {});
+            }
+        }
+    }
+    update_cooldown_counter_events.clear();
 }
 
 pub fn tick_collision_snap_cooldown_timer(
@@ -574,38 +562,22 @@ pub fn tick_collision_snap_cooldown_timer(
 }
 
 pub fn animate_grid_ball(
-    mut grid_balls_query: Query<(&mut Transform, &mut GridBall), With<GridBall>>,
+    mut commands: Commands,
+    mut grid_balls_query: Query<
+        (Entity, &mut Transform, &mut GridBallAnimate, &mut Velocity),
+        With<GridBallAnimate>,
+    >,
 ) {
-    for (mut transform, grid_ball) in grid_balls_query.iter_mut() {
-        let diff_x = grid_ball.animation_x - transform.translation.x;
-        if diff_x.abs() > 0.01 {
-            // println!(
-            //     "grid_ball.animation_y {} transform.translation.y {} diff {}",
-            //     grid_ball.animation_y,
-            //     transform.translation.y,
-            //     diff_y.abs()
-            // );
-            if diff_x.abs() < 0.1 {
-                // println!("set final {}", grid_ball.animation_y);
-                transform.translation.x = grid_ball.animation_x;
-            } else {
-                transform.translation.x = transform.translation.x + diff_x * 0.1;
-            }
-        }
-        let diff_y = grid_ball.animation_y - transform.translation.y;
-        if diff_y.abs() > 0.01 {
-            // println!(
-            //     "grid_ball.animation_y {} transform.translation.y {} diff {}",
-            //     grid_ball.animation_y,
-            //     transform.translation.y,
-            //     diff_y.abs()
-            // );
-            if diff_y.abs() < 0.1 {
-                // println!("set final {}", grid_ball.animation_y);
-                transform.translation.y = grid_ball.animation_y;
-            } else {
-                transform.translation.y = transform.translation.y + diff_y * 0.1;
-            }
+    for (ball_entity, mut grid_ball_transform, grid_ball_animate, mut velocity) in
+        grid_balls_query.iter_mut()
+    {
+        let diff = grid_ball_transform.translation.y - grid_ball_animate.position.y;
+        // println!("animate grid ball {} {:?}", diff, diff.length());
+        if diff.abs() > 0.1 {
+            velocity.linvel.y = -diff * MOVE_DOWN_VELOCITY;
+        } else {
+            grid_ball_transform.translation.y = grid_ball_animate.position.y;
+            commands.entity(ball_entity).remove::<GridBallAnimate>();
         }
     }
 }

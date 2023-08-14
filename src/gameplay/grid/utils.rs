@@ -13,7 +13,7 @@ use hexx::Hex;
 use crate::gameplay::{
     ball::components::{GridBall, ProjectileBall},
     constants::{
-        BALL_DIAMETER, BALL_RADIUS, MIN_PROJECTILE_SNAP_VELOCITY, PLAYGROUND_HEIGHT,
+        BALL_DIAMETER, BALL_RADIUS, EMPTY_PLAYGROUND_HEIGHT, MIN_PROJECTILE_SNAP_VELOCITY,
         PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
     },
     panels::resources::MoveCounter,
@@ -92,22 +92,10 @@ pub fn adjust_grid_layout(
     move_counter: &MoveCounter,
 ) {
     let window = window_query.single();
-    let init_row_y =
-        window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0 - PLAYGROUND_HEIGHT;
-    let full_height = ROW_HEIGHT * grid.init_rows as f32;
-    let init_layout_y = init_row_y + full_height;
+    let spawn_bottom_world_y = -(window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0);
+    let init_layout_y = spawn_bottom_world_y + EMPTY_PLAYGROUND_HEIGHT;
     let move_layout_y = move_counter.0 as f32 * ROW_HEIGHT;
-    grid.layout.origin.x = -(match grid.init_cols & 1 == 0 {
-        false => {
-            (grid.init_cols as f32 / 2.0).floor() * BALL_DIAMETER + BALL_RADIUS + BALL_RADIUS / 2.0
-        }
-        true => (grid.init_cols as f32 / 2.0).floor() * BALL_DIAMETER + BALL_RADIUS / 2.0,
-    } - BALL_RADIUS);
     grid.layout.origin.y = init_layout_y - move_layout_y;
-    println!(
-        "Adjust grid layout init_row_y({}) full_height({}) init_layout_y({}) grid.layout.origin({}, {})",
-        init_row_y, full_height, init_layout_y, grid.layout.origin.x, grid.layout.origin.y
-    );
 }
 
 pub fn clamp_inside_world_bounds(hex: &Hex, grid: &Grid) -> (Hex, bool) {

@@ -31,8 +31,14 @@ pub struct NextProjectileBall {}
 #[derive(Component)]
 pub struct GridBall {
     pub hex: Hex,
-    pub animation_x: f32,
-    pub animation_y: f32,
+}
+
+#[derive(Component)]
+pub struct LastActiveGridBall {}
+
+#[derive(Component)]
+pub struct GridBallAnimate {
+    pub position: Vec2,
 }
 
 #[derive(Component)]

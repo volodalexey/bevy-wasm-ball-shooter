@@ -9,7 +9,9 @@ use bevy::{
 };
 use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
 
-use crate::gameplay::constants::{COLLISION_SNAP_COOLDOWN_TIME, SIZE};
+use crate::gameplay::constants::{
+    ALL_PLAYGROUND_ROWS, COLLISION_SNAP_COOLDOWN_TIME, EMPTY_PLAYGROUND_ROWS, MAX_LEVEL, SIZE,
+};
 
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Bound {
@@ -63,9 +65,13 @@ impl Display for Bounds {
 pub struct Grid {
     pub init_cols: i32,
     pub init_rows: i32,
+    pub last_active_row: i32,
     pub offset_mode: OffsetHexMode,
     pub layout: HexLayout,
     pub storage: HashMap<Hex, Entity>,
+    // https://leetless.de/posts/spatial-hashing-vs-ecs/
+    // Cell = HashMap<Entity, Position>
+    // HashMap<CellIndex, Cell>
     pub bounds: Bounds,
 }
 
@@ -74,6 +80,7 @@ impl Default for Grid {
         Self {
             init_cols: 0,
             init_rows: 0,
+            last_active_row: 0,
             offset_mode: OffsetHexMode::OddRows,
             layout: HexLayout {
                 orientation: HexOrientation::Pointy,
@@ -89,6 +96,37 @@ impl Default for Grid {
 }
 
 impl Grid {
+    pub fn calc_init_cols_rows(&mut self, level: u32) {
+        self.init_cols = match level > MAX_LEVEL / 2 {
+            false => 7,
+            true => 9,
+        };
+        self.init_rows = match level {
+            1 => 1,
+            2 => 2,
+            3 => 4,
+            4 => 6,
+            5 => 8,
+            6 => 10,
+            7 => 12,
+            8 => 14,
+            9 => 16,
+            10 => 18,
+            11 => 20,
+            12 => 22,
+            13 => 24,
+            14 => 26,
+            15 => 28,
+            MAX_LEVEL => 30,
+            _ => 0,
+        };
+        let fill_rows = ALL_PLAYGROUND_ROWS - EMPTY_PLAYGROUND_ROWS;
+        self.last_active_row = -(match self.init_rows < fill_rows {
+            true => self.init_rows,
+            false => fill_rows,
+        } - 1);
+    }
+
     pub fn get(&self, hex: Hex) -> Option<&Entity> {
         self.storage.get(&hex)
     }
@@ -216,6 +254,7 @@ impl Grid {
         }
 
         let (sx, sy) = self.layout.hex_size.into();
+        let half_side = self.init_cols / 2;
 
         self.bounds = Bounds {
             mins: Bound {
@@ -223,8 +262,8 @@ impl Grid {
                 y: if min_y == f32::MAX { 0.0 } else { min_y - sy },
                 axi_q: min_axi_q,
                 axi_r: min_axi_r,
-                init_odd_off_q: 0,
-                init_even_off_q: 0,
+                init_odd_off_q: -half_side,
+                init_even_off_q: -half_side,
                 off_q: min_off_q,
                 off_r: min_off_r,
             },
@@ -233,16 +272,8 @@ impl Grid {
                 y: if max_y == f32::MIN { 0.0 } else { max_y + sy },
                 axi_q: max_axi_q,
                 axi_r: max_axi_r,
-                init_odd_off_q: Hex {
-                    x: self.init_cols - 1,
-                    y: 0,
-                }
-                .to_offset_coordinates(self.offset_mode)[0],
-                init_even_off_q: Hex {
-                    x: self.init_cols - 1,
-                    y: 1,
-                }
-                .to_offset_coordinates(self.offset_mode)[0],
+                init_odd_off_q: half_side,
+                init_even_off_q: half_side - 1,
                 off_q: max_off_q,
                 off_r: max_off_r,
             },

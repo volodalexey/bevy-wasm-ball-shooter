@@ -13,7 +13,7 @@ use super::{
     ball::components::{GridBall, OutBall},
     constants::GAME_OVER_BOTTOM,
     events::BeginTurn,
-    grid::{events::UpdatePositions, resources::Grid},
+    grid::resources::Grid,
     lines::components::LineType,
 };
 
@@ -21,16 +21,11 @@ pub fn setup_first_turn(mut begin_turn: EventWriter<BeginTurn>) {
     begin_turn.send(BeginTurn);
 }
 
-pub fn on_begin_turn(
-    mut begin_turn: EventReader<BeginTurn>,
-    mut update_positions: EventWriter<UpdatePositions>,
-) {
+pub fn on_begin_turn(mut begin_turn: EventReader<BeginTurn>) {
     if begin_turn.is_empty() {
         return;
     }
     begin_turn.clear();
-
-    update_positions.send(UpdatePositions);
 }
 
 pub fn check_game_over(

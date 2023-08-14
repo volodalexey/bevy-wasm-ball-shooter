@@ -16,7 +16,7 @@ pub fn setup_level_walls(
     gameplay_materials: Option<Res<GameplayMaterials>>,
 ) {
     if let Some(gameplay_materials) = gameplay_materials {
-        let inner_width = grid.init_cols as f32 * BALL_RADIUS + BALL_RADIUS * 0.5;
+        let inner_width = grid.init_cols as f32 * BALL_RADIUS;
         let side_x = inner_width + WALL_X_WIDTH * 0.5;
         commands.spawn(WallBundle::new(
             Vec3::new(side_x, 0.0, 0.0),
