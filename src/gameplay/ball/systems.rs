@@ -61,19 +61,23 @@ pub fn projectile_reload(
     gameplay_meshes: Res<GameplayMeshes>,
     gameplay_materials: Res<GameplayMaterials>,
     mut buffer: ResMut<ProjectileBuffer>,
-    mut begin_turn: EventReader<BeginTurn>,
+    mut begin_turn_events: EventReader<BeginTurn>,
     grid_balls_query: Query<&Species, With<GridBall>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     next_projectile_query: Query<Entity, With<NextProjectileBall>>,
+    projectile_query: Query<Entity, With<ProjectileBall>>,
 ) {
-    if begin_turn.is_empty() {
-        return;
-    }
-    begin_turn.clear();
-
     if grid_balls_query.iter().len() == 0 {
+        for projectile_entity in projectile_query.iter() {
+            commands.entity(projectile_entity).despawn_recursive();
+        }
         return; // no more balls in grid
     }
+
+    if begin_turn_events.is_empty() {
+        return;
+    }
+    begin_turn_events.clear();
 
     let mut cache: HashMap<&Species, &Species> = HashMap::with_capacity(5);
     for species in grid_balls_query.iter() {

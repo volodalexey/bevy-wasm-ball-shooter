@@ -25,6 +25,5 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-projectile reload prevent
 responsive layout and scale
 sprites for balls and buttons
