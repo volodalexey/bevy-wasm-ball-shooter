@@ -25,6 +25,10 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
+shoot multiple projectiles
 responsive layout and scale
+show first row partially
+show next projectile from one side and multiple items
 UI bottom show info
+switch next projectile
 sprites for balls and buttons

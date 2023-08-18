@@ -24,7 +24,7 @@ impl Default for CooldownMoveCounter {
 impl CooldownMoveCounter {
     pub fn from_level(level_counter: u32) -> Self {
         let init_value = match level_counter {
-            1 => 10,
+            1 => 2,
             2 => 9,
             3 => 8,
             4 => 7,

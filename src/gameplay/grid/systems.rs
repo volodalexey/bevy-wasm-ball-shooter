@@ -39,7 +39,6 @@ use crate::{
             buid_cell_storage, build_connection_storage, build_prismatic_joint, find_cluster,
             find_floating_clusters, is_move_slow, remove_projectile,
         },
-        lines::components::LineType,
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
         panels::resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
@@ -113,15 +112,11 @@ pub fn generate_grid(
     app_state_next_state.set(AppState::Gameplay);
 }
 
-pub fn update_hex_coord_transforms(
+pub fn move_down_last_active(
     mut commands: Commands,
     mut balls_query: Query<
-        (Entity, &Transform),
-        (
-            With<LastActiveGridBall>,
-            Without<GridBallPositionAnimate>,
-            Without<LineType>,
-        ),
+        (Entity, &Transform, Option<&GridBallPositionAnimate>),
+        With<LastActiveGridBall>,
     >,
     mut grid: ResMut<Grid>,
     mut move_down_events: EventReader<MoveDownLastActive>,
@@ -134,8 +129,11 @@ pub fn update_hex_coord_transforms(
     move_down_events.clear();
     adjust_grid_layout(&window_query, &mut grid, &move_counter);
 
-    for (ball_entity, ball_transform) in balls_query.iter_mut() {
-        let position = ball_transform.translation.truncate() - Vec2::new(0.0, ROW_HEIGHT);
+    for (ball_entity, ball_transform, some_ball_animate) in balls_query.iter_mut() {
+        let position = match some_ball_animate {
+            Some(ball_animate) => ball_animate.position,
+            None => ball_transform.translation.truncate(),
+        } - Vec2::new(0.0, ROW_HEIGHT);
         commands
             .entity(ball_entity)
             .insert(GridBallPositionAnimate::from_position(position, true));
@@ -326,7 +324,6 @@ pub fn control_projectile_position(
         if direction.length() > 0.0 {
             direction = direction.normalize_or_zero();
             projectile_impulse.impulse = direction * 10.0;
-            // println!("apply impulse {:?}", projectile_impulse.impulse);
         }
     }
 }
@@ -420,11 +417,6 @@ pub fn find_and_remove_clusters(
 
         let mut cluster_score_add = 0;
         if cluster.len() >= MIN_CLUSTER_SIZE {
-            println!(
-                "cluster {:?} connection_storage before {}",
-                cluster,
-                connection_storage.len()
-            );
             // remove matching cluster
             cluster.iter().for_each(|(cluster_entity, _)| {
                 if let Ok((cluster_entity, cluster_transform, cluster_species, mut grid_ball, _)) =
@@ -439,21 +431,11 @@ pub fn find_and_remove_clusters(
                         false,
                     ));
                     commands.entity(cluster_entity).despawn_recursive();
-                    println!(
-                        "removed cluster entity {} {}",
-                        cluster_entity.index(),
-                        *cluster_species
-                    );
                     connection_storage.remove(&cluster_entity);
                     cluster_score_add += 1;
                 }
             });
         }
-        println!(
-            "score_add for cluster {:?} connection_storage after {}",
-            cluster_score_add,
-            connection_storage.len()
-        );
 
         let mut floating_clusters_score_add = 0;
         let floating_clusters = find_floating_clusters(&connection_storage);
@@ -474,23 +456,11 @@ pub fn find_and_remove_clusters(
                         true,
                     ));
                     commands.entity(cluster_entity).despawn_recursive();
-                    println!(
-                        "removed floating cluster entity {} {}",
-                        cluster_entity.index(),
-                        *cluster_species
-                    );
                     floating_clusters_score_add += 2;
                 }
             });
 
-        println!(
-            "score_add for floating clusters {:?}",
-            floating_clusters_score_add
-        );
-
         let score_add = cluster_score_add + floating_clusters_score_add;
-
-        println!("score_add {}", score_add);
 
         writer_update_cooldown_counter.send(UpdateScoreCounter { score_add });
     }
@@ -504,7 +474,7 @@ pub fn update_score_counter(
     mut cooldown_move_counter: ResMut<CooldownMoveCounter>,
     mut move_counter: ResMut<MoveCounter>,
     mut score_counter: ResMut<ScoreCounter>,
-    mut writer_update_move_down: EventWriter<MoveDownLastActive>,
+    mut writer_move_down_last_active: EventWriter<MoveDownLastActive>,
 ) {
     if let Some(UpdateScoreCounter { score_add }) = update_cooldown_counter_events.iter().next() {
         if *score_add > 0 {
@@ -515,7 +485,7 @@ pub fn update_score_counter(
             if cooldown_move_counter.value == 0 {
                 move_counter.0 += 1;
                 cooldown_move_counter.value = cooldown_move_counter.init_value;
-                writer_update_move_down.send(MoveDownLastActive {});
+                writer_move_down_last_active.send(MoveDownLastActive {});
             }
         }
     }

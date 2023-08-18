@@ -7,8 +7,8 @@ use self::{
     systems::{
         animate_grid_ball_position, check_joints, check_projectile_out_of_grid, cleanup_grid,
         control_projectile_position, find_and_remove_clusters, generate_grid,
-        on_projectile_collisions_events, on_snap_projectile, on_spawn_row,
-        tick_collision_snap_cooldown_timer, update_hex_coord_transforms, update_score_counter,
+        move_down_last_active, on_projectile_collisions_events, on_snap_projectile, on_spawn_row,
+        tick_collision_snap_cooldown_timer, update_score_counter,
     },
 };
 
@@ -29,7 +29,7 @@ impl Plugin for GridPlugin {
             .add_systems(
                 Update,
                 (
-                    update_hex_coord_transforms,
+                    move_down_last_active,
                     check_projectile_out_of_grid,
                     on_projectile_collisions_events,
                     tick_collision_snap_cooldown_timer,

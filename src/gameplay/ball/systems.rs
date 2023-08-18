@@ -378,7 +378,6 @@ pub fn check_out_ball_for_delete(
 ) {
     for (ball_entity, grid_ball_out) in out_balls_query.iter() {
         if grid_ball_out.marked_for_delete {
-            // println!("out ball despawned {}", ball_entity.index());
             commands.entity(ball_entity).despawn_recursive();
         }
     }

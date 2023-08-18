@@ -260,12 +260,6 @@ pub fn build_corners_joints(
 }
 
 pub fn is_move_slow(velocity: Vec2) -> bool {
-    // println!(
-    //     "is_move_slow x({}) y({}) len({})",
-    //     linvel.x,
-    //     linvel.y,
-    //     linvel.length()
-    // );
     velocity.length() <= MIN_PROJECTILE_SNAP_VELOCITY
 }
 
@@ -273,20 +267,13 @@ pub fn is_move_slow(velocity: Vec2) -> bool {
 pub fn is_move_reverse(projectile_ball: &mut ProjectileBall, projectile_velocity: Vec2) -> bool {
     if projectile_ball.snap_vel == Vec2::ZERO {
         projectile_ball.snap_vel = projectile_velocity.normalize();
-        // println!("snap_vel {:?}", projectile_ball.snap_vel);
     } else {
         let dot = projectile_ball
             .snap_vel
             .dot(projectile_velocity.normalize());
-        // println!(
-        //     "snap_vel {:?} projectile_velocity {:?} dot {}",
-        //     projectile_ball.snap_vel, projectile_velocity, dot
-        // );
         if dot < 0.0 {
-            // println!("TRUE");
             return true;
         }
-        // projectile_ball.snap_vel = projectile_velocity;
     }
     false
 }
