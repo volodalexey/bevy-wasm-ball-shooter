@@ -1,4 +1,4 @@
-use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
+use bevy::prelude::{in_state, App, FixedUpdate, IntoSystemConfigs, OnEnter, OnExit, Plugin};
 
 use crate::{components::AppState, ui::systems::cleanup_full_row};
 
@@ -20,7 +20,7 @@ impl Plugin for PanelsPlugin {
             .insert_resource(CooldownMoveCounter::default())
             .insert_resource(ScoreCounter(0))
             .add_systems(OnEnter(AppState::GameplayInit), (setup_resources, setup_ui))
-            .add_systems(Update, update_ui.run_if(in_state(AppState::Gameplay)))
+            .add_systems(FixedUpdate, update_ui.run_if(in_state(AppState::Gameplay)))
             .add_systems(OnExit(AppState::Gameplay), cleanup_full_row);
     }
 }

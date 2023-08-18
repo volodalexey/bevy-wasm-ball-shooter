@@ -1,10 +1,13 @@
-use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, Plugin, Update};
+use bevy::prelude::{in_state, App, FixedUpdate, IntoSystemConfigs, OnEnter, Plugin, Update};
 
 use crate::{components::AppState, ui::systems::interact_with_next_state_button};
 
 use self::{
     ball::ProjectilePlugin,
-    events::{BeginTurn, CheckJoints, FindCluster, SpawnRow, UpdateMoveDown, UpdateScoreCounter},
+    events::{
+        CheckJoints, FindCluster, MoveDownLastActive, ProjectileReload, SpawnRow,
+        UpdateScoreCounter,
+    },
     grid::GridPlugin,
     lines::LinesPlugin,
     main_camera::MainCameraPlugin,
@@ -12,7 +15,7 @@ use self::{
     meshes::MeshesPlugin,
     panels::PanelsPlugin,
     physics::PhysicsPlugin,
-    systems::{check_game_over, check_game_win, keydown_detect, on_begin_turn, setup_first_turn},
+    systems::{check_game_over, check_game_win, keydown_detect, setup_first_turn},
     walls::WallsPlugin,
 };
 
@@ -45,22 +48,21 @@ impl Plugin for GameplayPlugin {
             ProjectilePlugin,
             PanelsPlugin,
         ))
-        .add_event::<BeginTurn>()
+        .add_event::<ProjectileReload>()
         .add_event::<UpdateScoreCounter>()
-        .add_event::<UpdateMoveDown>()
+        .add_event::<MoveDownLastActive>()
         .add_event::<SpawnRow>()
         .add_event::<FindCluster>()
         .add_event::<CheckJoints>()
         .add_systems(OnEnter(AppState::Gameplay), setup_first_turn)
         .add_systems(
             Update,
-            (
-                on_begin_turn,
-                check_game_over,
-                check_game_win.after(check_game_over),
-                keydown_detect,
-                interact_with_next_state_button,
-            )
+            (keydown_detect, interact_with_next_state_button).run_if(in_state(AppState::Gameplay)),
+        )
+        .add_systems(
+            FixedUpdate,
+            (check_game_over, check_game_win)
+                .chain()
                 .run_if(in_state(AppState::Gameplay)),
         );
     }

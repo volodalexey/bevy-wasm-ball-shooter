@@ -31,11 +31,15 @@ impl Default for ProjectileBall {
 pub struct NextProjectileBall {}
 
 #[derive(Component)]
-pub struct GridBall {}
+pub struct GridBall {
+    pub is_ready_to_despawn: bool,
+}
 
 impl Default for GridBall {
     fn default() -> Self {
-        Self {}
+        Self {
+            is_ready_to_despawn: false,
+        }
     }
 }
 

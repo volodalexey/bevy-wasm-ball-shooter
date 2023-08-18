@@ -23,13 +23,24 @@ use super::resources::Grid;
 
 pub fn buid_cell_storage(
     balls_query: &Query<
-        (Entity, &Transform, &Species, Option<&LastActiveGridBall>),
+        (
+            Entity,
+            &Transform,
+            &Species,
+            &mut GridBall,
+            Option<&LastActiveGridBall>,
+        ),
         With<GridBall>,
     >,
 ) -> HashMap<(i32, i32), Vec<(Entity, Vec2, Species, bool)>> {
     let mut cell_storage: HashMap<(i32, i32), Vec<(Entity, Vec2, Species, bool)>> =
         HashMap::default();
-    for (ball_entity, ball_transform, ball_species, ball_last_active) in balls_query.iter() {
+    for (ball_entity, ball_transform, ball_species, grid_ball, ball_last_active) in
+        balls_query.iter()
+    {
+        if grid_ball.is_ready_to_despawn {
+            continue;
+        }
         // https://leetless.de/posts/spatial-hashing-vs-ecs/
         // generate storage of balls by cells
         let ball_position = ball_transform.translation.truncate();
@@ -46,26 +57,30 @@ pub fn buid_cell_storage(
             },
         ));
     }
-    // println!("cell_storage {:?}", cell_storage);
-    // for ((cell_x, cell_y), d) in cell_storage.iter() {
-    //     println!("cell({}, {}) ::", cell_x, cell_y);
-    //     for (entity, pos, _) in d.iter() {
-    //         println!("{:?} {:?}", entity, grid.layout.world_pos_to_hex(*pos));
-    //     }
-    // }
     cell_storage
 }
 
 pub fn build_connection_storage(
     balls_query: &Query<
-        (Entity, &Transform, &Species, Option<&LastActiveGridBall>),
+        (
+            Entity,
+            &Transform,
+            &Species,
+            &mut GridBall,
+            Option<&LastActiveGridBall>,
+        ),
         With<GridBall>,
     >,
     cell_storage: &HashMap<(i32, i32), Vec<(Entity, Vec2, Species, bool)>>,
 ) -> HashMap<Entity, (Species, bool, Vec<(Entity, Vec2, Species)>)> {
     let mut connection_storage: HashMap<Entity, (Species, bool, Vec<(Entity, Vec2, Species)>)> =
         HashMap::default();
-    for (ball_entity, ball_transform, ball_species, ball_last_active) in balls_query.iter() {
+    for (ball_entity, ball_transform, ball_species, grid_ball, ball_last_active) in
+        balls_query.iter()
+    {
+        if grid_ball.is_ready_to_despawn {
+            continue;
+        }
         // generate storage of connections
         let ball_position = ball_transform.translation.truncate();
         let cell_index_x: i32 = (ball_position.x / CELL_SIZE).floor() as i32;
@@ -75,25 +90,9 @@ pub fn build_connection_storage(
                 let key = (cell_x, cell_y);
                 if let Some(neighbours) = cell_storage.get(&key) {
                     for (neighbour_entity, neighbour_position, neighbour_species, _) in neighbours {
-                        // if ball_entity == *start_from {
-                        //     println!(
-                        //         "neighbour_entity {:?} {:?} dist {}",
-                        //         neighbour_entity,
-                        //         grid.layout.world_pos_to_hex(*neighbour_position),
-                        //         ball_position.distance(*neighbour_position)
-                        //     );
-                        // }
                         if neighbour_entity.index() != ball_entity.index()
                             && ball_position.distance(*neighbour_position) < CLUSTER_TOLERANCE
                         {
-                            // if ball_entity == *start_from {
-                            //     println!(
-                            //         "=>>> neighbour_entity {:?} {:?} dist {}",
-                            //         neighbour_entity,
-                            //         grid.layout.world_pos_to_hex(*neighbour_position),
-                            //         ball_position.distance(*neighbour_position)
-                            //     );
-                            // }
                             connection_storage
                                 .entry(ball_entity)
                                 .or_insert((
@@ -112,15 +111,6 @@ pub fn build_connection_storage(
             }
         }
     }
-    // for (_, (a, b)) in connection_storage.iter() {
-    //     println!(
-    //         "some entity with color {} neighbours {:?}",
-    //         a,
-    //         b.iter()
-    //             .map(|(_, pos, _)| grid.layout.world_pos_to_hex(*pos))
-    //             .collect::<Vec<Hex>>()
-    //     );
-    // }
     connection_storage
 }
 
@@ -134,7 +124,6 @@ pub fn find_cluster(
     let mut cluster: Vec<(Entity, bool)> = vec![];
 
     while let Some(current) = to_process.pop() {
-        // println!("pop() to process {:?}", current);
         // find clusters with the same color
         if let Some((current_species, last_active, neighbours)) = connection_storage.get(current) {
             if processed.contains(current) {
@@ -142,48 +131,20 @@ pub fn find_cluster(
             }
             cluster.push((*current, *last_active));
             processed.insert(*current);
-            // println!("cluster {:?} processed {:?}", cluster, processed);
-            // println!(
-            //     "cluster+processed {:?} species {} len {}\n\n",
-            //     current,
-            //     current_species,
-            //     neighbours.iter().len()
-            // );
             for (neighbour_entity, _, neighbour_species) in neighbours.iter() {
                 if let Some(_) = connection_storage.get(neighbour_entity) {
                     // if neighbour is still in the grid and wasn't removed by cluster
-                    // println!(
-                    //     "iter neighbour {:?} {}",
-                    //     neighbour_entity, neighbour_species,
-                    // );
                     if processed.contains(neighbour_entity) {
                         continue;
                     }
                     if check_species && current_species != neighbour_species {
                         continue;
                     }
-                    // println!("added to process {:?}", neighbour_entity);
                     to_process.push(neighbour_entity);
-
-                    // if let Some((_, next_neighbours)) = connection_storage.get(neighbour_entity) {
-                    //     for (next_neighbour_entity, pos, next_neighbour_species) in
-                    //         next_neighbours.iter()
-                    //     {
-                    //         if *next_neighbour_species == current_species {
-                    //             println!(
-                    //                 "added to process {:?} {:?}",
-                    //                 next_neighbour_entity,
-                    //                 grid.layout.world_pos_to_hex(*pos)
-                    //             );
-                    //             to_process.push(next_neighbour_entity);
-                    //         }
-                    //     }
-                    // }
                 }
             }
         }
     }
-    // println!("cluster {:?}", cluster);
     (cluster, processed)
 }
 
@@ -194,7 +155,6 @@ pub fn find_floating_clusters(
     let mut floating_clusters: Vec<Vec<(Entity, bool)>> = vec![];
 
     for (storage_entity, (_, storage_last_active, _)) in connection_storage.iter() {
-        // println!("iter start floating {:?}", storage_entity);
         if processed.contains(storage_entity) {
             continue;
         }
@@ -205,7 +165,6 @@ pub fn find_floating_clusters(
 
         let (cluster, _processed) = find_cluster(*storage_entity, connection_storage, false);
 
-        // println!("found cluster size {}", cluster.len());
         processed.extend(_processed);
 
         if cluster.len() <= 0 {
@@ -214,7 +173,6 @@ pub fn find_floating_clusters(
 
         let mut floating = true;
         for (_, cluster_last_active) in cluster.iter() {
-            // println!("{:?} last active {}", cluster_entity, cluster_last_active);
             if *cluster_last_active {
                 floating = false;
                 break;
@@ -277,11 +235,24 @@ pub fn build_corners_joints(
     from_entity: Entity,
     from_position: Vec2,
     to_entities: &Vec<(Entity, Vec2)>,
+    connections_buffer: &mut HashMap<Entity, Vec<Entity>>,
 ) {
     let corners = grid.calc_corners(from_position);
     for (to_entity, to_transform) in to_entities.iter().filter(|(to_entity, to_position)| {
         *to_entity != from_entity && from_position.distance(*to_position) < BUILD_JOINT_TOLERANCE
     }) {
+        let from_connections = connections_buffer.entry(from_entity).or_insert(default());
+        if from_connections.contains(to_entity) {
+            continue;
+        } else {
+            from_connections.push(*to_entity);
+        }
+        let to_connections = connections_buffer.entry(*to_entity).or_insert(default());
+        if to_connections.contains(&from_entity) {
+            continue;
+        } else {
+            to_connections.push(from_entity);
+        }
         let mut distances = corners.map(|cor| (cor.distance(*to_transform), cor));
         distances.sort_by(|a, b| a.0.total_cmp(&b.0));
         let closest_position = distances[0].1;

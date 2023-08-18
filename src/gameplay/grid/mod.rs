@@ -5,7 +5,7 @@ use bevy::prelude::{
 use self::{
     resources::{CollisionSnapCooldown, Grid},
     systems::{
-        animate_grid_ball_position, check_projectile_out_of_grid, cleanup_grid,
+        animate_grid_ball_position, check_joints, check_projectile_out_of_grid, cleanup_grid,
         control_projectile_position, find_and_remove_clusters, generate_grid,
         on_projectile_collisions_events, on_snap_projectile, on_spawn_row,
         tick_collision_snap_cooldown_timer, update_hex_coord_transforms, update_score_counter,
@@ -37,6 +37,7 @@ impl Plugin for GridPlugin {
                     control_projectile_position,
                     update_score_counter,
                     on_spawn_row,
+                    check_joints,
                 )
                     .run_if(in_state(AppState::Gameplay)),
             )

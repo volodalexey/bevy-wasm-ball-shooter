@@ -46,9 +46,8 @@ pub fn control_camera_position(
         direction += Vec3::new(0.0, -1.0, 0.0);
     }
 
-    direction = direction.normalize_or_zero();
-
     if direction.length() > 0.0 {
+        direction = direction.normalize_or_zero();
         camera_transform.translation += direction * CAMERA_SPEED;
     }
 

@@ -1,7 +1,7 @@
 use bevy::prelude::{Entity, Event};
 
 #[derive(Event)]
-pub struct BeginTurn;
+pub struct ProjectileReload;
 
 #[derive(Event)]
 pub struct UpdateScoreCounter {
@@ -9,7 +9,7 @@ pub struct UpdateScoreCounter {
 }
 
 #[derive(Event)]
-pub struct UpdateMoveDown;
+pub struct MoveDownLastActive;
 
 #[derive(Event)]
 pub struct SpawnRow;
@@ -21,5 +21,6 @@ pub struct FindCluster {
 
 #[derive(Event)]
 pub struct CheckJoints {
-    pub start_from: Entity,
+    pub a: Entity,
+    pub b: Entity,
 }

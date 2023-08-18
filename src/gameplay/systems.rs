@@ -1,31 +1,24 @@
 use bevy::{
     prelude::{
-        warn, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Transform,
-        With, Without,
+        warn, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Transform, With, Without,
     },
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
+use hexx::Hex;
 
 use crate::{components::AppState, resources::LevelCounter, utils::increment_level};
 
 use super::{
     ball::components::{GridBall, OutBall},
     constants::GAME_OVER_BOTTOM,
-    events::BeginTurn,
+    events::ProjectileReload,
     grid::resources::Grid,
     lines::components::LineType,
 };
 
-pub fn setup_first_turn(mut begin_turn: EventWriter<BeginTurn>) {
-    begin_turn.send(BeginTurn);
-}
-
-pub fn on_begin_turn(mut begin_turn: EventReader<BeginTurn>) {
-    if begin_turn.is_empty() {
-        return;
-    }
-    begin_turn.clear();
+pub fn setup_first_turn(mut begin_turn: EventWriter<ProjectileReload>) {
+    begin_turn.send(ProjectileReload);
 }
 
 pub fn check_game_over(
@@ -38,9 +31,15 @@ pub fn check_game_over(
     let window = window_query.single();
     let game_over_bottom = -(window.height() - GAME_OVER_BOTTOM - window.height() / 2.0);
 
+    let hex = Hex {
+        x: 0,
+        y: grid.last_active_row,
+    };
+    let position = grid.layout.hex_to_world_pos(hex);
+
     for (line_type, mut line_transform) in lines_query.iter_mut() {
         match line_type {
-            LineType::GridTop => {}
+            LineType::GridTop => line_transform.translation.y = position.y,
             LineType::GameOver => line_transform.translation.y = game_over_bottom,
         }
     }
