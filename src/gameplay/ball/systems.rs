@@ -40,7 +40,7 @@ use super::{
     aim_bundle::AimBundle,
     components::{
         AimLine, AimTarget, GridBall, GridBallScaleAnimate, NextProjectileBall, OutBall,
-        ProjectileBall, Species,
+        OutBallAnimation, ProjectileBall, Species,
     },
     projectile_ball_bundle::{NextProjectileBallBundle, ProjectileBallBundle},
     resources::ProjectileBuffer,
@@ -62,8 +62,7 @@ pub fn projectile_reload(
     gameplay_materials: Res<GameplayMaterials>,
     mut buffer: ResMut<ProjectileBuffer>,
     mut begin_turn: EventReader<BeginTurn>,
-    grid: Res<Grid>,
-    balls_query: Query<&Species, With<GridBall>>,
+    grid_balls_query: Query<&Species, With<GridBall>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     next_projectile_query: Query<Entity, With<NextProjectileBall>>,
 ) {
@@ -72,8 +71,12 @@ pub fn projectile_reload(
     }
     begin_turn.clear();
 
+    if grid_balls_query.iter().len() == 0 {
+        return; // no more balls in grid
+    }
+
     let mut cache: HashMap<&Species, &Species> = HashMap::with_capacity(5);
-    for species in balls_query.iter() {
+    for species in grid_balls_query.iter() {
         if cache.len() == 5 {
             break;
         }
@@ -81,9 +84,7 @@ pub fn projectile_reload(
             cache.insert(species, species);
         }
     }
-    if grid.storage.len() == 0 {
-        return; // no more balls in grid
-    }
+
     let mut colors_in_grid: Vec<Species> = Vec::with_capacity(cache.len());
     for (key, _) in cache.iter() {
         colors_in_grid.push(**key);
@@ -347,10 +348,14 @@ pub fn animate_out_ball(
         if !grid_ball_out.started {
             grid_ball_out.started = true;
             ball_transform.translation.z = 2.0; // slightly on top of grid
-            ball_velocity.linvel = Vec2::new(
-                fastrand::i32(-200..=200) as f32,
-                fastrand::i32(-200..=200) as f32,
-            );
+            if grid_ball_out.animation_type == OutBallAnimation::FloatingCluster {
+                ball_velocity.linvel = Vec2::new(0.0, fastrand::i32(-200..=0) as f32);
+            } else {
+                ball_velocity.linvel = Vec2::new(
+                    fastrand::i32(-200..=200) as f32,
+                    fastrand::i32(-200..=200) as f32,
+                );
+            }
             ball_force.force = Vec2::new(0.0, -100.0);
         } else {
             if let Some(ball_material) = materials.get_mut(&ball_material) {

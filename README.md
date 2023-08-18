@@ -25,9 +25,6 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-animation for balls via physics
-physics and draw to visible balls
-improve clusters: use only physics connections?
-not equal columns for even rows
+projectile reload prevent
 responsive layout and scale
 sprites for balls and buttons

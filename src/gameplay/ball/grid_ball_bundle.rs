@@ -1,20 +1,14 @@
 use bevy::{
-    prelude::{default, BuildChildren, Bundle, Commands, Entity, Res, Transform, Vec2, Vec3},
+    prelude::{default, Bundle, Commands, Entity, Res, Transform, Vec2, Vec3},
     sprite::MaterialMesh2dBundle,
 };
 use bevy_rapier2d::{
-    prelude::{Collider, CollisionGroups, Damping, Group, LockedAxes, RigidBody, Velocity},
+    prelude::{ActiveEvents, Collider, CollisionGroups, Damping, Group, RigidBody, Velocity},
     render::ColliderDebugColor,
 };
-use hexx::Hex;
 
 use crate::gameplay::{
-    constants::BALL_RADIUS,
-    grid::{
-        resources::Grid,
-        utils::{build_ball_text, build_joints},
-    },
-    materials::resources::GameplayMaterials,
+    constants::BALL_RADIUS, materials::resources::GameplayMaterials,
     meshes::resources::GameplayMeshes,
 };
 
@@ -28,7 +22,6 @@ impl GridBallBundle {
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
-        hex: Hex,
     ) -> impl Bundle {
         (
             MaterialMesh2dBundle {
@@ -37,12 +30,15 @@ impl GridBallBundle {
                 transform,
                 ..default()
             },
-            GridBall { hex },
+            GridBall::default(),
             species,
-            RigidBody::Dynamic,
             Collider::ball(BALL_RADIUS),
             ColliderDebugColor(species.into()),
-            CollisionGroups::new(Group::GROUP_2, Group::GROUP_1 | Group::GROUP_3),
+            CollisionGroups::new(
+                Group::GROUP_2,
+                Group::GROUP_1 | Group::GROUP_2 | Group::GROUP_3,
+            ),
+            ActiveEvents::COLLISION_EVENTS,
             Velocity::default(),
             Damping {
                 linear_damping: 0.5,
@@ -53,51 +49,40 @@ impl GridBallBundle {
 
     pub fn spawn(
         commands: &mut Commands,
-        grid: &Grid,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
-        hex: Hex,
+        position: Vec2,
         is_last_active: bool,
         some_species: Option<Species>,
         is_appear_animation: bool,
-    ) -> Entity {
-        let hex_pos = grid.layout.hex_to_world_pos(hex);
-
-        let mut transform = Transform::from_translation(Vec3::new(hex_pos.x, hex_pos.y, 0.0));
+    ) -> (Entity, Species) {
+        let mut transform = Transform::from_translation(position.extend(0.0));
         if is_appear_animation {
             transform = transform.with_scale(Vec3::ZERO);
         }
+        let species = match some_species {
+            Some(species) => species,
+            None => Species::random_species(),
+        };
 
         let mut entity_commands = commands.spawn(Self::new(
             transform,
-            match some_species {
-                Some(species) => species,
-                None => Species::random_species(),
-            },
+            species,
             &gameplay_meshes,
             &gameplay_materials,
-            hex,
         ));
 
         if is_last_active {
-            println!("insert LastActiveGridBall {:?}", hex);
             entity_commands
                 .insert(LastActiveGridBall {})
-                .insert(LockedAxes::all());
+                .insert(RigidBody::KinematicPositionBased);
+        } else {
+            entity_commands.insert(RigidBody::Dynamic);
         }
         if is_appear_animation {
             entity_commands.insert(GridBallScaleAnimate::from_scale(Vec2::ONE));
         }
 
-        entity_commands
-            .with_children(|parent| {
-                if !is_last_active {
-                    for joint in build_joints(hex, &grid) {
-                        parent.spawn(joint);
-                    }
-                }
-                build_ball_text(parent, hex);
-            })
-            .id()
+        (entity_commands.id(), species)
     }
 }

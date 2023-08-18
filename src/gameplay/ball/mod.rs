@@ -1,4 +1,6 @@
-use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
+use bevy::prelude::{
+    apply_deferred, in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update,
+};
 
 use crate::components::AppState;
 
@@ -31,7 +33,7 @@ impl Plugin for ProjectilePlugin {
             .add_systems(
                 Update,
                 (
-                    projectile_reload,
+                    projectile_reload.after(apply_deferred),
                     shoot_projectile,
                     animate_out_ball,
                     check_out_ball_for_delete,

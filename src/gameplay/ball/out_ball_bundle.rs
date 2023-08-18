@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{default, Assets, Res, ResMut, Transform, Vec2, Vec3},
+    prelude::{default, Assets, Bundle, Res, ResMut, Transform, Vec2, Vec3},
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
 use bevy_rapier2d::prelude::{
@@ -18,16 +18,8 @@ impl OutBallBundle {
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         materials: &mut ResMut<Assets<ColorMaterial>>,
-    ) -> (
-        MaterialMesh2dBundle<ColorMaterial>,
-        OutBall,
-        Species,
-        RigidBody,
-        Collider,
-        ExternalForce,
-        Velocity,
-        CollisionGroups,
-    ) {
+        is_floating: bool,
+    ) -> impl Bundle {
         (
             MaterialMesh2dBundle {
                 mesh: gameplay_meshes.grid_ball.clone().into(),
@@ -35,7 +27,10 @@ impl OutBallBundle {
                 transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
                 ..default()
             },
-            OutBall::default(),
+            match is_floating {
+                true => OutBall::as_floating(),
+                false => OutBall::as_fixed(),
+            },
             species,
             RigidBody::Dynamic,
             Collider::ball(BALL_RADIUS),

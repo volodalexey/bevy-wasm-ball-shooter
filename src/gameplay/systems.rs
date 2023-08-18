@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
         warn, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Transform,
-        With,
+        With, Without,
     },
     window::{PrimaryWindow, Window},
 };
@@ -29,43 +29,42 @@ pub fn on_begin_turn(mut begin_turn: EventReader<BeginTurn>) {
 }
 
 pub fn check_game_over(
-    mut grid: ResMut<Grid>,
+    grid: Res<Grid>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut lines_query: Query<(&LineType, &mut Transform), With<LineType>>,
+    balls_query: Query<&Transform, (With<GridBall>, Without<LineType>)>,
 ) {
     let window = window_query.single();
     let game_over_bottom = -(window.height() - GAME_OVER_BOTTOM - window.height() / 2.0);
 
     for (line_type, mut line_transform) in lines_query.iter_mut() {
         match line_type {
-            LineType::GridTop | LineType::GridBottom => {}
+            LineType::GridTop => {}
             LineType::GameOver => line_transform.translation.y = game_over_bottom,
         }
     }
 
-    grid.check_update_bounds();
-    if grid.bounds.mins.y < game_over_bottom {
-        warn!(
-            "GameOver because minimal bound ({}) less than ({})",
-            grid.bounds.mins.y, game_over_bottom
-        );
-        app_state_next_state.set(AppState::GameOver);
+    for ball_transform in balls_query.iter() {
+        if ball_transform.translation.y < game_over_bottom {
+            warn!(
+                "GameOver because minimal bound ({}) less than ({})",
+                grid.bounds.mins.y, game_over_bottom
+            );
+            app_state_next_state.set(AppState::GameOver);
+            break;
+        }
     }
 }
 
 pub fn check_game_win(
-    grid: Res<Grid>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
     mut level_counter: ResMut<LevelCounter>,
     mut pkv: ResMut<PkvStore>,
     balls_query: Query<&GridBall, With<GridBall>>,
     out_balls_query: Query<&OutBall, With<OutBall>>,
 ) {
-    if grid.storage.len() == 0
-        && balls_query.iter().len() == 0
-        && out_balls_query.iter().count() == 0
-    {
+    if balls_query.iter().len() == 0 && out_balls_query.iter().count() == 0 {
         increment_level(&mut level_counter, &mut pkv);
         app_state_next_state.set(AppState::GameWin);
     }

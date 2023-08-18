@@ -1,11 +1,10 @@
 use std::fmt::{Debug, Display, Formatter, Result};
 
 use bevy::{
-    prelude::{Color, Component, Vec2},
+    prelude::{Color, Component, Entity, Vec2},
     sprite::ColorMaterial,
     time::{Timer, TimerMode},
 };
-use hexx::Hex;
 
 use crate::gameplay::constants::{MAX_APPEAR_TIME, MOVE_DOWN_TIME};
 
@@ -13,7 +12,7 @@ use crate::gameplay::constants::{MAX_APPEAR_TIME, MOVE_DOWN_TIME};
 pub struct ProjectileBall {
     pub is_flying: bool,
     pub is_ready_to_despawn: bool,
-    pub snap_to: Vec<Hex>,
+    pub snap_to: Vec<Entity>,
     pub snap_vel: Vec2,
 }
 
@@ -32,8 +31,12 @@ impl Default for ProjectileBall {
 pub struct NextProjectileBall {}
 
 #[derive(Component)]
-pub struct GridBall {
-    pub hex: Hex,
+pub struct GridBall {}
+
+impl Default for GridBall {
+    fn default() -> Self {
+        Self {}
+    }
 }
 
 #[derive(Component)]
@@ -69,17 +72,33 @@ impl GridBallScaleAnimate {
     }
 }
 
+#[derive(PartialEq)]
+pub enum OutBallAnimation {
+    FixedCluster,
+    FloatingCluster,
+}
+
 #[derive(Component)]
 pub struct OutBall {
     pub started: bool,
     pub marked_for_delete: bool,
+    pub animation_type: OutBallAnimation,
 }
 
-impl Default for OutBall {
-    fn default() -> Self {
+impl OutBall {
+    pub fn as_fixed() -> Self {
         Self {
             started: false,
             marked_for_delete: false,
+            animation_type: OutBallAnimation::FixedCluster,
+        }
+    }
+
+    pub fn as_floating() -> Self {
+        Self {
+            started: false,
+            marked_for_delete: false,
+            animation_type: OutBallAnimation::FloatingCluster,
         }
     }
 }

@@ -25,12 +25,6 @@ pub fn setup_level_lines(
         ));
         commands.spawn(LineBundle::new(
             width,
-            LineType::GridBottom,
-            &mut meshes,
-            &gameplay_materials,
-        ));
-        commands.spawn(LineBundle::new(
-            width,
             LineType::GameOver,
             &mut meshes,
             &gameplay_materials,

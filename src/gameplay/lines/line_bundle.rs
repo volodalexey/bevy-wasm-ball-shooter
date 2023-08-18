@@ -1,6 +1,6 @@
 use bevy::{
-    prelude::{shape, Assets, Mesh, Res, ResMut, Transform, Vec2},
-    sprite::{ColorMaterial, MaterialMesh2dBundle},
+    prelude::{shape, Assets, Bundle, Mesh, Res, ResMut, Transform, Vec2},
+    sprite::MaterialMesh2dBundle,
 };
 use bevy_rapier2d::prelude::{Collider, CollisionGroups, Group, RigidBody};
 
@@ -19,22 +19,14 @@ impl LineBundle {
         line_type: LineType,
         meshes: &mut ResMut<Assets<Mesh>>,
         gameplay_materials: &Res<GameplayMaterials>,
-    ) -> (
-        MaterialMesh2dBundle<ColorMaterial>,
-        RigidBody,
-        Collider,
-        CollisionGroups,
-        LineType,
-    ) {
+    ) -> impl Bundle {
         (
             MaterialMesh2dBundle {
                 mesh: meshes
                     .add(shape::Quad::new(Vec2::new(width, LINE_WIDTH)).into())
                     .into(),
                 material: match line_type {
-                    LineType::GridTop | LineType::GridBottom => {
-                        gameplay_materials.grid_line.clone()
-                    }
+                    LineType::GridTop => gameplay_materials.grid_line.clone(),
                     LineType::GameOver => gameplay_materials.game_over_line.clone(),
                 },
                 transform: Transform::from_translation(Vec2::ZERO.extend(LINE_Z_INDEX)),
@@ -45,7 +37,7 @@ impl LineBundle {
             CollisionGroups::new(
                 match line_type {
                     LineType::GridTop => Group::GROUP_5,
-                    LineType::GameOver | LineType::GridBottom => Group::GROUP_6,
+                    LineType::GameOver => Group::GROUP_6,
                 },
                 Group::GROUP_5,
             ), // ray cast won't work with Group::NONE

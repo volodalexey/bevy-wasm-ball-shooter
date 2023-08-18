@@ -39,3 +39,6 @@ pub const MOVE_DOWN_TIME: f32 = 2.0;
 pub const MOVE_DOWN_TOLERANCE: f32 = 0.1;
 pub const MAX_APPEAR_TIME: f32 = 2.0;
 pub const APPEAR_TOLERANCE: f32 = 0.1;
+pub const BUILD_JOINT_TOLERANCE: f32 = BALL_DIAMETER + 3.0;
+pub const CLUSTER_TOLERANCE: f32 = BALL_DIAMETER + 3.0;
+pub const CELL_SIZE: f32 = BALL_DIAMETER * 2.0;

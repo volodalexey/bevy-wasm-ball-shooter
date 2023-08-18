@@ -1,11 +1,10 @@
 use bevy::{
-    prelude::{default, Res, Transform, Vec2, Vec3},
-    sprite::{ColorMaterial, MaterialMesh2dBundle},
+    prelude::{default, Bundle, Res, Transform, Vec2, Vec3},
+    sprite::MaterialMesh2dBundle,
 };
 use bevy_rapier2d::{
     prelude::{
-        ActiveEvents, Ccd, Collider, CollisionGroups, ExternalImpulse, Group, RigidBody, Sleeping,
-        Velocity,
+        Ccd, Collider, CollisionGroups, ExternalImpulse, Group, RigidBody, Sleeping, Velocity,
     },
     render::ColliderDebugColor,
 };
@@ -25,20 +24,7 @@ impl ProjectileBallBundle {
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
-    ) -> (
-        MaterialMesh2dBundle<ColorMaterial>,
-        ProjectileBall,
-        Species,
-        Collider,
-        RigidBody,
-        Velocity,
-        ActiveEvents,
-        Ccd,
-        Sleeping,
-        ColliderDebugColor,
-        CollisionGroups,
-        ExternalImpulse,
-    ) {
+    ) -> impl Bundle {
         (
             MaterialMesh2dBundle {
                 mesh: gameplay_meshes.projectile_ball.clone().into(),
@@ -51,7 +37,6 @@ impl ProjectileBallBundle {
             Collider::ball(BALL_RADIUS),
             RigidBody::Dynamic,
             Velocity::default(),
-            ActiveEvents::COLLISION_EVENTS,
             Ccd::enabled(),
             Sleeping::disabled(),
             ColliderDebugColor(species.into()),
@@ -69,11 +54,7 @@ impl NextProjectileBallBundle {
         species: Species,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
-    ) -> (
-        MaterialMesh2dBundle<ColorMaterial>,
-        NextProjectileBall,
-        Species,
-    ) {
+    ) -> impl Bundle {
         (
             MaterialMesh2dBundle {
                 mesh: gameplay_meshes.next_projectile_ball.clone().into(),
