@@ -198,32 +198,24 @@ pub fn adjust_grid_layout(
 }
 
 pub fn build_revolute_joint(
-    anchor_entity: &Entity,
-    anchor_pos: Vec2,
     from_pos: Vec2,
+    to_entity: &Entity,
+    to_pos: Vec2,
     normalize: bool,
 ) -> ImpulseJoint {
-    let diff = anchor_pos - from_pos;
+    let diff = to_pos - from_pos;
     let axis = match normalize {
         true => diff.normalize() * BALL_DIAMETER,
         false => diff,
     };
-    // println!(
-    //     "from_pos({}, {}) to_pos({}, {}) diff({}, {}) axis({}, {})",
-    //     from_pos.x, from_pos.y, anchor_pos.x, anchor_pos.y, diff.x, diff.y, axis.x, axis.y
-    // );
     let joint = RevoluteJointBuilder::new().local_anchor2(axis);
-    ImpulseJoint::new(*anchor_entity, joint)
+    ImpulseJoint::new(*to_entity, joint)
 }
 
 pub fn build_prismatic_joint(from_pos: Vec2, to_pos: Vec2, to_entity: Entity) -> ImpulseJoint {
     let diff = from_pos - to_pos;
     let min_limit = BALL_DIAMETER;
     let max_limit = BALL_DIAMETER + BALL_RADIUS * 0.1;
-    // println!(
-    //     "from_pos({}, {}) to_pos({}, {}) diff({}, {}) limits({}, {})",
-    //     from_pos.x, from_pos.y, to_pos.x, to_pos.y, diff.x, diff.y, min_limit, max_limit
-    // );
     let prism = PrismaticJointBuilder::new(diff).limits([min_limit, max_limit]);
     ImpulseJoint::new(to_entity, prism)
 }

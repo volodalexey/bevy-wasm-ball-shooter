@@ -50,13 +50,15 @@ pub struct LastActiveGridBall {}
 pub struct GridBallPositionAnimate {
     pub position: Vec2,
     pub timer: Timer,
+    pub move_down_after: bool,
 }
 
 impl GridBallPositionAnimate {
-    pub fn from_position(position: Vec2) -> Self {
+    pub fn from_position(position: Vec2, move_down_after: bool) -> Self {
         Self {
             position,
             timer: Timer::from_seconds(MOVE_DOWN_TIME, TimerMode::Once),
+            move_down_after,
         }
     }
 }

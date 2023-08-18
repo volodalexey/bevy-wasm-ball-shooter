@@ -26,4 +26,5 @@ cargo install wasm-bindgen-cli
 
 TODO
 responsive layout and scale
+UI bottom show info
 sprites for balls and buttons

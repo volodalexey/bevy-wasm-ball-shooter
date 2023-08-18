@@ -138,7 +138,7 @@ pub fn update_hex_coord_transforms(
         let position = ball_transform.translation.truncate() - Vec2::new(0.0, ROW_HEIGHT);
         commands
             .entity(ball_entity)
-            .insert(GridBallPositionAnimate::from_position(position));
+            .insert(GridBallPositionAnimate::from_position(position, true));
     }
 }
 
@@ -268,9 +268,9 @@ pub fn on_projectile_collisions_events(
                                     );
                                     commands.entity(projectile_entity).with_children(|parent| {
                                         parent.spawn(build_revolute_joint(
+                                            from_pos,
                                             &ball_entity,
                                             anchor_pos,
-                                            from_pos,
                                             true,
                                         ));
                                     });
@@ -377,6 +377,7 @@ pub fn on_snap_projectile(
                 .entity(new_entity)
                 .insert(GridBallPositionAnimate::from_position(
                     snap_projectile.cor_pos,
+                    false,
                 ));
         }
 
@@ -593,10 +594,12 @@ pub fn animate_grid_ball_position(
             commands
                 .entity(ball_entity)
                 .remove::<GridBallPositionAnimate>();
-            completed_count += 1;
+            if grid_ball_animate.move_down_after {
+                completed_count += 1;
+            }
         }
     }
-    if completed_count == total_count && total_count > 0 {
+    if completed_count == total_count && completed_count > 0 {
         if grid.init_rows - FILL_PLAYGROUND_ROWS > move_counter.0 as i32 - 1 {
             writer_spawn_row.send(SpawnRow);
         }
