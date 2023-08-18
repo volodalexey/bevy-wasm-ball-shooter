@@ -202,10 +202,19 @@ pub fn check_projectile_out_of_grid(
                 "Projectile out of grid snap {} {}",
                 position.y, projectile_position.y
             );
+            let corrected_hex = grid.layout.world_pos_to_hex(projectile_position);
+            let mut offset = corrected_hex.to_offset_coordinates(grid.offset_mode);
+            if offset[1] != grid.last_active_row {
+                offset[1] = grid.last_active_row;
+            }
+            let corrected_position = grid
+                .layout
+                .hex_to_world_pos(Hex::from_offset_coordinates(offset, grid.offset_mode));
             remove_projectile(&mut commands, &projectile_entity, &mut projectile_ball);
             collision_snap_cooldown.stop();
             snap_projectile.send(SnapProjectile {
                 pos: projectile_position,
+                cor_pos: corrected_position,
                 species: *species,
             });
         }
@@ -299,8 +308,10 @@ pub fn on_projectile_collisions_events(
                     // or ball moves too slow
                     info!("Projectile too slow so snap");
                     remove_projectile(&mut commands, &projectile_entity, &mut projectile_ball);
+                    let projectile_position = projectile_transform.translation.truncate();
                     snap_projectile.send(SnapProjectile {
-                        pos: projectile_transform.translation.truncate(),
+                        pos: projectile_position,
+                        cor_pos: projectile_position,
                         species: *species,
                     });
                 }
@@ -366,7 +377,7 @@ pub fn on_snap_projectile(
                 &mut commands,
                 &grid,
                 new_entity,
-                projectile_position,
+                snap_projectile.cor_pos,
                 &balls_query
                     .iter()
                     .map(|(neighbor_entity, neighbor_transform, _, _)| {
@@ -374,6 +385,13 @@ pub fn on_snap_projectile(
                     })
                     .collect::<Vec<(Entity, Vec2)>>(),
             );
+        }
+        if projectile_position != snap_projectile.cor_pos {
+            commands
+                .entity(new_entity)
+                .insert(GridBallPositionAnimate::from_position(
+                    snap_projectile.cor_pos,
+                ));
         }
 
         turn_counter.0 += 1;
@@ -535,8 +553,10 @@ pub fn tick_collision_snap_cooldown_timer(
                 collision_snap_cooldown.stop();
                 info!("Projectile cooldown snap");
                 remove_projectile(&mut commands, &projectile_entity, &mut projectile_ball);
+                let projectile_position = projectile_transform.translation.truncate();
                 snap_projectile.send(SnapProjectile {
-                    pos: projectile_transform.translation.truncate(),
+                    pos: projectile_position,
+                    cor_pos: projectile_position,
                     species: *species,
                 });
             }
