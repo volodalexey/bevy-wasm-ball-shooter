@@ -5,12 +5,12 @@ use bevy::{
     },
     sprite::ColorMaterial,
     time::Time,
-    utils::HashMap,
+    utils::{HashMap, HashSet},
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
 use bevy_rapier2d::prelude::{
-    CollisionEvent, ExternalImpulse, RapierContext, RapierRigidBodyHandle, Velocity,
+    CollisionEvent, ExternalForce, ExternalImpulse, RapierContext, RapierRigidBodyHandle, Velocity,
 };
 use hexx::{shapes, Hex};
 
@@ -28,16 +28,16 @@ use crate::{
             out_ball_bundle::OutBallBundle,
         },
         constants::{
-            BUILD_JOINT_TOLERANCE, FILL_PLAYGROUND_ROWS, MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT,
-            MOVE_DOWN_TOLERANCE, ROW_HEIGHT,
+            ATTRACTION_FORCE, BUILD_JOINT_TOLERANCE, FILL_PLAYGROUND_ROWS, MIN_CLUSTER_SIZE,
+            MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_TOLERANCE, ROW_HEIGHT,
         },
         events::{
             CheckJoints, FindCluster, MoveDownLastActive, ProjectileReload, SpawnRow,
             UpdateScoreCounter,
         },
         grid::utils::{
-            buid_cell_storage, build_connection_storage, find_cluster, find_floating_clusters,
-            is_move_slow, remove_projectile,
+            buid_cells_to_entities, build_entities_to_neighbours, find_cluster,
+            find_floating_clusters, is_move_slow, remove_projectile,
         },
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
@@ -400,6 +400,7 @@ pub fn find_and_remove_clusters(
             &Species,
             &mut GridBall,
             Option<&LastActiveGridBall>,
+            &mut ExternalForce,
         ),
         With<GridBall>,
     >,
@@ -411,18 +412,60 @@ pub fn find_and_remove_clusters(
         return;
     }
     for FindCluster { start_from } in find_cluster_events.iter() {
-        let cell_storage = buid_cell_storage(&balls_query);
+        let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
+        let mut entities_to_species: HashMap<Entity, Species> = HashMap::default();
+        let mut last_active_entities: HashSet<Entity> = HashSet::default();
+        balls_query.iter().for_each(|(e, t, sp, gb, ila, _)| {
+            if !gb.is_ready_to_despawn {
+                entities_to_positions.insert(e, t.translation.truncate());
+                entities_to_species.insert(e, *sp);
+                if let Some(_) = ila {
+                    last_active_entities.insert(e);
+                }
+            }
+        });
+        let cells_to_entities = buid_cells_to_entities(&entities_to_positions);
 
-        let mut connection_storage = build_connection_storage(&balls_query, &cell_storage);
+        let mut entities_to_neighbours =
+            build_entities_to_neighbours(&entities_to_positions, &cells_to_entities);
 
-        let (cluster, _) = find_cluster(*start_from, &connection_storage, true);
+        for (entity, neighbours) in entities_to_neighbours.iter() {
+            if let Ok((_, _, _, _, _, mut external_force)) = balls_query.get_mut(*entity) {
+                let mut result_force = external_force.force;
+                for neighbour in neighbours.iter() {
+                    if last_active_entities.contains(entity) {
+                        continue;
+                    }
+                    if let Some(neighbour_position) = entities_to_positions.get(neighbour) {
+                        result_force += *neighbour_position;
+                    }
+                }
+                if result_force.length() > 0.0 {
+                    result_force = result_force.normalize_or_zero();
+                    external_force.force = result_force * ATTRACTION_FORCE;
+                }
+            }
+        }
+
+        let (cluster, _) = find_cluster(
+            *start_from,
+            &entities_to_neighbours,
+            &entities_to_species,
+            true,
+        );
 
         let mut cluster_score_add = 0;
         if cluster.len() >= MIN_CLUSTER_SIZE {
             // remove matching cluster
-            cluster.iter().for_each(|(cluster_entity, _)| {
-                if let Ok((cluster_entity, cluster_transform, cluster_species, mut grid_ball, _)) =
-                    balls_query.get_mut(*cluster_entity)
+            cluster.iter().for_each(|cluster_entity| {
+                if let Ok((
+                    cluster_entity,
+                    cluster_transform,
+                    cluster_species,
+                    mut grid_ball,
+                    _,
+                    _,
+                )) = balls_query.get_mut(*cluster_entity)
                 {
                     grid_ball.is_ready_to_despawn = true;
                     commands.spawn(OutBallBundle::new(
@@ -433,21 +476,31 @@ pub fn find_and_remove_clusters(
                         false,
                     ));
                     commands.entity(cluster_entity).despawn_recursive();
-                    connection_storage.remove(&cluster_entity);
+                    entities_to_neighbours.remove(&cluster_entity);
                     cluster_score_add += 1;
                 }
             });
         }
 
         let mut floating_clusters_score_add = 0;
-        let floating_clusters = find_floating_clusters(&connection_storage);
+        let floating_clusters = find_floating_clusters(
+            &entities_to_neighbours,
+            &entities_to_species,
+            &last_active_entities,
+        );
         // remove floating clusters
         floating_clusters
             .iter()
             .flat_map(|e| e.iter())
-            .for_each(|(entity, _)| {
-                if let Ok((cluster_entity, cluster_transform, cluster_species, mut grid_ball, _)) =
-                    balls_query.get_mut(*entity)
+            .for_each(|entity| {
+                if let Ok((
+                    cluster_entity,
+                    cluster_transform,
+                    cluster_species,
+                    mut grid_ball,
+                    _,
+                    _,
+                )) = balls_query.get_mut(*entity)
                 {
                     grid_ball.is_ready_to_despawn = true;
                     commands.spawn(OutBallBundle::new(

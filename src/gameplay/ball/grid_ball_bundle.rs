@@ -3,7 +3,9 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
 };
 use bevy_rapier2d::{
-    prelude::{ActiveEvents, Collider, CollisionGroups, Damping, Group, RigidBody, Velocity},
+    prelude::{
+        ActiveEvents, Collider, CollisionGroups, Damping, ExternalForce, Group, RigidBody, Velocity,
+    },
     render::ColliderDebugColor,
 };
 
@@ -44,6 +46,7 @@ impl GridBallBundle {
                 linear_damping: 0.5,
                 angular_damping: 0.5,
             },
+            ExternalForce::default(),
         )
     }
 

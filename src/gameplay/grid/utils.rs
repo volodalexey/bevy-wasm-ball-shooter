@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
         default, BuildChildren, ChildBuilder, Color, Commands, DespawnRecursiveExt, Entity, Query,
-        Transform, Vec2, With,
+        Vec2, With,
     },
     text::{Text, Text2dBounds, Text2dBundle, TextSection, TextStyle},
     utils::{HashMap, HashSet},
@@ -11,7 +11,7 @@ use bevy_rapier2d::prelude::{PrismaticJointBuilder, RevoluteJointBuilder};
 use hexx::Hex;
 
 use crate::gameplay::{
-    ball::components::{GridBall, LastActiveGridBall, ProjectileBall, Species},
+    ball::components::{ProjectileBall, Species},
     constants::{
         BALL_DIAMETER, BALL_RADIUS, BUILD_JOINT_TOLERANCE, CELL_SIZE, CLUSTER_TOLERANCE,
         EMPTY_PLAYGROUND_HEIGHT, MIN_PROJECTILE_SNAP_VELOCITY, PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
@@ -21,126 +21,88 @@ use crate::gameplay::{
 
 use super::resources::Grid;
 
-pub fn buid_cell_storage(
-    balls_query: &Query<
-        (
-            Entity,
-            &Transform,
-            &Species,
-            &mut GridBall,
-            Option<&LastActiveGridBall>,
-        ),
-        With<GridBall>,
-    >,
-) -> HashMap<(i32, i32), Vec<(Entity, Vec2, Species, bool)>> {
-    let mut cell_storage: HashMap<(i32, i32), Vec<(Entity, Vec2, Species, bool)>> =
-        HashMap::default();
-    for (ball_entity, ball_transform, ball_species, grid_ball, ball_last_active) in
-        balls_query.iter()
-    {
-        if grid_ball.is_ready_to_despawn {
-            continue;
-        }
+pub fn buid_cells_to_entities(
+    entities_to_positions: &HashMap<Entity, Vec2>,
+) -> HashMap<(i32, i32), HashSet<Entity>> {
+    let mut cells_to_entities: HashMap<(i32, i32), HashSet<Entity>> = HashMap::default();
+    for (entity, position) in entities_to_positions.iter() {
         // https://leetless.de/posts/spatial-hashing-vs-ecs/
         // generate storage of balls by cells
-        let ball_position = ball_transform.translation.truncate();
-        let cell_index_x: i32 = (ball_position.x / CELL_SIZE).floor() as i32;
-        let cell_index_y: i32 = (ball_position.y / CELL_SIZE).floor() as i32;
+        let cell_index_x: i32 = (position.x / CELL_SIZE).floor() as i32;
+        let cell_index_y: i32 = (position.y / CELL_SIZE).floor() as i32;
         let key = (cell_index_x, cell_index_y);
-        cell_storage.entry(key).or_insert(default()).push((
-            ball_entity,
-            ball_position,
-            *ball_species,
-            match ball_last_active {
-                Some(_) => true,
-                None => false,
-            },
-        ));
+        cells_to_entities
+            .entry(key)
+            .or_insert(default())
+            .insert(*entity);
     }
-    cell_storage
+    cells_to_entities
 }
 
-pub fn build_connection_storage(
-    balls_query: &Query<
-        (
-            Entity,
-            &Transform,
-            &Species,
-            &mut GridBall,
-            Option<&LastActiveGridBall>,
-        ),
-        With<GridBall>,
-    >,
-    cell_storage: &HashMap<(i32, i32), Vec<(Entity, Vec2, Species, bool)>>,
-) -> HashMap<Entity, (Species, bool, Vec<(Entity, Vec2, Species)>)> {
-    let mut connection_storage: HashMap<Entity, (Species, bool, Vec<(Entity, Vec2, Species)>)> =
-        HashMap::default();
-    for (ball_entity, ball_transform, ball_species, grid_ball, ball_last_active) in
-        balls_query.iter()
-    {
-        if grid_ball.is_ready_to_despawn {
-            continue;
-        }
+pub fn build_entities_to_neighbours<'a>(
+    entities_to_positions: &HashMap<Entity, Vec2>,
+    cells_to_entities: &HashMap<(i32, i32), HashSet<Entity>>,
+) -> HashMap<Entity, HashSet<Entity>> {
+    let mut entities_to_neighbours: HashMap<Entity, HashSet<Entity>> = HashMap::default();
+    for (entity, position) in entities_to_positions.iter() {
         // generate storage of connections
-        let ball_position = ball_transform.translation.truncate();
-        let cell_index_x: i32 = (ball_position.x / CELL_SIZE).floor() as i32;
-        let cell_index_y: i32 = (ball_position.y / CELL_SIZE).floor() as i32;
+        let cell_index_x: i32 = (position.x / CELL_SIZE).floor() as i32;
+        let cell_index_y: i32 = (position.y / CELL_SIZE).floor() as i32;
         for cell_y in cell_index_y - 1..=cell_index_y + 1 {
             for cell_x in cell_index_x - 1..=cell_index_x + 1 {
                 let key = (cell_x, cell_y);
-                if let Some(neighbours) = cell_storage.get(&key) {
-                    for (neighbour_entity, neighbour_position, neighbour_species, _) in neighbours {
-                        if neighbour_entity.index() != ball_entity.index()
-                            && ball_position.distance(*neighbour_position) < CLUSTER_TOLERANCE
+                if let Some(neighbours) = cells_to_entities.get(&key) {
+                    for neighbour_entity in neighbours {
+                        if let Some(neighbour_position) =
+                            entities_to_positions.get(neighbour_entity)
                         {
-                            connection_storage
-                                .entry(ball_entity)
-                                .or_insert((
-                                    *ball_species,
-                                    match ball_last_active {
-                                        Some(_) => true,
-                                        None => false,
-                                    },
-                                    default(),
-                                ))
-                                .2
-                                .push((*neighbour_entity, *neighbour_position, *neighbour_species));
+                            if neighbour_entity.index() != entity.index()
+                                && position.distance(*neighbour_position) < CLUSTER_TOLERANCE
+                            {
+                                entities_to_neighbours
+                                    .entry(*entity)
+                                    .or_insert(default())
+                                    .insert(*neighbour_entity);
+                            }
                         }
                     }
                 }
             }
         }
     }
-    connection_storage
+    entities_to_neighbours
 }
 
 pub fn find_cluster(
     start_from: Entity,
-    connection_storage: &HashMap<Entity, (Species, bool, Vec<(Entity, Vec2, Species)>)>,
+    entities_to_neighbours: &HashMap<Entity, HashSet<Entity>>,
+    entities_to_species: &HashMap<Entity, Species>,
     check_species: bool,
-) -> (Vec<(Entity, bool)>, HashSet<Entity>) {
+) -> (HashSet<Entity>, HashSet<Entity>) {
     let mut to_process: Vec<&Entity> = vec![&start_from];
     let mut processed: HashSet<Entity> = HashSet::default();
-    let mut cluster: Vec<(Entity, bool)> = vec![];
+    let mut cluster: HashSet<Entity> = HashSet::default();
 
     while let Some(current) = to_process.pop() {
         // find clusters with the same color
-        if let Some((current_species, last_active, neighbours)) = connection_storage.get(current) {
-            if processed.contains(current) {
-                continue;
-            }
-            cluster.push((*current, *last_active));
-            processed.insert(*current);
-            for (neighbour_entity, _, neighbour_species) in neighbours.iter() {
-                if let Some(_) = connection_storage.get(neighbour_entity) {
+        if processed.contains(current) {
+            continue;
+        }
+        cluster.insert(*current);
+        processed.insert(*current);
+        if let Some(current_species) = entities_to_species.get(current) {
+            if let Some(neighbours) = entities_to_neighbours.get(current) {
+                for neighbour in neighbours.iter() {
                     // if neighbour is still in the grid and wasn't removed by cluster
-                    if processed.contains(neighbour_entity) {
+                    if processed.contains(neighbour) {
                         continue;
                     }
-                    if check_species && current_species != neighbour_species {
-                        continue;
+                    if let Some(neighbour_species) = entities_to_species.get(neighbour) {
+                        if check_species && current_species != neighbour_species {
+                            continue;
+                        }
+                        to_process.push(neighbour);
                     }
-                    to_process.push(neighbour_entity);
                 }
             }
         }
@@ -149,21 +111,24 @@ pub fn find_cluster(
 }
 
 pub fn find_floating_clusters(
-    connection_storage: &HashMap<Entity, (Species, bool, Vec<(Entity, Vec2, Species)>)>,
-) -> Vec<Vec<(Entity, bool)>> {
+    entities_to_neighbours: &HashMap<Entity, HashSet<Entity>>,
+    entities_to_species: &HashMap<Entity, Species>,
+    last_active_entities: &HashSet<Entity>,
+) -> Vec<HashSet<Entity>> {
     let mut processed: HashSet<Entity> = HashSet::default();
-    let mut floating_clusters: Vec<Vec<(Entity, bool)>> = vec![];
+    let mut floating_clusters: Vec<HashSet<Entity>> = vec![];
 
-    for (storage_entity, (_, storage_last_active, _)) in connection_storage.iter() {
-        if processed.contains(storage_entity) {
+    for (entity, _) in entities_to_neighbours.iter() {
+        if processed.contains(entity) {
             continue;
         }
-        if *storage_last_active {
-            processed.insert(*storage_entity);
+        if last_active_entities.contains(entity) {
+            processed.insert(*entity);
             continue;
         }
 
-        let (cluster, _processed) = find_cluster(*storage_entity, connection_storage, false);
+        let (cluster, _processed) =
+            find_cluster(*entity, entities_to_neighbours, entities_to_species, false);
 
         processed.extend(_processed);
 
@@ -172,8 +137,8 @@ pub fn find_floating_clusters(
         }
 
         let mut floating = true;
-        for (_, cluster_last_active) in cluster.iter() {
-            if *cluster_last_active {
+        for cluster_entity in cluster.iter() {
+            if last_active_entities.contains(cluster_entity) {
                 floating = false;
                 break;
             }
