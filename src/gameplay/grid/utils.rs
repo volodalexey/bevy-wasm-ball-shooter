@@ -199,8 +199,8 @@ pub fn adjust_grid_layout(
 
 pub fn build_revolute_joint(
     from_pos: Vec2,
-    to_entity: &Entity,
     to_pos: Vec2,
+    to_entity: Entity,
     normalize: bool,
 ) -> ImpulseJoint {
     let diff = to_pos - from_pos;
@@ -209,7 +209,7 @@ pub fn build_revolute_joint(
         false => diff,
     };
     let joint = RevoluteJointBuilder::new().local_anchor2(axis);
-    ImpulseJoint::new(*to_entity, joint)
+    ImpulseJoint::new(to_entity, joint)
 }
 
 pub fn build_prismatic_joint(from_pos: Vec2, to_pos: Vec2, to_entity: Entity) -> ImpulseJoint {
@@ -221,7 +221,7 @@ pub fn build_prismatic_joint(from_pos: Vec2, to_pos: Vec2, to_entity: Entity) ->
 }
 
 /// build joint to each corners if entity within distance
-pub fn build_corners_joints(
+pub fn build_joints(
     commands: &mut Commands,
     from_entity: Entity,
     from_position: Vec2,
@@ -245,10 +245,11 @@ pub fn build_corners_joints(
         }
 
         commands.entity(from_entity).with_children(|parent| {
-            parent.spawn(build_prismatic_joint(
+            parent.spawn(build_revolute_joint(
                 from_position,
                 *to_position,
                 *to_entity,
+                true,
             ));
         });
     }

@@ -50,8 +50,7 @@ use crate::{
 use super::{
     resources::{CollisionSnapCooldown, Grid},
     utils::{
-        adjust_grid_layout, build_ball_text, build_corners_joints, build_revolute_joint,
-        is_move_reverse,
+        adjust_grid_layout, build_ball_text, build_joints, build_revolute_joint, is_move_reverse,
     },
 };
 
@@ -100,7 +99,7 @@ pub fn generate_grid(
     let mut connections_buffer: HashMap<Entity, Vec<Entity>> = HashMap::default();
     // build connections and joints
     for (entity, position) in to_process.iter() {
-        build_corners_joints(
+        build_joints(
             &mut commands,
             *entity,
             *position,
@@ -251,9 +250,9 @@ pub fn on_projectile_collisions_events(
                         true => {
                             if projectile_ball.snap_to.len() == 0 {
                                 // snap with revolute joint only to the first grid ball
-                                let anchor_pos = ball_transform.translation.truncate();
+                                let to_pos = ball_transform.translation.truncate();
                                 let from_pos = projectile_transform.translation.truncate();
-                                let diff = (anchor_pos - from_pos).normalize();
+                                let diff = (to_pos - from_pos).normalize();
                                 let vel = projectile_velocity.linvel.normalize();
                                 let dot = vel.dot(diff);
                                 if dot > MIN_PROJECTILE_SNAP_DOT {
@@ -266,8 +265,8 @@ pub fn on_projectile_collisions_events(
                                     commands.entity(projectile_entity).with_children(|parent| {
                                         parent.spawn(build_revolute_joint(
                                             from_pos,
-                                            &ball_entity,
-                                            anchor_pos,
+                                            to_pos,
+                                            ball_entity,
                                             true,
                                         ));
                                     });
@@ -360,7 +359,7 @@ pub fn on_snap_projectile(
                     (neighbor_entity, neighbor_transform.translation.truncate())
                 })
                 .collect::<Vec<(Entity, Vec2)>>();
-            build_corners_joints(
+            build_joints(
                 &mut commands,
                 new_entity,
                 snap_projectile.cor_pos,
@@ -651,7 +650,7 @@ pub fn on_spawn_row(
                 .entity(new_entity)
                 .with_children(|parent| build_ball_text(parent, None));
 
-            build_corners_joints(
+            build_joints(
                 &mut commands,
                 new_entity,
                 ball_position,
