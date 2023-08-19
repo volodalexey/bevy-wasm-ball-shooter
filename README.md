@@ -2,8 +2,6 @@
 
 # [DEMO](https://volodalexey.github.io/bevy-wasm-ball-shooter/)
 
-Inspired by [ball_shooter](https://github.com/pyrbin/ball_shooter)
-
 Main goal is WASM with touch/mouse support
 
 ## Compile to WASM (WebAssembly) and build for browser
@@ -32,3 +30,4 @@ show next projectile from one side and multiple items
 UI bottom show info
 switch next projectile
 sprites for balls and buttons
+WASM audio

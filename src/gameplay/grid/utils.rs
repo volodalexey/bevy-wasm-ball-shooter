@@ -223,14 +223,12 @@ pub fn build_prismatic_joint(from_pos: Vec2, to_pos: Vec2, to_entity: Entity) ->
 /// build joint to each corners if entity within distance
 pub fn build_corners_joints(
     commands: &mut Commands,
-    grid: &Grid,
     from_entity: Entity,
     from_position: Vec2,
     to_entities: &Vec<(Entity, Vec2)>,
     connections_buffer: &mut HashMap<Entity, Vec<Entity>>,
 ) {
-    let corners = grid.calc_corners(from_position);
-    for (to_entity, to_transform) in to_entities.iter().filter(|(to_entity, to_position)| {
+    for (to_entity, to_position) in to_entities.iter().filter(|(to_entity, to_position)| {
         *to_entity != from_entity && from_position.distance(*to_position) < BUILD_JOINT_TOLERANCE
     }) {
         let from_connections = connections_buffer.entry(from_entity).or_insert(default());
@@ -245,14 +243,11 @@ pub fn build_corners_joints(
         } else {
             to_connections.push(from_entity);
         }
-        let mut distances = corners.map(|cor| (cor.distance(*to_transform), cor));
-        distances.sort_by(|a, b| a.0.total_cmp(&b.0));
-        let closest_position = distances[0].1;
 
         commands.entity(from_entity).with_children(|parent| {
             parent.spawn(build_prismatic_joint(
                 from_position,
-                closest_position,
+                *to_position,
                 *to_entity,
             ));
         });

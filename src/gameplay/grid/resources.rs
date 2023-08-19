@@ -2,7 +2,7 @@ use bevy::{
     prelude::{Resource, Vec2},
     time::{Timer, TimerMode},
 };
-use hexx::{Hex, HexLayout, HexOrientation, OffsetHexMode};
+use hexx::{HexLayout, HexOrientation, OffsetHexMode};
 
 use crate::gameplay::constants::{
     COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS, MAX_LEVEL, SIZE,
@@ -37,7 +37,6 @@ pub struct Grid {
     pub offset_mode: OffsetHexMode,
     pub layout: HexLayout,
     pub bounds: Bounds,
-    pub corners: [Vec2; 6],
 }
 
 impl Default for Grid {
@@ -49,9 +48,6 @@ impl Default for Grid {
             invert_y: false,
             origin: Vec2::ZERO,
         };
-        let corners = Hex { x: 0, y: 0 }
-            .all_neighbors()
-            .map(|hex| layout.hex_to_world_pos(hex));
         Self {
             init_cols: 0,
             init_rows: 0,
@@ -59,7 +55,6 @@ impl Default for Grid {
             offset_mode: OffsetHexMode::OddRows,
             layout,
             bounds: Default::default(),
-            corners,
         }
     }
 }
@@ -94,11 +89,6 @@ impl Grid {
             true => self.init_rows,
             false => fill_rows,
         } - 1);
-    }
-
-    /// Retrieves all 6 corner coordinates of the given hexagonal coordinates `hex`
-    pub fn calc_corners(&self, center: Vec2) -> [Vec2; 6] {
-        self.corners.map(|c| center + c)
     }
 
     pub fn clear(&mut self) {

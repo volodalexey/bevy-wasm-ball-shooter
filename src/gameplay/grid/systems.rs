@@ -102,7 +102,6 @@ pub fn generate_grid(
     for (entity, position) in to_process.iter() {
         build_corners_joints(
             &mut commands,
-            &grid,
             *entity,
             *position,
             &spawned,
@@ -355,17 +354,17 @@ pub fn on_snap_projectile(
 
         if !is_last_active {
             let mut connections_buffer: HashMap<Entity, Vec<Entity>> = HashMap::default();
+            let grid_entities = balls_query
+                .iter()
+                .map(|(neighbor_entity, neighbor_transform, _, _)| {
+                    (neighbor_entity, neighbor_transform.translation.truncate())
+                })
+                .collect::<Vec<(Entity, Vec2)>>();
             build_corners_joints(
                 &mut commands,
-                &grid,
                 new_entity,
                 snap_projectile.cor_pos,
-                &balls_query
-                    .iter()
-                    .map(|(neighbor_entity, neighbor_transform, _, _)| {
-                        (neighbor_entity, neighbor_transform.translation.truncate())
-                    })
-                    .collect::<Vec<(Entity, Vec2)>>(),
+                &grid_entities,
                 &mut connections_buffer,
             );
         }
@@ -654,7 +653,6 @@ pub fn on_spawn_row(
 
             build_corners_joints(
                 &mut commands,
-                &grid,
                 new_entity,
                 ball_position,
                 &old_entities,
