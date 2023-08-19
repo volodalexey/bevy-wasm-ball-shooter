@@ -36,8 +36,8 @@ use crate::{
             UpdateScoreCounter,
         },
         grid::utils::{
-            buid_cell_storage, build_connection_storage, build_prismatic_joint, find_cluster,
-            find_floating_clusters, is_move_slow, remove_projectile,
+            buid_cell_storage, build_connection_storage, find_cluster, find_floating_clusters,
+            is_move_slow, remove_projectile,
         },
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
@@ -50,7 +50,8 @@ use crate::{
 use super::{
     resources::{CollisionSnapCooldown, Grid},
     utils::{
-        adjust_grid_layout, build_ball_text, build_joints, build_revolute_joint, is_move_reverse,
+        adjust_grid_layout, build_ball_text, build_joint, build_joints, build_revolute_joint,
+        is_move_reverse,
     },
 };
 
@@ -350,6 +351,9 @@ pub fn on_snap_projectile(
             Some(snap_projectile.species),
             false,
         );
+        commands.entity(new_entity).with_children(|parent| {
+            build_ball_text(parent, None);
+        });
 
         if !is_last_active {
             let mut connections_buffer: HashMap<Entity, Vec<Entity>> = HashMap::default();
@@ -685,14 +689,12 @@ pub fn check_joints(
                     joint_between_found = true;
                     break;
                 }
-                if !joint_between_found {
-                    commands.entity(*a).with_children(|parent| {
-                        parent.spawn(build_prismatic_joint(
-                            ball_a_transform.translation.truncate(),
-                            ball_b_transform.translation.truncate(),
-                            *b,
-                        ));
-                    });
+                let ball_a_position = ball_a_transform.translation.truncate();
+                let ball_b_position = ball_b_transform.translation.truncate();
+                if !joint_between_found
+                    && ball_a_position.distance(ball_b_position) < BUILD_JOINT_TOLERANCE
+                {
+                    build_joint(&mut commands, *a, ball_a_position, ball_b_position, *b);
                     writer_find_cluster.send(FindCluster { start_from: *a });
                 }
             }

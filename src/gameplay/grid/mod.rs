@@ -1,5 +1,5 @@
 use bevy::prelude::{
-    apply_deferred, in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update,
+    apply_deferred, in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, PostUpdate, Update,
 };
 
 use self::{
@@ -42,7 +42,7 @@ impl Plugin for GridPlugin {
                     .run_if(in_state(AppState::Gameplay)),
             )
             .add_systems(
-                Update,
+                PostUpdate,
                 // snap projectile generate new grid ball, we need to use this ball in clusters, so wait after commands
                 (on_snap_projectile, apply_deferred, find_and_remove_clusters).chain(),
             )

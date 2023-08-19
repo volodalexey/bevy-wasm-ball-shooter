@@ -24,6 +24,7 @@ cargo install wasm-bindgen-cli
 
 TODO
 walk through physics connections for cluster
+split to count score system
 shoot multiple projectiles
 responsive layout and scale
 show first row partially

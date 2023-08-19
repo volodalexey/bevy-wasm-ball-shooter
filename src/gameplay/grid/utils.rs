@@ -7,7 +7,7 @@ use bevy::{
     utils::{HashMap, HashSet},
     window::{PrimaryWindow, Window},
 };
-use bevy_rapier2d::prelude::{ImpulseJoint, PrismaticJointBuilder, RevoluteJointBuilder};
+use bevy_rapier2d::prelude::{PrismaticJointBuilder, RevoluteJointBuilder};
 use hexx::Hex;
 
 use crate::gameplay::{
@@ -202,22 +202,39 @@ pub fn build_revolute_joint(
     to_pos: Vec2,
     to_entity: Entity,
     normalize: bool,
-) -> ImpulseJoint {
+) -> bevy_rapier2d::prelude::ImpulseJoint {
     let diff = to_pos - from_pos;
     let axis = match normalize {
         true => diff.normalize() * BALL_DIAMETER,
         false => diff,
     };
     let joint = RevoluteJointBuilder::new().local_anchor2(axis);
-    ImpulseJoint::new(to_entity, joint)
+    bevy_rapier2d::prelude::ImpulseJoint::new(to_entity, joint)
 }
 
-pub fn build_prismatic_joint(from_pos: Vec2, to_pos: Vec2, to_entity: Entity) -> ImpulseJoint {
+pub fn build_prismatic_joint(
+    from_pos: Vec2,
+    to_pos: Vec2,
+    to_entity: Entity,
+) -> bevy_rapier2d::prelude::ImpulseJoint {
     let diff = from_pos - to_pos;
     let min_limit = BALL_DIAMETER;
-    let max_limit = BALL_DIAMETER + BALL_RADIUS * 0.1;
+    let max_limit = BALL_DIAMETER + BALL_RADIUS;
     let prism = PrismaticJointBuilder::new(diff).limits([min_limit, max_limit]);
-    ImpulseJoint::new(to_entity, prism)
+    bevy_rapier2d::prelude::ImpulseJoint::new(to_entity, prism)
+}
+
+pub fn build_joint(
+    commands: &mut Commands,
+    from_entity: Entity,
+    from_pos: Vec2,
+    to_pos: Vec2,
+    to_entity: Entity,
+) {
+    commands.entity(from_entity).with_children(|parent| {
+        println!("joint {:?} => {:?}", from_entity, to_entity);
+        parent.spawn(build_prismatic_joint(from_pos, to_pos, to_entity));
+    });
 }
 
 /// build joint to each corners if entity within distance
@@ -244,14 +261,13 @@ pub fn build_joints(
             to_connections.push(from_entity);
         }
 
-        commands.entity(from_entity).with_children(|parent| {
-            parent.spawn(build_revolute_joint(
-                from_position,
-                *to_position,
-                *to_entity,
-                true,
-            ));
-        });
+        build_joint(
+            commands,
+            from_entity,
+            from_position,
+            *to_position,
+            *to_entity,
+        );
     }
 }
 
