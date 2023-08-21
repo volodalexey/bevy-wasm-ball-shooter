@@ -179,9 +179,12 @@ pub fn shoot_projectile(
         return;
     }
 
-    if let Ok((projectile_entity, projectile_transform, mut vel, mut projectile_ball)) =
-        projectile_ball_query.get_single_mut()
+    for (projectile_entity, projectile_transform, mut vel, mut projectile_ball) in
+        projectile_ball_query.iter_mut()
     {
+        if projectile_ball.is_flying {
+            continue;
+        }
         let window = window_query.single();
         let projectile_shoot_bottom =
             -(window.height() - PROJECTILE_SHOOT_BOTTOM - window.height() / 2.0);
@@ -229,6 +232,7 @@ pub fn draw_aim(
         (&mut AimTarget, &mut Transform, &mut Visibility),
         (With<AimTarget>, Without<LineType>),
     >,
+    projectile_ball_query: Query<Entity, With<ProjectileBall>>,
 ) {
     if let Ok((mut aim_target, mut target_transform, mut target_visibility)) =
         aim_target_query.get_single_mut()
@@ -244,10 +248,13 @@ pub fn draw_aim(
             // redraw only if pointer position (draw velocity in this case) changed
 
             cleanup_aim_line_utils(&mut commands, &aim_line_query);
-            let kinematic_filter = QueryFilter::default().groups(CollisionGroups::new(
+            let mut kinematic_filter = QueryFilter::default().groups(CollisionGroups::new(
                 Group::GROUP_1 | Group::GROUP_2 | Group::GROUP_5,
                 Group::GROUP_1 | Group::GROUP_2 | Group::GROUP_5,
             ));
+            for projectile_entity in projectile_ball_query.iter() {
+                kinematic_filter = kinematic_filter.exclude_collider(projectile_entity);
+            }
             let shape = Collider::ball(BALL_RADIUS);
             let mut ray_start = aim_target.aim_pos;
             let mut ray_vel = aim_target.aim_vel.normalize() * CAST_RAY_VELOCITY;

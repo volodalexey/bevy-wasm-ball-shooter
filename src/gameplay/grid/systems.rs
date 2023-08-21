@@ -9,7 +9,7 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier2d::prelude::{CollisionEvent, ExternalImpulse, Velocity};
+use bevy_rapier2d::prelude::{CollisionEvent, ExternalForce, Velocity};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -129,7 +129,7 @@ pub fn apply_magnetic_forces(
             Entity,
             &mut Transform,
             &GridBall,
-            &mut ExternalImpulse,
+            &mut ExternalForce,
             &mut Velocity,
             Option<&GridBallPositionAnimate>,
             Option<&GridBallScaleAnimate>,
@@ -156,7 +156,7 @@ pub fn apply_magnetic_forces(
         entity,
         mut transform,
         _,
-        mut impulse,
+        mut external_force,
         velocity,
         grid_ball_animate_position,
         grid_ball_animate_scale,
@@ -181,13 +181,17 @@ pub fn apply_magnetic_forces(
                 result_acc_weak += direction;
             }
         }
-        impulse.impulse = result_acc_strong.normalize_or_zero() * MAGNETIC_FACTOR_STRONG
+        external_force.force = result_acc_strong.normalize_or_zero() * MAGNETIC_FACTOR_STRONG
             + result_acc_weak.normalize_or_zero() * MAGNETIC_FACTOR_WEAK;
         velocity.linvel.clamp_length_max(MAX_GRID_BALL_SPEED);
         if keyboard_input_key_code.any_pressed([KeyCode::L]) {
             println!(
-                "impulse {} velocity {} position {} last_active_position {}",
-                impulse.impulse, velocity.linvel, position.y, last_active_position.y
+                "[len {}] force {} velocity {} position {} last_active_position {}",
+                entities_to_positions.len(),
+                external_force.force,
+                velocity.linvel,
+                position.y,
+                last_active_position.y
             );
         }
         // confine grid ball position

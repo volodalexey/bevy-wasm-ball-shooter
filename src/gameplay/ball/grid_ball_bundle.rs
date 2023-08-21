@@ -4,8 +4,7 @@ use bevy::{
 };
 use bevy_rapier2d::{
     prelude::{
-        ActiveEvents, Collider, CollisionGroups, Damping, ExternalForce, ExternalImpulse, Group,
-        RigidBody, Velocity,
+        ActiveEvents, Collider, CollisionGroups, Damping, ExternalForce, Group, RigidBody, Velocity,
     },
     render::ColliderDebugColor,
 };
@@ -50,7 +49,6 @@ impl GridBallBundle {
                 angular_damping: 0.1,
             },
             ExternalForce::default(),
-            ExternalImpulse::default(),
         )
     }
 
