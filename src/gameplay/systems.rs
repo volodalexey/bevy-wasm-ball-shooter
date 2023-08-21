@@ -1,6 +1,7 @@
 use bevy::{
     prelude::{
-        warn, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Transform, With, Without,
+        warn, Entity, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Transform, With,
+        Without,
     },
     window::{PrimaryWindow, Window},
 };
@@ -10,7 +11,7 @@ use hexx::Hex;
 use crate::{components::AppState, resources::LevelCounter, utils::increment_level};
 
 use super::{
-    ball::components::{GridBall, OutBall},
+    ball::components::{GridBall, OutBall, ProjectileBall},
     constants::GAME_OVER_BOTTOM,
     events::ProjectileReload,
     grid::resources::Grid,
@@ -26,7 +27,10 @@ pub fn check_game_over(
     mut app_state_next_state: ResMut<NextState<AppState>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut lines_query: Query<(&LineType, &mut Transform), With<LineType>>,
-    balls_query: Query<&Transform, (With<GridBall>, Without<LineType>)>,
+    balls_query: Query<
+        (Entity, &Transform),
+        (With<GridBall>, Without<ProjectileBall>, Without<LineType>),
+    >,
 ) {
     let window = window_query.single();
     let game_over_bottom = -(window.height() - GAME_OVER_BOTTOM - window.height() / 2.0);
@@ -44,11 +48,11 @@ pub fn check_game_over(
         }
     }
 
-    for ball_transform in balls_query.iter() {
+    for (ball_entity, ball_transform) in balls_query.iter() {
         if ball_transform.translation.y < game_over_bottom {
             warn!(
-                "GameOver because minimal bound ({}) less than ({})",
-                grid.bounds.mins.y, game_over_bottom
+                "GameOver because ball {:?} position y ({}) < ({})",
+                ball_entity, ball_transform.translation.y, game_over_bottom
             );
             app_state_next_state.set(AppState::GameOver);
             break;
@@ -60,7 +64,7 @@ pub fn check_game_win(
     mut app_state_next_state: ResMut<NextState<AppState>>,
     mut level_counter: ResMut<LevelCounter>,
     mut pkv: ResMut<PkvStore>,
-    balls_query: Query<&GridBall, With<GridBall>>,
+    balls_query: Query<&GridBall, (With<GridBall>, Without<ProjectileBall>)>,
     out_balls_query: Query<&OutBall, With<OutBall>>,
 ) {
     if balls_query.iter().len() == 0 && out_balls_query.iter().count() == 0 {

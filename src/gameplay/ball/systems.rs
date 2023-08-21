@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Add};
+use std::ops::Add;
 
 use bevy::{
     prelude::{
@@ -7,6 +7,7 @@ use bevy::{
         Vec2, Visibility, With, Without,
     },
     time::Time,
+    utils::HashSet,
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
@@ -42,7 +43,8 @@ use super::{
         AimLine, AimTarget, GridBall, GridBallScaleAnimate, NextProjectileBall, OutBall,
         OutBallAnimation, ProjectileBall, Species,
     },
-    projectile_ball_bundle::{NextProjectileBallBundle, ProjectileBallBundle},
+    grid_ball_bundle::GridBallBundle,
+    projectile_ball_bundle::NextProjectileBallBundle,
     resources::ProjectileBuffer,
     utils::{cleanup_aim_line_utils, cleanup_next_projectile_ball_utils},
 };
@@ -61,8 +63,8 @@ pub fn projectile_reload(
     gameplay_meshes: Res<GameplayMeshes>,
     gameplay_materials: Res<GameplayMaterials>,
     mut buffer: ResMut<ProjectileBuffer>,
-    mut begin_turn_events: EventReader<ProjectileReload>,
-    grid_balls_query: Query<&Species, With<GridBall>>,
+    mut projectile_reload_events: EventReader<ProjectileReload>,
+    grid_balls_query: Query<&Species, (With<GridBall>, Without<ProjectileBall>)>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     next_projectile_query: Query<Entity, With<NextProjectileBall>>,
     projectile_query: Query<Entity, With<ProjectileBall>>,
@@ -74,23 +76,24 @@ pub fn projectile_reload(
         return; // no more balls in grid
     }
 
-    if begin_turn_events.is_empty() {
+    if projectile_reload_events.is_empty() {
         return;
     }
-    begin_turn_events.clear();
+    projectile_reload_events.clear();
+    println!("received ProjectileReload");
 
-    let mut cache: HashMap<&Species, &Species> = HashMap::with_capacity(5);
+    let mut cache: HashSet<&Species> = HashSet::with_capacity(5);
     for species in grid_balls_query.iter() {
         if cache.len() == 5 {
             break;
         }
         if let None = cache.get(species) {
-            cache.insert(species, species);
+            cache.insert(species);
         }
     }
 
     let mut colors_in_grid: Vec<Species> = Vec::with_capacity(cache.len());
-    for (key, _) in cache.iter() {
+    for key in cache.iter() {
         colors_in_grid.push(**key);
     }
 
@@ -114,12 +117,19 @@ pub fn projectile_reload(
     let projectile_spawn_bottom =
         -(window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0);
 
-    commands.spawn(ProjectileBallBundle::new(
-        Vec2::new(0.0, projectile_spawn_bottom),
-        species,
+    let (entity, _) = GridBallBundle::spawn(
+        &mut commands,
         &gameplay_meshes,
         &gameplay_materials,
-    ));
+        Vec2::new(0.0, projectile_spawn_bottom),
+        false,
+        false,
+        true,
+        Some(species),
+        true,
+        true,
+    );
+    println!("=>>>>> ProjectileReload spawn {:?} {}", entity, species);
 
     buffer.0.push(Species::pick_random(&colors_in_grid));
 
@@ -151,7 +161,7 @@ pub fn shoot_projectile(
     mouse_button_input: Res<Input<MouseButton>>,
     touches: Res<Touches>,
     mut projectile_ball_query: Query<
-        (&Transform, &mut Velocity, &mut ProjectileBall),
+        (Entity, &Transform, &mut Velocity, &mut ProjectileBall),
         (With<ProjectileBall>, Without<AimTarget>, Without<AimLine>),
     >,
     audio_assets: Res<AudioAssets>,
@@ -169,7 +179,7 @@ pub fn shoot_projectile(
         return;
     }
 
-    if let Ok((projectile_transform, mut vel, mut projectile_ball)) =
+    if let Ok((projectile_entity, projectile_transform, mut vel, mut projectile_ball)) =
         projectile_ball_query.get_single_mut()
     {
         let window = window_query.single();
@@ -198,6 +208,7 @@ pub fn shoot_projectile(
             let aim_direction = target_position - projectile_transform.translation.truncate();
             vel.linvel = aim_direction.normalize() * PROJECTILE_SPEED;
 
+            println!("SHOOOOOT {:?}", projectile_entity);
             projectile_ball.is_flying = true;
 
             pkv_play_shoot_audio(&mut commands, &audio_assets, &pkv);

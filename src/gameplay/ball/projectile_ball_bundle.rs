@@ -2,49 +2,10 @@ use bevy::{
     prelude::{default, Bundle, Res, Transform, Vec2, Vec3},
     sprite::MaterialMesh2dBundle,
 };
-use bevy_rapier2d::{
-    prelude::{
-        Ccd, Collider, CollisionGroups, ExternalImpulse, Group, RigidBody, Sleeping, Velocity,
-    },
-    render::ColliderDebugColor,
-};
 
-use crate::gameplay::{
-    constants::BALL_RADIUS, materials::resources::GameplayMaterials,
-    meshes::resources::GameplayMeshes,
-};
+use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources::GameplayMeshes};
 
-use super::components::{NextProjectileBall, ProjectileBall, Species};
-
-pub struct ProjectileBallBundle;
-
-impl ProjectileBallBundle {
-    pub fn new(
-        pos: Vec2,
-        species: Species,
-        gameplay_meshes: &Res<GameplayMeshes>,
-        gameplay_materials: &Res<GameplayMaterials>,
-    ) -> impl Bundle {
-        (
-            MaterialMesh2dBundle {
-                mesh: gameplay_meshes.projectile_ball.clone().into(),
-                material: gameplay_materials.from_species(species),
-                transform: Transform::from_translation(pos.extend(0.0)),
-                ..default()
-            },
-            ProjectileBall::default(),
-            species,
-            Collider::ball(BALL_RADIUS),
-            RigidBody::Dynamic,
-            Velocity::default(),
-            Ccd::enabled(),
-            Sleeping::disabled(),
-            ColliderDebugColor(species.into()),
-            CollisionGroups::new(Group::GROUP_3, Group::GROUP_1 | Group::GROUP_2),
-            ExternalImpulse::default(),
-        )
-    }
-}
+use super::components::{NextProjectileBall, Species};
 
 pub struct NextProjectileBallBundle;
 

@@ -1,11 +1,11 @@
-use bevy::prelude::{in_state, App, FixedUpdate, IntoSystemConfigs, OnEnter, Plugin, Update};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, Plugin, Update};
 
 use crate::{components::AppState, ui::systems::interact_with_next_state_button};
 
 use self::{
     ball::ProjectilePlugin,
     events::{
-        CheckJoints, FindCluster, MoveDownLastActive, ProjectileReload, SpawnRow,
+        FindCluster, MoveDownLastActive, ProjectileReload, SnapProjectile, SpawnRow,
         UpdateScoreCounter,
     },
     grid::GridPlugin,
@@ -49,18 +49,18 @@ impl Plugin for GameplayPlugin {
             PanelsPlugin,
         ))
         .add_event::<ProjectileReload>()
+        .add_event::<SnapProjectile>()
         .add_event::<UpdateScoreCounter>()
         .add_event::<MoveDownLastActive>()
         .add_event::<SpawnRow>()
         .add_event::<FindCluster>()
-        .add_event::<CheckJoints>()
         .add_systems(OnEnter(AppState::Gameplay), setup_first_turn)
         .add_systems(
             Update,
             (keydown_detect, interact_with_next_state_button).run_if(in_state(AppState::Gameplay)),
         )
         .add_systems(
-            FixedUpdate,
+            Update,
             (check_game_over, check_game_win)
                 .chain()
                 .run_if(in_state(AppState::Gameplay)),

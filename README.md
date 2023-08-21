@@ -23,7 +23,7 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-walk through physics connections for cluster
+projectile can not push grid ball more than last active row
 split to count score system
 shoot multiple projectiles
 responsive layout and scale

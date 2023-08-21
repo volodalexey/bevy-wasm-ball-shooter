@@ -1,20 +1,23 @@
 use bevy::{
-    prelude::{default, Bundle, Commands, Entity, Res, Transform, Vec2, Vec3},
+    prelude::{default, BuildChildren, Bundle, Commands, Entity, Res, Transform, Vec2, Vec3},
     sprite::MaterialMesh2dBundle,
 };
 use bevy_rapier2d::{
     prelude::{
-        ActiveEvents, Collider, CollisionGroups, Damping, ExternalForce, Group, RigidBody, Velocity,
+        ActiveEvents, Collider, CollisionGroups, Damping, ExternalForce, ExternalImpulse, Group,
+        RigidBody, Velocity,
     },
     render::ColliderDebugColor,
 };
 
 use crate::gameplay::{
-    constants::BALL_RADIUS, materials::resources::GameplayMaterials,
+    constants::BALL_RADIUS, grid::utils::build_ball_text, materials::resources::GameplayMaterials,
     meshes::resources::GameplayMeshes,
 };
 
-use super::components::{GridBall, GridBallScaleAnimate, LastActiveGridBall, Species};
+use super::components::{
+    GridBall, GridBallScaleAnimate, LastActiveGridBall, MagneticGridBall, ProjectileBall, Species,
+};
 
 pub struct GridBallBundle;
 
@@ -44,9 +47,10 @@ impl GridBallBundle {
             Velocity::default(),
             Damping {
                 linear_damping: 0.5,
-                angular_damping: 0.5,
+                angular_damping: 0.1,
             },
             ExternalForce::default(),
+            ExternalImpulse::default(),
         )
     }
 
@@ -56,8 +60,11 @@ impl GridBallBundle {
         gameplay_materials: &Res<GameplayMaterials>,
         position: Vec2,
         is_last_active: bool,
+        is_magnetic: bool,
+        is_projectile: bool,
         some_species: Option<Species>,
         is_appear_animation: bool,
+        debug_text: bool,
     ) -> (Entity, Species) {
         let mut transform = Transform::from_translation(position.extend(0.0));
         if is_appear_animation {
@@ -84,6 +91,17 @@ impl GridBallBundle {
         }
         if is_appear_animation {
             entity_commands.insert(GridBallScaleAnimate::from_scale(Vec2::ONE));
+        }
+        if is_magnetic {
+            entity_commands.insert(MagneticGridBall {});
+        }
+        if is_projectile {
+            entity_commands.insert(ProjectileBall::default());
+        }
+        if debug_text {
+            entity_commands.with_children(|parent| {
+                build_ball_text(parent, None);
+            });
         }
 
         (entity_commands.id(), species)

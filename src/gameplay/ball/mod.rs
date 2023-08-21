@@ -5,7 +5,6 @@ use bevy::prelude::{
 use crate::components::AppState;
 
 use self::{
-    events::SnapProjectile,
     resources::ProjectileBuffer,
     systems::{
         animate_grid_ball_scale, animate_out_ball, check_out_ball_for_delete, cleanup_aim_lines,
@@ -16,7 +15,6 @@ use self::{
 
 pub mod aim_bundle;
 pub mod components;
-pub mod events;
 pub mod grid_ball_bundle;
 pub mod out_ball_bundle;
 pub mod projectile_ball_bundle;
@@ -27,8 +25,7 @@ pub struct ProjectilePlugin;
 
 impl Plugin for ProjectilePlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SnapProjectile>()
-            .insert_resource(ProjectileBuffer(vec![]))
+        app.insert_resource(ProjectileBuffer(vec![]))
             .add_systems(OnEnter(AppState::Gameplay), setup_aim_target)
             .add_systems(
                 Update,

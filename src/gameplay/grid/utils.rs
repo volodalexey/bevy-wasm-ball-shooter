@@ -1,25 +1,22 @@
 use bevy::{
-    prelude::{
-        default, BuildChildren, ChildBuilder, Color, Commands, DespawnRecursiveExt, Entity, Query,
-        Vec2, With,
-    },
+    prelude::{default, ChildBuilder, Color, Entity, EventWriter, Query, Vec2, With},
     text::{Text, Text2dBounds, Text2dBundle, TextSection, TextStyle},
     utils::{HashMap, HashSet},
     window::{PrimaryWindow, Window},
 };
-use bevy_rapier2d::prelude::{PrismaticJointBuilder, RevoluteJointBuilder};
 use hexx::Hex;
 
 use crate::gameplay::{
     ball::components::{ProjectileBall, Species},
     constants::{
-        BALL_DIAMETER, BALL_RADIUS, BUILD_JOINT_TOLERANCE, CELL_SIZE, CLUSTER_TOLERANCE,
-        EMPTY_PLAYGROUND_HEIGHT, MIN_PROJECTILE_SNAP_VELOCITY, PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
+        BALL_DIAMETER, CELL_SIZE, CLUSTER_TOLERANCE, EMPTY_PLAYGROUND_HEIGHT,
+        MIN_PROJECTILE_SNAP_VELOCITY, PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
     },
+    events::SnapProjectile,
     panels::resources::MoveCounter,
 };
 
-use super::resources::Grid;
+use super::resources::{CollisionSnapCooldown, Grid};
 
 pub fn buid_cells_to_entities(
     entities_to_positions: &HashMap<Entity, Vec2>,
@@ -77,7 +74,6 @@ pub fn find_cluster(
     start_from: Entity,
     entities_to_neighbours: &HashMap<Entity, HashSet<Entity>>,
     entities_to_species: &HashMap<Entity, Species>,
-    check_species: bool,
 ) -> (HashSet<Entity>, HashSet<Entity>) {
     let mut to_process: Vec<&Entity> = vec![&start_from];
     let mut processed: HashSet<Entity> = HashSet::default();
@@ -98,7 +94,7 @@ pub fn find_cluster(
                         continue;
                     }
                     if let Some(neighbour_species) = entities_to_species.get(neighbour) {
-                        if check_species && current_species != neighbour_species {
+                        if current_species != neighbour_species {
                             continue;
                         }
                         to_process.push(neighbour);
@@ -110,45 +106,56 @@ pub fn find_cluster(
     (cluster, processed)
 }
 
-pub fn find_floating_clusters(
-    entities_to_neighbours: &HashMap<Entity, HashSet<Entity>>,
-    entities_to_species: &HashMap<Entity, Species>,
-    last_active_entities: &HashSet<Entity>,
-) -> Vec<HashSet<Entity>> {
-    let mut processed: HashSet<Entity> = HashSet::default();
-    let mut floating_clusters: Vec<HashSet<Entity>> = vec![];
+// pub fn find_floating_clusters(
+//     removed_cluster: &HashSet<Entity>,
+//     entities_to_neighbours: &HashMap<Entity, HashSet<Entity>>,
+//     last_active_entities: &HashSet<Entity>,
+// ) -> Vec<HashSet<Entity>> {
+//     let mut processed: HashSet<Entity> = HashSet::default();
+//     let mut floating_clusters: Vec<HashSet<Entity>> = vec![];
 
-    for (entity, _) in entities_to_neighbours.iter() {
-        if processed.contains(entity) {
-            continue;
-        }
-        if last_active_entities.contains(entity) {
-            processed.insert(*entity);
-            continue;
-        }
+//     for entity in removed_cluster.iter() {
+//         if processed.contains(entity) {
+//             continue;
+//         }
+//         if last_active_entities.contains(entity) {
+//             processed.insert(*entity);
+//             continue;
+//         }
 
-        let (cluster, _processed) =
-            find_cluster(*entity, entities_to_neighbours, entities_to_species, false);
+//         let mut to_process: Vec<&Entity> = vec![entity];
+//         let mut processed: HashSet<Entity> = HashSet::default();
+//         let mut any_cluster: HashSet<Entity> = HashSet::default();
+//         let mut found_floating = false;
+//         while let Some(current) = to_process.pop() {
+//             if processed.contains(current) {
+//                 continue;
+//             }
+//             any_cluster.insert(*current);
+//             processed.insert(*current);
+//             if let Some(neighbours) = entities_to_neighbours.get(current) {
+//                 for neighbour in neighbours.iter() {
+//                     // if neighbour is still in the grid and wasn't removed by cluster
+//                     if processed.contains(neighbour) {
+//                         continue;
+//                     }
+//                     to_process.push(neighbour);
+//                     if last_active_entities.contains(neighbour) {
+//                         found_floating = true;
+//                         break;
+//                     }
+//                 }
+//             }
+//         }
 
-        processed.extend(_processed);
-
-        if cluster.len() <= 0 {
-            continue;
-        }
-
-        let mut floating = true;
-        for cluster_entity in cluster.iter() {
-            if last_active_entities.contains(cluster_entity) {
-                floating = false;
-                break;
-            }
-        }
-        if floating {
-            floating_clusters.push(cluster);
-        }
-    }
-    floating_clusters
-}
+//         if found_floating {
+//             continue;
+//         } else if any_cluster.len() > 0 {
+//             floating_clusters.push(any_cluster);
+//         }
+//     }
+//     floating_clusters
+// }
 
 pub fn adjust_grid_layout(
     window_query: &Query<&Window, With<PrimaryWindow>>,
@@ -160,80 +167,7 @@ pub fn adjust_grid_layout(
     let init_layout_y = spawn_bottom_world_y + EMPTY_PLAYGROUND_HEIGHT;
     let move_layout_y = move_counter.0 as f32 * ROW_HEIGHT;
     grid.layout.origin.y = init_layout_y - move_layout_y;
-}
-
-pub fn build_revolute_joint(
-    from_pos: Vec2,
-    to_pos: Vec2,
-    to_entity: Entity,
-    normalize: bool,
-) -> bevy_rapier2d::prelude::ImpulseJoint {
-    let diff = to_pos - from_pos;
-    let axis = match normalize {
-        true => diff.normalize() * BALL_DIAMETER,
-        false => diff,
-    };
-    let joint = RevoluteJointBuilder::new().local_anchor2(axis);
-    bevy_rapier2d::prelude::ImpulseJoint::new(to_entity, joint)
-}
-
-pub fn build_prismatic_joint(
-    from_pos: Vec2,
-    to_pos: Vec2,
-    to_entity: Entity,
-) -> bevy_rapier2d::prelude::ImpulseJoint {
-    let diff = from_pos - to_pos;
-    let min_limit = BALL_DIAMETER;
-    let max_limit = BALL_DIAMETER + BALL_RADIUS;
-    let prism = PrismaticJointBuilder::new(diff).limits([min_limit, max_limit]);
-    bevy_rapier2d::prelude::ImpulseJoint::new(to_entity, prism)
-}
-
-pub fn build_joint(
-    commands: &mut Commands,
-    from_entity: Entity,
-    from_pos: Vec2,
-    to_pos: Vec2,
-    to_entity: Entity,
-) {
-    commands.entity(from_entity).with_children(|parent| {
-        println!("joint {:?} => {:?}", from_entity, to_entity);
-        parent.spawn(build_prismatic_joint(from_pos, to_pos, to_entity));
-    });
-}
-
-/// build joint to each corners if entity within distance
-pub fn build_joints(
-    commands: &mut Commands,
-    from_entity: Entity,
-    from_position: Vec2,
-    to_entities: &Vec<(Entity, Vec2)>,
-    connections_buffer: &mut HashMap<Entity, Vec<Entity>>,
-) {
-    for (to_entity, to_position) in to_entities.iter().filter(|(to_entity, to_position)| {
-        *to_entity != from_entity && from_position.distance(*to_position) < BUILD_JOINT_TOLERANCE
-    }) {
-        let from_connections = connections_buffer.entry(from_entity).or_insert(default());
-        if from_connections.contains(to_entity) {
-            continue;
-        } else {
-            from_connections.push(*to_entity);
-        }
-        let to_connections = connections_buffer.entry(*to_entity).or_insert(default());
-        if to_connections.contains(&from_entity) {
-            continue;
-        } else {
-            to_connections.push(from_entity);
-        }
-
-        build_joint(
-            commands,
-            from_entity,
-            from_position,
-            *to_position,
-            *to_entity,
-        );
-    }
+    println!("grid.layout.origin.y {}", grid.layout.origin.y);
 }
 
 pub fn is_move_slow(velocity: Vec2) -> bool {
@@ -284,11 +218,11 @@ pub fn build_ball_text(parent: &mut ChildBuilder<'_, '_, '_>, some_hex: Option<H
     });
 }
 
-pub fn remove_projectile(
-    commands: &mut Commands,
-    projectile_entity: &Entity,
-    projectile_ball: &mut ProjectileBall,
+pub fn send_snap_projectile(
+    collision_snap_cooldown: &mut CollisionSnapCooldown,
+    writer_snap_projectile: &mut EventWriter<SnapProjectile>,
+    projectile_entity: Entity,
 ) {
-    projectile_ball.is_ready_to_despawn = true;
-    commands.entity(*projectile_entity).despawn_recursive();
+    collision_snap_cooldown.stop();
+    writer_snap_projectile.send(SnapProjectile { projectile_entity });
 }

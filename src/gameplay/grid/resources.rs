@@ -1,11 +1,13 @@
 use bevy::{
-    prelude::{Resource, Vec2},
+    prelude::{Entity, Resource, Vec2},
     time::{Timer, TimerMode},
+    utils::{default, HashSet},
 };
 use hexx::{HexLayout, HexOrientation, OffsetHexMode};
 
 use crate::gameplay::constants::{
-    COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS, MAX_LEVEL, SIZE,
+    CLUSTER_CHECK_COOLDOWN_TIME, COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS, MAX_LEVEL,
+    SIZE,
 };
 
 #[derive(Default, Debug, Copy, Clone)]
@@ -166,5 +168,20 @@ impl CollisionSnapCooldown {
             }
         }
         is_ready
+    }
+}
+
+#[derive(Resource)]
+pub struct ClusterCheckCooldown {
+    pub timer: Timer,
+    pub to_check: HashSet<Entity>,
+}
+
+impl Default for ClusterCheckCooldown {
+    fn default() -> Self {
+        Self {
+            timer: Timer::from_seconds(CLUSTER_CHECK_COOLDOWN_TIME, TimerMode::Repeating),
+            to_check: default(),
+        }
     }
 }

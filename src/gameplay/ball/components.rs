@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display, Formatter, Result};
 
 use bevy::{
-    prelude::{Color, Component, Entity, Vec2},
+    prelude::{Color, Component, Vec2},
     sprite::ColorMaterial,
     time::{Timer, TimerMode},
 };
@@ -11,18 +11,16 @@ use crate::gameplay::constants::{MAX_APPEAR_TIME, MOVE_DOWN_TIME};
 #[derive(Component)]
 pub struct ProjectileBall {
     pub is_flying: bool,
-    pub is_ready_to_despawn: bool,
-    pub snap_to: Vec<Entity>,
     pub snap_vel: Vec2,
+    pub is_snapped: bool,
 }
 
 impl Default for ProjectileBall {
     fn default() -> Self {
         Self {
             is_flying: false,
-            is_ready_to_despawn: false,
-            snap_to: vec![],
             snap_vel: Vec2::ZERO,
+            is_snapped: false,
         }
     }
 }
@@ -45,6 +43,9 @@ impl Default for GridBall {
 
 #[derive(Component)]
 pub struct LastActiveGridBall {}
+
+#[derive(Component)]
+pub struct MagneticGridBall {}
 
 #[derive(Component)]
 pub struct GridBallPositionAnimate {

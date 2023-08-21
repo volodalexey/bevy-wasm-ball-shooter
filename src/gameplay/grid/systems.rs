@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
-        info, Assets, BuildChildren, Commands, DespawnRecursiveExt, Entity, EventReader,
-        EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, Transform, Vec2, With, Without,
+        info, Assets, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Input,
+        KeyCode, NextState, Query, Res, ResMut, Transform, Vec2, With, Without,
     },
     sprite::ColorMaterial,
     time::Time,
@@ -9,9 +9,7 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier2d::prelude::{
-    CollisionEvent, ExternalForce, ExternalImpulse, RapierContext, RapierRigidBodyHandle, Velocity,
-};
+use bevy_rapier2d::prelude::{CollisionEvent, ExternalImpulse, Velocity};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -20,24 +18,25 @@ use crate::{
     gameplay::{
         ball::{
             components::{
-                GridBall, GridBallPositionAnimate, LastActiveGridBall, OutBall, ProjectileBall,
-                Species,
+                GridBall, GridBallPositionAnimate, GridBallScaleAnimate, LastActiveGridBall,
+                MagneticGridBall, OutBall, ProjectileBall, Species,
             },
-            events::SnapProjectile,
             grid_ball_bundle::GridBallBundle,
             out_ball_bundle::OutBallBundle,
         },
         constants::{
-            ATTRACTION_FORCE, BUILD_JOINT_TOLERANCE, FILL_PLAYGROUND_ROWS, MIN_CLUSTER_SIZE,
-            MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_TOLERANCE, ROW_HEIGHT,
+            BUILD_JOINT_TOLERANCE, FILL_PLAYGROUND_ROWS, MAGNETIC_DISTANCE_STRONG,
+            MAGNETIC_DISTANCE_WEAK, MAGNETIC_FACTOR_STRONG, MAGNETIC_FACTOR_WEAK,
+            MAX_GRID_BALL_SPEED, MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_TOLERANCE,
+            ROW_HEIGHT,
         },
         events::{
-            CheckJoints, FindCluster, MoveDownLastActive, ProjectileReload, SpawnRow,
+            FindCluster, MoveDownLastActive, ProjectileReload, SnapProjectile, SpawnRow,
             UpdateScoreCounter,
         },
         grid::utils::{
-            buid_cells_to_entities, build_entities_to_neighbours, find_cluster,
-            find_floating_clusters, is_move_slow, remove_projectile,
+            buid_cells_to_entities, build_entities_to_neighbours, find_cluster, is_move_slow,
+            send_snap_projectile,
         },
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
@@ -48,11 +47,8 @@ use crate::{
 };
 
 use super::{
-    resources::{CollisionSnapCooldown, Grid},
-    utils::{
-        adjust_grid_layout, build_ball_text, build_joint, build_joints, build_revolute_joint,
-        is_move_reverse,
-    },
+    resources::{ClusterCheckCooldown, CollisionSnapCooldown, Grid},
+    utils::{adjust_grid_layout, is_move_reverse},
 };
 
 pub fn generate_grid(
@@ -84,29 +80,17 @@ pub fn generate_grid(
             &gameplay_materials,
             position,
             is_last_active,
+            true,
+            false,
             None,
             true,
+            true,
         );
-
-        commands.entity(new_entity).with_children(|parent| {
-            build_ball_text(parent, Some(hex));
-        });
 
         spawned.push((new_entity, position));
         if !is_last_active {
             to_process.push((new_entity, position));
         }
-    }
-    let mut connections_buffer: HashMap<Entity, Vec<Entity>> = HashMap::default();
-    // build connections and joints
-    for (entity, position) in to_process.iter() {
-        build_joints(
-            &mut commands,
-            *entity,
-            *position,
-            &spawned,
-            &mut connections_buffer,
-        );
     }
     app_state_next_state.set(AppState::Gameplay);
 }
@@ -139,6 +123,80 @@ pub fn move_down_last_active(
     }
 }
 
+pub fn apply_magnetic_forces(
+    mut magnetic_balls_query: Query<
+        (
+            Entity,
+            &mut Transform,
+            &GridBall,
+            &mut ExternalImpulse,
+            &mut Velocity,
+            Option<&GridBallPositionAnimate>,
+            Option<&GridBallScaleAnimate>,
+        ),
+        (With<MagneticGridBall>, Without<ProjectileBall>),
+    >,
+    grid: Res<Grid>,
+    keyboard_input_key_code: Res<Input<KeyCode>>,
+) {
+    let hex = Hex {
+        x: 0,
+        y: grid.last_active_row,
+    };
+    let last_active_position = grid.layout.hex_to_world_pos(hex);
+    let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
+    magnetic_balls_query
+        .iter()
+        .for_each(|(e, t, gb, _, _, _, _)| {
+            if !gb.is_ready_to_despawn {
+                entities_to_positions.insert(e, t.translation.truncate());
+            }
+        });
+    for (
+        entity,
+        mut transform,
+        _,
+        mut impulse,
+        velocity,
+        grid_ball_animate_position,
+        grid_ball_animate_scale,
+    ) in magnetic_balls_query.iter_mut()
+    {
+        if grid_ball_animate_position.is_some() || grid_ball_animate_scale.is_some() {
+            // only for magnetic
+            continue;
+        }
+        let mut result_acc_strong = Vec2::ZERO;
+        let mut result_acc_weak = Vec2::ZERO;
+        let position = transform.translation.truncate();
+        for (neighbour, neighbour_position) in entities_to_positions.iter() {
+            if *neighbour == entity {
+                continue;
+            }
+            let direction = *neighbour_position - position;
+            let dist = position.distance(*neighbour_position);
+            if dist < MAGNETIC_DISTANCE_STRONG {
+                result_acc_strong += direction;
+            } else if dist < MAGNETIC_DISTANCE_WEAK {
+                result_acc_weak += direction;
+            }
+        }
+        impulse.impulse = result_acc_strong.normalize_or_zero() * MAGNETIC_FACTOR_STRONG
+            + result_acc_weak.normalize_or_zero() * MAGNETIC_FACTOR_WEAK;
+        velocity.linvel.clamp_length_max(MAX_GRID_BALL_SPEED);
+        if keyboard_input_key_code.any_pressed([KeyCode::L]) {
+            println!(
+                "impulse {} velocity {} position {} last_active_position {}",
+                impulse.impulse, velocity.linvel, position.y, last_active_position.y
+            );
+        }
+        // confine grid ball position
+        if position.y > last_active_position.y {
+            transform.translation.y = last_active_position.y;
+        }
+    }
+}
+
 pub fn cleanup_grid(
     mut commands: Commands,
     mut grid: ResMut<Grid>,
@@ -155,19 +213,13 @@ pub fn cleanup_grid(
 }
 
 pub fn check_projectile_out_of_grid(
-    mut commands: Commands,
-    mut projectile_query: Query<
-        (Entity, &Transform, &mut ProjectileBall, &Species),
-        With<ProjectileBall>,
-    >,
+    projectile_query: Query<(Entity, &Transform, &ProjectileBall), With<ProjectileBall>>,
     grid: Res<Grid>,
-    mut snap_projectile: EventWriter<SnapProjectile>,
+    mut writer_snap_projectile: EventWriter<SnapProjectile>,
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
 ) {
-    if let Ok((projectile_entity, projectile_transform, mut projectile_ball, species)) =
-        projectile_query.get_single_mut()
-    {
-        if !projectile_ball.is_flying || projectile_ball.is_ready_to_despawn {
+    for (projectile_entity, projectile_transform, projectile_ball) in projectile_query.iter() {
+        if !projectile_ball.is_flying {
             return;
         }
         let hex = Hex {
@@ -181,43 +233,37 @@ pub fn check_projectile_out_of_grid(
                 "Projectile out of grid snap {} {}",
                 position.y, projectile_position.y
             );
-            let corrected_hex = grid.layout.world_pos_to_hex(projectile_position);
-            let mut offset = corrected_hex.to_offset_coordinates(grid.offset_mode);
-            if offset[1] != grid.last_active_row {
-                offset[1] = grid.last_active_row;
-            }
-            let corrected_position = grid
-                .layout
-                .hex_to_world_pos(Hex::from_offset_coordinates(offset, grid.offset_mode));
-            remove_projectile(&mut commands, &projectile_entity, &mut projectile_ball);
-            collision_snap_cooldown.stop();
-            snap_projectile.send(SnapProjectile {
-                pos: projectile_position,
-                cor_pos: corrected_position,
-                species: *species,
-            });
+            send_snap_projectile(
+                collision_snap_cooldown.as_mut(),
+                &mut writer_snap_projectile,
+                projectile_entity,
+            );
         }
     }
 }
 
-pub fn on_projectile_collisions_events(
+pub fn check_collision_events(
     mut commands: Commands,
     mut collision_events: EventReader<CollisionEvent>,
-    mut snap_projectile: EventWriter<SnapProjectile>,
+    mut writer_snap_projectile: EventWriter<SnapProjectile>,
     mut projectile_query: Query<
-        (
-            Entity,
-            &mut Transform,
-            &Species,
-            &mut Velocity,
-            &mut ProjectileBall,
-        ),
+        (Entity, &mut Transform, &mut Velocity, &mut ProjectileBall),
         With<ProjectileBall>,
     >,
-    balls_query: Query<(Entity, &Transform), (With<GridBall>, Without<ProjectileBall>)>,
+    balls_query: Query<
+        (Entity, &Transform),
+        (
+            With<GridBall>,
+            Without<ProjectileBall>,
+            Without<GridBallScaleAnimate>,
+        ),
+    >,
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
-    mut writer_check_joints: EventWriter<CheckJoints>,
+    mut writer_find_cluster: EventWriter<FindCluster>,
+    time: Res<Time>,
+    mut cluster_check_cooldown: ResMut<ClusterCheckCooldown>,
 ) {
+    cluster_check_cooldown.timer.tick(time.delta());
     for (entity_a, entity_b, started) in collision_events.iter().map(|e| match e {
         CollisionEvent::Started(a, b, _) => (a, b, true),
         CollisionEvent::Stopped(a, b, _) => (a, b, false),
@@ -226,12 +272,25 @@ pub fn on_projectile_collisions_events(
         let some_ball_entity_b = balls_query.get(*entity_b);
 
         if some_ball_entity_a.is_ok() && some_ball_entity_b.is_ok() && started {
-            writer_check_joints.send(CheckJoints {
-                a: some_ball_entity_a.unwrap().0,
-                b: some_ball_entity_b.unwrap().0,
-            });
+            cluster_check_cooldown.to_check.extend(vec![
+                some_ball_entity_a.unwrap().0,
+                some_ball_entity_b.unwrap().0,
+            ]);
+            if cluster_check_cooldown.timer.just_finished() {
+                writer_find_cluster.send(FindCluster {
+                    to_check: cluster_check_cooldown
+                        .to_check
+                        .clone()
+                        .into_iter()
+                        .collect(),
+                    move_down_after: false,
+                });
+                cluster_check_cooldown.to_check.clear();
+                println!("send FindCluster");
+                println!("projectile_query len {}", projectile_query.iter().len());
+            }
         }
-        if let Ok((ball_entity, ball_transform)) = some_ball_entity_a.or(some_ball_entity_b) {
+        if let Ok((_, ball_transform)) = some_ball_entity_a.or(some_ball_entity_b) {
             let mut p1 = projectile_query.get_mut(*entity_a);
             if p1.is_err() {
                 p1 = projectile_query.get_mut(*entity_b);
@@ -240,89 +299,51 @@ pub fn on_projectile_collisions_events(
             if let Ok((
                 projectile_entity,
                 projectile_transform,
-                species,
                 projectile_velocity,
                 mut projectile_ball,
             )) = p1
             {
+                println!("col {:?}", projectile_entity);
                 // take into account only collision between projectile and grid ball
-                if !projectile_ball.is_ready_to_despawn
-                    && match started {
-                        true => {
-                            if projectile_ball.snap_to.len() == 0 {
-                                // snap with revolute joint only to the first grid ball
-                                let to_pos = ball_transform.translation.truncate();
-                                let from_pos = projectile_transform.translation.truncate();
-                                let diff = (to_pos - from_pos).normalize();
-                                let vel = projectile_velocity.linvel.normalize();
-                                let dot = vel.dot(diff);
-                                if dot > MIN_PROJECTILE_SNAP_DOT {
-                                    collision_snap_cooldown.start();
-                                    // save first touch position
-                                    is_move_reverse(
-                                        &mut projectile_ball,
-                                        projectile_velocity.linvel,
-                                    );
-                                    commands.entity(projectile_entity).with_children(|parent| {
-                                        parent.spawn(build_revolute_joint(
-                                            from_pos,
-                                            to_pos,
-                                            ball_entity,
-                                            true,
-                                        ));
-                                    });
-                                    projectile_ball.snap_to.push(ball_entity);
-                                }
-                                false
-                            } else {
-                                is_move_reverse(&mut projectile_ball, projectile_velocity.linvel)
-                            }
-                        }
-                        false => {
-                            is_move_slow(projectile_velocity.linvel)
-                                || is_move_reverse(&mut projectile_ball, projectile_velocity.linvel)
+                if started {
+                    if projectile_ball.snap_vel == Vec2::ZERO {
+                        // snap with revolute joint only to the first grid ball
+                        let to_pos = ball_transform.translation.truncate();
+                        let from_pos = projectile_transform.translation.truncate();
+                        let diff = (to_pos - from_pos).normalize();
+                        let vel = projectile_velocity.linvel.normalize();
+                        let dot = vel.dot(diff);
+                        if dot > MIN_PROJECTILE_SNAP_DOT {
+                            println!("dot > MIN_PROJECTILE_SNAP_DOT {:?}", projectile_entity);
+                            collision_snap_cooldown.start();
+                            // save first touch position
+                            is_move_reverse(&mut projectile_ball, projectile_velocity.linvel);
+                            commands
+                                .entity(projectile_entity)
+                                .insert(MagneticGridBall {});
                         }
                     }
-                {
-                    collision_snap_cooldown.stop();
+                }
+                let is_move_reverse_result =
+                    is_move_reverse(&mut projectile_ball, projectile_velocity.linvel);
+                println!(
+                    "{:?} started {} is_move_slow {} is_move_reverse {}",
+                    projectile_entity,
+                    started,
+                    is_move_slow(projectile_velocity.linvel),
+                    is_move_reverse_result
+                );
+                if is_move_slow(projectile_velocity.linvel) || is_move_reverse_result {
                     // if ball turned back
                     // or ball moves too slow
                     info!("Projectile too slow so snap");
-                    remove_projectile(&mut commands, &projectile_entity, &mut projectile_ball);
-                    let projectile_position = projectile_transform.translation.truncate();
-                    snap_projectile.send(SnapProjectile {
-                        pos: projectile_position,
-                        cor_pos: projectile_position,
-                        species: *species,
-                    });
+                    send_snap_projectile(
+                        collision_snap_cooldown.as_mut(),
+                        &mut writer_snap_projectile,
+                        projectile_entity,
+                    );
                 }
             }
-        }
-    }
-}
-
-pub fn control_projectile_position(
-    keyboard_input_key_code: Res<Input<KeyCode>>,
-    mut projectile_query: Query<&mut ExternalImpulse, With<ProjectileBall>>,
-) {
-    for mut projectile_impulse in projectile_query.iter_mut() {
-        let mut direction = Vec2::ZERO;
-        if keyboard_input_key_code.any_pressed([KeyCode::Left]) {
-            direction += Vec2::new(-1.0, 0.0);
-        }
-        if keyboard_input_key_code.any_pressed([KeyCode::Right]) {
-            direction += Vec2::new(1.0, 0.0);
-        }
-        if keyboard_input_key_code.any_pressed([KeyCode::Up]) {
-            direction += Vec2::new(0.0, 1.0);
-        }
-        if keyboard_input_key_code.any_pressed([KeyCode::Down]) {
-            direction += Vec2::new(0.0, -1.0);
-        }
-
-        if direction.length() > 0.0 {
-            direction = direction.normalize_or_zero();
-            projectile_impulse.impulse = direction * 10.0;
         }
     }
 }
@@ -330,64 +351,56 @@ pub fn control_projectile_position(
 pub fn on_snap_projectile(
     mut snap_projectile_events: EventReader<SnapProjectile>,
     mut commands: Commands,
-    gameplay_meshes: Res<GameplayMeshes>,
-    gameplay_materials: Res<GameplayMaterials>,
     grid: Res<Grid>,
-    mut begin_turn: EventWriter<ProjectileReload>,
+    mut projectile_reload_writer: EventWriter<ProjectileReload>,
     mut turn_counter: ResMut<TurnCounter>,
-    balls_query: Query<(Entity, &Transform, &Species, &GridBall), With<GridBall>>,
     mut writer_find_cluster: EventWriter<FindCluster>,
+    mut projectile_query: Query<(&mut ProjectileBall, &Transform), With<ProjectileBall>>,
 ) {
-    if let Some(snap_projectile) = snap_projectile_events.iter().next() {
-        let projectile_position = snap_projectile.pos;
-        let possible_hex = grid.layout.world_pos_to_hex(projectile_position);
-        let is_last_active = possible_hex.y == grid.last_active_row;
-        let (new_entity, _) = GridBallBundle::spawn(
-            &mut commands,
-            &gameplay_meshes,
-            &gameplay_materials,
-            projectile_position,
-            is_last_active,
-            Some(snap_projectile.species),
-            false,
-        );
-        commands.entity(new_entity).with_children(|parent| {
-            build_ball_text(parent, None);
-        });
+    // println!("on_snap_projectile");
+    for SnapProjectile { projectile_entity } in snap_projectile_events.iter() {
+        println!("SnapProjectile process {:?}", projectile_entity);
+        if let Ok((mut projectile_ball, transform)) = projectile_query.get_mut(*projectile_entity) {
+            // projectile ball can be removed by cluster and never snapped
+            if projectile_ball.is_snapped {
+                continue;
+            }
+            projectile_ball.is_snapped = true;
+            let position = transform.translation.truncate();
+            let snap_hex = grid.layout.world_pos_to_hex(position);
+            let mut offset = snap_hex.to_offset_coordinates(grid.offset_mode);
+            let mut is_last_active = false;
+            let mut entity_commands = commands.entity(*projectile_entity);
+            if offset[1] <= grid.last_active_row {
+                offset[1] = grid.last_active_row;
+                is_last_active = true;
+                let corrected_position = grid
+                    .layout
+                    .hex_to_world_pos(Hex::from_offset_coordinates(offset, grid.offset_mode));
 
-        if !is_last_active {
-            let mut connections_buffer: HashMap<Entity, Vec<Entity>> = HashMap::default();
-            let grid_entities = balls_query
-                .iter()
-                .map(|(neighbor_entity, neighbor_transform, _, _)| {
-                    (neighbor_entity, neighbor_transform.translation.truncate())
-                })
-                .collect::<Vec<(Entity, Vec2)>>();
-            build_joints(
-                &mut commands,
-                new_entity,
-                snap_projectile.cor_pos,
-                &grid_entities,
-                &mut connections_buffer,
-            );
-        }
-        if projectile_position != snap_projectile.cor_pos {
-            commands
-                .entity(new_entity)
-                .insert(GridBallPositionAnimate::from_position(
-                    snap_projectile.cor_pos,
+                entity_commands.insert(GridBallPositionAnimate::from_position(
+                    corrected_position,
                     false,
                 ));
+            }
+            if is_last_active {
+                entity_commands.insert(LastActiveGridBall {});
+            }
+            entity_commands.remove::<ProjectileBall>();
+            println!(
+                "removed ProjectileBall from {:?} position y {}",
+                projectile_entity, position.y
+            );
         }
-
         turn_counter.0 += 1;
 
-        begin_turn.send(ProjectileReload);
+        println!("send ProjectileReload {:?}", projectile_entity);
+        projectile_reload_writer.send(ProjectileReload);
         writer_find_cluster.send(FindCluster {
-            start_from: new_entity,
+            to_check: vec![*projectile_entity],
+            move_down_after: true,
         });
     }
-    snap_projectile_events.clear();
 }
 
 pub fn find_and_remove_clusters(
@@ -400,124 +413,118 @@ pub fn find_and_remove_clusters(
             &Species,
             &mut GridBall,
             Option<&LastActiveGridBall>,
-            &mut ExternalForce,
+            Option<&ProjectileBall>,
         ),
         With<GridBall>,
     >,
     gameplay_meshes: Res<GameplayMeshes>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut writer_update_cooldown_counter: EventWriter<UpdateScoreCounter>,
+    mut writer_snap_projectile: EventWriter<SnapProjectile>,
 ) {
     if find_cluster_events.is_empty() {
         return;
     }
-    for FindCluster { start_from } in find_cluster_events.iter() {
-        let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
-        let mut entities_to_species: HashMap<Entity, Species> = HashMap::default();
-        let mut last_active_entities: HashSet<Entity> = HashSet::default();
-        balls_query.iter().for_each(|(e, t, sp, gb, ila, _)| {
-            if !gb.is_ready_to_despawn {
-                entities_to_positions.insert(e, t.translation.truncate());
-                entities_to_species.insert(e, *sp);
-                if let Some(_) = ila {
-                    last_active_entities.insert(e);
-                }
-            }
-        });
-        let cells_to_entities = buid_cells_to_entities(&entities_to_positions);
-
-        let mut entities_to_neighbours =
-            build_entities_to_neighbours(&entities_to_positions, &cells_to_entities);
-
-        for (entity, neighbours) in entities_to_neighbours.iter() {
-            if let Ok((_, _, _, _, _, mut external_force)) = balls_query.get_mut(*entity) {
-                let mut result_force = external_force.force;
-                for neighbour in neighbours.iter() {
-                    if last_active_entities.contains(entity) {
-                        continue;
-                    }
-                    if let Some(neighbour_position) = entities_to_positions.get(neighbour) {
-                        result_force += *neighbour_position;
-                    }
-                }
-                if result_force.length() > 0.0 {
-                    result_force = result_force.normalize_or_zero();
-                    external_force.force = result_force * ATTRACTION_FORCE;
-                }
+    // println!("FindCluster len {}", find_cluster_events.iter().len());
+    let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
+    let mut entities_to_species: HashMap<Entity, Species> = HashMap::default();
+    let mut last_active_entities: HashSet<Entity> = HashSet::default();
+    balls_query.iter().for_each(|(e, t, sp, gb, ila, _)| {
+        if !gb.is_ready_to_despawn {
+            entities_to_positions.insert(e, t.translation.truncate());
+            entities_to_species.insert(e, *sp);
+            if let Some(_) = ila {
+                last_active_entities.insert(e);
             }
         }
+    });
+    let cells_to_entities = buid_cells_to_entities(&entities_to_positions);
+    let mut entities_to_neighbours =
+        build_entities_to_neighbours(&entities_to_positions, &cells_to_entities);
 
-        let (cluster, _) = find_cluster(
-            *start_from,
-            &entities_to_neighbours,
-            &entities_to_species,
-            true,
-        );
+    for FindCluster {
+        to_check,
+        move_down_after,
+    } in find_cluster_events.iter()
+    {
+        println!("FindCluster iter to_check {}", to_check.len());
+        for start_from in to_check.iter() {
+            let (cluster, _) =
+                find_cluster(*start_from, &entities_to_neighbours, &entities_to_species);
 
-        let mut cluster_score_add = 0;
-        if cluster.len() >= MIN_CLUSTER_SIZE {
-            // remove matching cluster
-            cluster.iter().for_each(|cluster_entity| {
-                if let Ok((
-                    cluster_entity,
-                    cluster_transform,
-                    cluster_species,
-                    mut grid_ball,
-                    _,
-                    _,
-                )) = balls_query.get_mut(*cluster_entity)
-                {
-                    grid_ball.is_ready_to_despawn = true;
-                    commands.spawn(OutBallBundle::new(
-                        cluster_transform.translation.truncate(),
-                        *cluster_species,
-                        &gameplay_meshes,
-                        &mut materials,
-                        false,
-                    ));
-                    commands.entity(cluster_entity).despawn_recursive();
-                    entities_to_neighbours.remove(&cluster_entity);
-                    cluster_score_add += 1;
-                }
+            let mut cluster_score_add = 0;
+            if cluster.len() >= MIN_CLUSTER_SIZE {
+                // remove matching cluster
+                cluster.iter().for_each(|cluster_entity| {
+                    if let Ok((
+                        cluster_entity,
+                        cluster_transform,
+                        cluster_species,
+                        mut grid_ball,
+                        _,
+                        some_projectile_ball,
+                    )) = balls_query.get_mut(*cluster_entity)
+                    {
+                        if !grid_ball.is_ready_to_despawn {
+                            grid_ball.is_ready_to_despawn = true;
+                            commands.spawn(OutBallBundle::new(
+                                cluster_transform.translation.truncate(),
+                                *cluster_species,
+                                &gameplay_meshes,
+                                &mut materials,
+                                false,
+                            ));
+                            println!("cluster entity despawned {:?}", cluster_entity);
+                            commands.entity(cluster_entity).despawn_recursive();
+                            entities_to_neighbours.remove(&cluster_entity);
+                            cluster_score_add += 1;
+                            if some_projectile_ball.is_some() {
+                                println!("cluster entity is projectile {:?}", cluster_entity);
+                                writer_snap_projectile.send(SnapProjectile {
+                                    projectile_entity: cluster_entity,
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+
+            // let floating_clusters_score_add = 0;
+            // let floating_clusters =
+            //     find_floating_clusters(&cluster, &entities_to_neighbours, &last_active_entities);
+            // remove floating clusters
+            // floating_clusters
+            //     .iter()
+            //     .flat_map(|e| e.iter())
+            //     .for_each(|entity| {
+            //         if let Ok((cluster_entity, cluster_transform, cluster_species, mut grid_ball, _)) =
+            //             balls_query.get_mut(*entity)
+            //         {
+            //             if !grid_ball.is_ready_to_despawn {
+            //                 grid_ball.is_ready_to_despawn = true;
+            //                 commands.spawn(OutBallBundle::new(
+            //                     cluster_transform.translation.truncate(),
+            //                     *cluster_species,
+            //                     &gameplay_meshes,
+            //                     &mut materials,
+            //                     true,
+            //                 ));
+            //                 println!("floating cluster entity despawned {:?}", cluster_entity);
+            //                 commands.entity(cluster_entity).despawn_recursive();
+            //                 floating_clusters_score_add += 2;
+            //             }
+            //         }
+            //     });
+
+            // let score_add = cluster_score_add + floating_clusters_score_add;
+            let score_add = cluster_score_add;
+
+            // println!("send UpdateScoreCounter");
+            writer_update_cooldown_counter.send(UpdateScoreCounter {
+                score_add,
+                move_down_after: *move_down_after,
             });
         }
-
-        let mut floating_clusters_score_add = 0;
-        let floating_clusters = find_floating_clusters(
-            &entities_to_neighbours,
-            &entities_to_species,
-            &last_active_entities,
-        );
-        // remove floating clusters
-        floating_clusters
-            .iter()
-            .flat_map(|e| e.iter())
-            .for_each(|entity| {
-                if let Ok((
-                    cluster_entity,
-                    cluster_transform,
-                    cluster_species,
-                    mut grid_ball,
-                    _,
-                    _,
-                )) = balls_query.get_mut(*entity)
-                {
-                    grid_ball.is_ready_to_despawn = true;
-                    commands.spawn(OutBallBundle::new(
-                        cluster_transform.translation.truncate(),
-                        *cluster_species,
-                        &gameplay_meshes,
-                        &mut materials,
-                        true,
-                    ));
-                    commands.entity(cluster_entity).despawn_recursive();
-                    floating_clusters_score_add += 2;
-                }
-            });
-
-        let score_add = cluster_score_add + floating_clusters_score_add;
-
-        writer_update_cooldown_counter.send(UpdateScoreCounter { score_add });
     }
 }
 
@@ -531,11 +538,15 @@ pub fn update_score_counter(
     mut score_counter: ResMut<ScoreCounter>,
     mut writer_move_down_last_active: EventWriter<MoveDownLastActive>,
 ) {
-    if let Some(UpdateScoreCounter { score_add }) = update_cooldown_counter_events.iter().next() {
+    if let Some(UpdateScoreCounter {
+        score_add,
+        move_down_after,
+    }) = update_cooldown_counter_events.iter().next()
+    {
         if *score_add > 0 {
             pkv_play_score_audio(&mut commands, &audio_assets, &pkv);
             score_counter.0 += score_add;
-        } else if cooldown_move_counter.init_value != 0 {
+        } else if cooldown_move_counter.init_value != 0 && *move_down_after {
             cooldown_move_counter.value -= 1;
             if cooldown_move_counter.value == 0 {
                 move_counter.0 += 1;
@@ -548,39 +559,28 @@ pub fn update_score_counter(
 }
 
 pub fn tick_collision_snap_cooldown_timer(
-    mut commands: Commands,
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
     time: Res<Time>,
-    mut projectile_query: Query<
-        (Entity, &Transform, &mut ProjectileBall, &Species, &Velocity),
-        With<ProjectileBall>,
-    >,
-    mut snap_projectile: EventWriter<SnapProjectile>,
+    mut projectile_query: Query<(Entity, &mut ProjectileBall, &Velocity), With<ProjectileBall>>,
+    mut writer_snap_projectile: EventWriter<SnapProjectile>,
 ) {
     if !collision_snap_cooldown.timer.paused() {
         collision_snap_cooldown.timer.tick(time.delta());
-        if let Ok((
-            projectile_entity,
-            projectile_transform,
-            mut projectile_ball,
-            species,
-            projectile_velocity,
-        )) = projectile_query.get_single_mut()
+        if let Ok((projectile_entity, mut projectile_ball, projectile_velocity)) =
+            projectile_query.get_single_mut()
         {
             if collision_snap_cooldown.is_ready_for_check(|| {
+                println!("is_ready_for_check {}", projectile_velocity.linvel.length());
                 is_move_slow(projectile_velocity.linvel)
                     || is_move_reverse(&mut projectile_ball, projectile_velocity.linvel)
             }) {
                 // snap projectile anyway after some time
-                collision_snap_cooldown.stop();
                 info!("Projectile cooldown snap");
-                remove_projectile(&mut commands, &projectile_entity, &mut projectile_ball);
-                let projectile_position = projectile_transform.translation.truncate();
-                snap_projectile.send(SnapProjectile {
-                    pos: projectile_position,
-                    cor_pos: projectile_position,
-                    species: *species,
-                });
+                send_snap_projectile(
+                    collision_snap_cooldown.as_mut(),
+                    &mut writer_snap_projectile,
+                    projectile_entity,
+                );
             }
         }
     }
@@ -663,12 +663,12 @@ pub fn on_spawn_row(
             &gameplay_materials,
             position,
             true,
+            true,
+            false,
             None,
             true,
+            true,
         );
-        commands
-            .entity(new_entity)
-            .with_children(|parent| build_ball_text(parent, Some(hex)));
         spawned.push((new_entity, position));
     }
 
@@ -687,70 +687,25 @@ pub fn on_spawn_row(
         .collect::<Vec<(Entity, Vec2)>>();
     old_entities.extend(spawned);
 
-    let mut connections_buffer: HashMap<Entity, Vec<Entity>> = HashMap::default();
     for (ball_entity, ball_transform, ball_species, some_ball_last_active) in
         grid_balls_query.iter_mut()
     {
         if some_ball_last_active.is_some() {
+            println!("on_spawn_row despawn_recursive {:?}", ball_entity);
             commands.entity(ball_entity).despawn_recursive();
             let ball_position = ball_transform.translation.truncate();
-            let (new_entity, _) = GridBallBundle::spawn(
+            GridBallBundle::spawn(
                 &mut commands,
                 &gameplay_meshes,
                 &gameplay_materials,
                 ball_position,
                 false,
+                true,
+                false,
                 Some(*ball_species),
                 false,
+                true,
             );
-            commands
-                .entity(new_entity)
-                .with_children(|parent| build_ball_text(parent, None));
-
-            build_joints(
-                &mut commands,
-                new_entity,
-                ball_position,
-                &old_entities,
-                &mut connections_buffer,
-            );
-        }
-    }
-}
-
-pub fn check_joints(
-    mut commands: Commands,
-    mut check_joints_events: EventReader<CheckJoints>,
-    grid_balls_query: Query<(&Transform, &RapierRigidBodyHandle), With<GridBall>>,
-    rapier_context: Res<RapierContext>,
-    mut writer_find_cluster: EventWriter<FindCluster>,
-) {
-    if check_joints_events.len() == 0 {
-        return;
-    }
-
-    for CheckJoints { a, b } in check_joints_events.iter() {
-        if let Ok((ball_a_transform, ball_a_rapier_rigid_body_handle)) = grid_balls_query.get(*a) {
-            if let Ok((ball_b_transform, ball_b_rapier_rigid_body_handle)) =
-                grid_balls_query.get(*b)
-            {
-                let mut joint_between_found = false;
-                for _ in rapier_context.impulse_joints.joints_between(
-                    ball_a_rapier_rigid_body_handle.0,
-                    ball_b_rapier_rigid_body_handle.0,
-                ) {
-                    joint_between_found = true;
-                    break;
-                }
-                let ball_a_position = ball_a_transform.translation.truncate();
-                let ball_b_position = ball_b_transform.translation.truncate();
-                if !joint_between_found
-                    && ball_a_position.distance(ball_b_position) < BUILD_JOINT_TOLERANCE
-                {
-                    build_joint(&mut commands, *a, ball_a_position, ball_b_position, *b);
-                    writer_find_cluster.send(FindCluster { start_from: *a });
-                }
-            }
         }
     }
 }
