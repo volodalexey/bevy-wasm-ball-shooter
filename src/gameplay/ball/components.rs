@@ -42,9 +42,6 @@ impl Default for GridBall {
 }
 
 #[derive(Component)]
-pub struct LastActiveGridBall {}
-
-#[derive(Component)]
 pub struct MagneticGridBall {}
 
 #[derive(Component)]

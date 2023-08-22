@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{Entity, Resource, Vec2},
     time::{Timer, TimerMode},
-    utils::{default, HashSet},
+    utils::{default, HashSet, Instant},
 };
 use hexx::{HexLayout, HexOrientation, OffsetHexMode};
 
@@ -98,6 +98,38 @@ impl Grid {
     }
 }
 
+#[derive(Resource)]
+pub struct CooldownMoveCounter {
+    pub value: u32,
+    pub init_value: u32,
+}
+
+impl Default for CooldownMoveCounter {
+    fn default() -> Self {
+        Self {
+            value: 0,
+            init_value: 0,
+        }
+    }
+}
+
+impl CooldownMoveCounter {
+    pub fn from_level(level_counter: u32) -> Self {
+        let init_value = match level_counter {
+            1 => 10,
+            2 => 9,
+            3 => 8,
+            4 => 7,
+            5 => 6,
+            _ => 2,
+        };
+        Self {
+            value: init_value,
+            init_value,
+        }
+    }
+}
+
 pub struct CheckAt {
     ms_time: u32,
     checked: bool,
@@ -175,6 +207,7 @@ impl CollisionSnapCooldown {
 pub struct ClusterCheckCooldown {
     pub timer: Timer,
     pub to_check: HashSet<Entity>,
+    pub last_send: Instant,
 }
 
 impl Default for ClusterCheckCooldown {
@@ -182,6 +215,23 @@ impl Default for ClusterCheckCooldown {
         Self {
             timer: Timer::from_seconds(CLUSTER_CHECK_COOLDOWN_TIME, TimerMode::Repeating),
             to_check: default(),
+            last_send: Instant::now(),
         }
+    }
+}
+
+impl ClusterCheckCooldown {
+    pub fn update_last_send(&mut self) {
+        self.last_send = Instant::now()
+    }
+
+    pub fn is_ready(&self) -> bool {
+        (Instant::now() - self.last_send).as_secs() > CLUSTER_CHECK_COOLDOWN_TIME as u64
+    }
+
+    pub fn restart(&mut self) {
+        self.update_last_send();
+        self.timer.reset();
+        self.to_check = default();
     }
 }

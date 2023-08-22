@@ -123,13 +123,15 @@ pub fn projectile_reload(
         &gameplay_materials,
         Vec2::new(0.0, projectile_spawn_bottom),
         false,
-        false,
         true,
         Some(species),
         true,
         true,
     );
-    println!("=>>>>> ProjectileReload spawn {:?} {}", entity, species);
+    println!(
+        "=>>>>> ProjectileReload spawn {:?} {} y {}",
+        entity, species, projectile_spawn_bottom
+    );
 
     buffer.0.push(Species::pick_random(&colors_in_grid));
 

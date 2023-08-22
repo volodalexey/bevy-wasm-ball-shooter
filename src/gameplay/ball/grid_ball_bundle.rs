@@ -4,7 +4,8 @@ use bevy::{
 };
 use bevy_rapier2d::{
     prelude::{
-        ActiveEvents, Collider, CollisionGroups, Damping, ExternalForce, Group, RigidBody, Velocity,
+        ActiveEvents, CoefficientCombineRule, Collider, CollisionGroups, Damping, ExternalForce,
+        Friction, Group, LockedAxes, Restitution, RigidBody, Velocity,
     },
     render::ColliderDebugColor,
 };
@@ -15,7 +16,7 @@ use crate::gameplay::{
 };
 
 use super::components::{
-    GridBall, GridBallScaleAnimate, LastActiveGridBall, MagneticGridBall, ProjectileBall, Species,
+    GridBall, GridBallScaleAnimate, MagneticGridBall, ProjectileBall, Species,
 };
 
 pub struct GridBallBundle;
@@ -36,6 +37,7 @@ impl GridBallBundle {
             },
             GridBall::default(),
             species,
+            RigidBody::Dynamic,
             Collider::ball(BALL_RADIUS),
             ColliderDebugColor(species.into()),
             CollisionGroups::new(
@@ -48,6 +50,14 @@ impl GridBallBundle {
                 linear_damping: 0.5,
                 angular_damping: 0.1,
             },
+            Friction {
+                coefficient: 1.0,
+                combine_rule: CoefficientCombineRule::Min,
+            },
+            Restitution {
+                coefficient: 0.0,
+                combine_rule: CoefficientCombineRule::Min,
+            },
             ExternalForce::default(),
         )
     }
@@ -58,7 +68,6 @@ impl GridBallBundle {
         gameplay_materials: &Res<GameplayMaterials>,
         position: Vec2,
         is_last_active: bool,
-        is_magnetic: bool,
         is_projectile: bool,
         some_species: Option<Species>,
         is_appear_animation: bool,
@@ -79,19 +88,13 @@ impl GridBallBundle {
             &gameplay_meshes,
             &gameplay_materials,
         ));
+        entity_commands.insert(MagneticGridBall {});
 
         if is_last_active {
-            entity_commands
-                .insert(LastActiveGridBall {})
-                .insert(RigidBody::KinematicPositionBased);
-        } else {
-            entity_commands.insert(RigidBody::Dynamic);
+            entity_commands.insert(LockedAxes::all());
         }
         if is_appear_animation {
             entity_commands.insert(GridBallScaleAnimate::from_scale(Vec2::ONE));
-        }
-        if is_magnetic {
-            entity_commands.insert(MagneticGridBall {});
         }
         if is_projectile {
             entity_commands.insert(ProjectileBall::default());

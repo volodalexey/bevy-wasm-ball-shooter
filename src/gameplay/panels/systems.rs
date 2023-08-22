@@ -6,6 +6,7 @@ use bevy::{
 
 use crate::{
     components::AppState,
+    gameplay::grid::resources::CooldownMoveCounter,
     loading::{font_assets::FontAssets, sprite_assets::SpriteAssets},
     resources::LevelCounter,
     ui::{
@@ -19,7 +20,7 @@ use crate::{
 
 use super::{
     components::{LevelText, ScoreText, TurnText},
-    resources::{CooldownMoveCounter, MoveCounter, ScoreCounter, TurnCounter},
+    resources::{MoveCounter, ScoreCounter, TurnCounter},
 };
 
 pub fn setup_resources(
