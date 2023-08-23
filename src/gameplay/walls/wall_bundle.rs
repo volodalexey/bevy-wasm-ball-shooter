@@ -43,7 +43,7 @@ impl WallBundle {
                 static_coefficient: 0.0,
                 combine_rule: CoefficientCombine::Min,
             },
-            CollisionLayers::new([Layer::Walls], [Layer::Projectile, Layer::Grid]),
+            CollisionLayers::new([Layer::Walls], [Layer::Grid]),
         )
     }
 }
