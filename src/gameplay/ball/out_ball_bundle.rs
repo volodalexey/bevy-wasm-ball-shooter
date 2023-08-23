@@ -1,12 +1,14 @@
 use bevy::{
-    prelude::{default, Assets, Bundle, Res, ResMut, Transform, Vec2, Vec3},
+    prelude::{default, Assets, Bundle, Res, ResMut, Vec2},
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
-use bevy_rapier2d::prelude::{
-    Collider, CollisionGroups, ExternalForce, Group, RigidBody, Velocity,
+use bevy_xpbd_2d::prelude::{
+    Collider, CollisionLayers, ExternalForce, LinearVelocity, Position, RigidBody,
 };
 
-use crate::gameplay::{constants::BALL_RADIUS, meshes::resources::GameplayMeshes};
+use crate::gameplay::{
+    constants::BALL_RADIUS, meshes::resources::GameplayMeshes, physics::layers::Layer,
+};
 
 use super::components::{OutBall, Species};
 
@@ -24,7 +26,6 @@ impl OutBallBundle {
             MaterialMesh2dBundle {
                 mesh: gameplay_meshes.grid_ball.clone().into(),
                 material: materials.add(species.into()),
-                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
                 ..default()
             },
             match is_floating {
@@ -34,9 +35,10 @@ impl OutBallBundle {
             species,
             RigidBody::Dynamic,
             Collider::ball(BALL_RADIUS),
+            Position(pos),
             ExternalForce::default(),
-            Velocity::default(),
-            CollisionGroups::new(Group::GROUP_4, Group::NONE),
+            LinearVelocity::default(),
+            CollisionLayers::new([Layer::Out], []),
         )
     }
 }

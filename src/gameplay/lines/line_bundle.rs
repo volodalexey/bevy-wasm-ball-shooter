@@ -2,11 +2,12 @@ use bevy::{
     prelude::{shape, Assets, Bundle, Mesh, Res, ResMut, Transform, Vec2},
     sprite::MaterialMesh2dBundle,
 };
-use bevy_rapier2d::prelude::{Collider, CollisionGroups, Group, RigidBody};
+use bevy_xpbd_2d::prelude::{Collider, CollisionLayers, Position, RigidBody};
 
 use crate::gameplay::{
     constants::{LINE_WIDTH, LINE_Z_INDEX},
     materials::resources::GameplayMaterials,
+    physics::layers::Layer,
 };
 
 use super::components::LineType;
@@ -26,21 +27,16 @@ impl LineBundle {
                     .add(shape::Quad::new(Vec2::new(width, LINE_WIDTH)).into())
                     .into(),
                 material: match line_type {
-                    LineType::GridTop => gameplay_materials.grid_line.clone(),
+                    LineType::GridTop => gameplay_materials.grid_top_line.clone(),
                     LineType::GameOver => gameplay_materials.game_over_line.clone(),
                 },
                 transform: Transform::from_translation(Vec2::ZERO.extend(LINE_Z_INDEX)),
                 ..Default::default()
             },
-            RigidBody::KinematicPositionBased,
+            Position::default(),
+            RigidBody::Kinematic,
             Collider::cuboid(width / 2.0, LINE_WIDTH / 2.0),
-            CollisionGroups::new(
-                match line_type {
-                    LineType::GridTop => Group::GROUP_5,
-                    LineType::GameOver => Group::GROUP_6,
-                },
-                Group::GROUP_5,
-            ), // ray cast won't work with Group::NONE
+            CollisionLayers::new([Layer::Lines], []),
             line_type,
         )
     }

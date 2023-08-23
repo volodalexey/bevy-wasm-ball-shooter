@@ -1,15 +1,14 @@
 use bevy::{
-    prelude::{shape, Assets, Color, Mesh, Res, ResMut, Transform, Vec2, Vec3},
-    sprite::{ColorMaterial, MaterialMesh2dBundle},
+    prelude::{shape, Assets, Bundle, Mesh, Res, ResMut, Vec2},
+    sprite::MaterialMesh2dBundle,
 };
-use bevy_rapier2d::{
-    prelude::{
-        CoefficientCombineRule, Collider, CollisionGroups, Friction, Group, Restitution, RigidBody,
-    },
-    render::ColliderDebugColor,
+use bevy_xpbd_2d::prelude::{
+    CoefficientCombine, Collider, CollisionLayers, Friction, Position, Restitution, RigidBody,
 };
 
-use crate::gameplay::{constants::WALL_X_WIDTH, materials::resources::GameplayMaterials};
+use crate::gameplay::{
+    constants::WALL_X_WIDTH, materials::resources::GameplayMaterials, physics::layers::Layer,
+};
 
 use super::components::WallType;
 
@@ -17,43 +16,34 @@ pub struct WallBundle;
 
 impl WallBundle {
     pub fn new(
-        pos: Vec3,
+        pos: Vec2,
         wall_type: WallType,
         meshes: &mut ResMut<Assets<Mesh>>,
         gameplay_materials: &Res<GameplayMaterials>,
         length: f32,
-    ) -> (
-        MaterialMesh2dBundle<ColorMaterial>,
-        WallType,
-        RigidBody,
-        Collider,
-        Restitution,
-        Friction,
-        ColliderDebugColor,
-        CollisionGroups,
-    ) {
+    ) -> impl Bundle {
         (
             MaterialMesh2dBundle {
                 mesh: meshes
                     .add(shape::Quad::new(Vec2::new(WALL_X_WIDTH, length)).into())
                     .into(),
                 material: gameplay_materials.side_wall.clone(),
-                transform: Transform::from_translation(pos),
                 ..Default::default()
             },
             wall_type,
-            RigidBody::Fixed,
+            RigidBody::Static,
             Collider::cuboid(WALL_X_WIDTH / 2.0, length / 2.0),
+            Position(pos),
             Restitution {
                 coefficient: 1.0,
-                combine_rule: CoefficientCombineRule::Max,
+                combine_rule: CoefficientCombine::Max,
             },
             Friction {
-                coefficient: 0.0,
-                combine_rule: CoefficientCombineRule::Min,
+                dynamic_coefficient: 0.0,
+                static_coefficient: 0.0,
+                combine_rule: CoefficientCombine::Min,
             },
-            ColliderDebugColor(Color::AZURE.with_a(0.2)),
-            CollisionGroups::new(Group::GROUP_1, Group::GROUP_2 | Group::GROUP_3),
+            CollisionLayers::new([Layer::Walls], [Layer::Projectile, Layer::Grid]),
         )
     }
 }

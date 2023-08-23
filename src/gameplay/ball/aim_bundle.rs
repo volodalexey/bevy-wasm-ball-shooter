@@ -1,6 +1,6 @@
 use bevy::{
-    prelude::{shape, Assets, Mesh, Quat, Res, ResMut, Transform, Vec2, Vec3, Visibility},
-    sprite::{ColorMaterial, MaterialMesh2dBundle},
+    prelude::{shape, Assets, Bundle, Mesh, Quat, Res, ResMut, Transform, Vec2, Vec3, Visibility},
+    sprite::MaterialMesh2dBundle,
 };
 
 use crate::gameplay::{
@@ -19,7 +19,7 @@ impl AimBundle {
         meshes: &mut ResMut<Assets<Mesh>>,
         gameplay_materials: &Res<GameplayMaterials>,
         grid: &Res<Grid>,
-    ) -> (MaterialMesh2dBundle<ColorMaterial>, AimTarget) {
+    ) -> impl Bundle {
         (
             MaterialMesh2dBundle {
                 mesh: meshes
@@ -39,7 +39,7 @@ impl AimBundle {
         to_pos: Vec2,
         meshes: &mut ResMut<Assets<Mesh>>,
         gameplay_materials: &Res<GameplayMaterials>,
-    ) -> (MaterialMesh2dBundle<ColorMaterial>, AimLine) {
+    ) -> impl Bundle {
         let line_center = from_pos + (to_pos - from_pos) / 2.0;
         let distance = to_pos.distance(from_pos);
         let scale_y = distance;

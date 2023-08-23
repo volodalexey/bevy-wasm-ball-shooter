@@ -1,5 +1,5 @@
 use bevy::prelude::{
-    Assets, Commands, DespawnRecursiveExt, Entity, Mesh, Query, Res, ResMut, Vec3, With,
+    Assets, Commands, DespawnRecursiveExt, Entity, Mesh, Query, Res, ResMut, Vec2, With,
 };
 
 use crate::gameplay::constants::{BALL_RADIUS, WALL_X_WIDTH, WALL_Y_HEIGHT};
@@ -19,14 +19,14 @@ pub fn setup_level_walls(
         let inner_width = grid.init_cols as f32 * BALL_RADIUS;
         let side_x = inner_width + WALL_X_WIDTH * 0.5;
         commands.spawn(WallBundle::new(
-            Vec3::new(side_x, 0.0, 0.0),
+            Vec2::new(side_x, 0.0),
             WallType::Left,
             &mut meshes,
             &gameplay_materials,
             WALL_Y_HEIGHT,
         ));
         commands.spawn(WallBundle::new(
-            Vec3::new(-side_x, 0.0, 0.0),
+            Vec2::new(-side_x, 0.0),
             WallType::Right,
             &mut meshes,
             &gameplay_materials,

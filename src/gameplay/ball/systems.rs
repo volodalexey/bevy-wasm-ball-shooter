@@ -11,8 +11,9 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier2d::prelude::{
-    Collider, CollisionGroups, ExternalForce, Group, QueryFilter, RapierContext, Velocity,
+use bevy_xpbd_2d::prelude::{
+    Collider, ExternalForce, LinearVelocity, Position, ShapeHitData, SpatialQuery,
+    SpatialQueryFilter,
 };
 
 use crate::{
@@ -30,6 +31,7 @@ use crate::{
         main_camera::components::MainCamera,
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
+        physics::layers::Layer,
         utils::detect_pointer_position,
         walls::components::WallType,
     },
@@ -163,7 +165,7 @@ pub fn shoot_projectile(
     mouse_button_input: Res<Input<MouseButton>>,
     touches: Res<Touches>,
     mut projectile_ball_query: Query<
-        (Entity, &Transform, &mut Velocity, &mut ProjectileBall),
+        (Entity, &Position, &mut LinearVelocity, &mut ProjectileBall),
         (With<ProjectileBall>, Without<AimTarget>, Without<AimLine>),
     >,
     audio_assets: Res<AudioAssets>,
@@ -181,7 +183,7 @@ pub fn shoot_projectile(
         return;
     }
 
-    for (projectile_entity, projectile_transform, mut vel, mut projectile_ball) in
+    for (projectile_entity, projectile_position, mut linear_velocity, mut projectile_ball) in
         projectile_ball_query.iter_mut()
     {
         if projectile_ball.is_flying {
@@ -203,15 +205,15 @@ pub fn shoot_projectile(
                 if projectile_ball.is_flying {
                     aim.pointer_pressed = false
                 } else {
-                    aim.aim_pos = projectile_transform.translation.truncate();
+                    aim.aim_pos = projectile_position.0;
                     aim.aim_vel = target_position - aim.aim_pos;
                 }
             }
         }
 
         if pointer_aquired && !projectile_ball.is_flying && pointer_released {
-            let aim_direction = target_position - projectile_transform.translation.truncate();
-            vel.linvel = aim_direction.normalize() * PROJECTILE_SPEED;
+            let aim_direction = target_position - projectile_position.0;
+            linear_velocity.0 = aim_direction.normalize() * PROJECTILE_SPEED;
 
             println!("SHOOOOOT {:?}", projectile_entity);
             projectile_ball.is_flying = true;
@@ -227,9 +229,9 @@ pub fn draw_aim(
     gameplay_materials: Res<GameplayMaterials>,
     wall_query: Query<Entity, With<WallType>>,
     balls_query: Query<Entity, With<GridBall>>,
-    rapier_context: Res<RapierContext>,
+    spatial_query: SpatialQuery,
     aim_line_query: Query<Entity, With<AimLine>>,
-    lines_query: Query<(&LineType, &Transform), With<LineType>>,
+    lines_query: Query<(Entity, &LineType, &Transform), With<LineType>>,
     mut aim_target_query: Query<
         (&mut AimTarget, &mut Transform, &mut Visibility),
         (With<AimTarget>, Without<LineType>),
@@ -250,13 +252,22 @@ pub fn draw_aim(
             // redraw only if pointer position (draw velocity in this case) changed
 
             cleanup_aim_line_utils(&mut commands, &aim_line_query);
-            let mut kinematic_filter = QueryFilter::default().groups(CollisionGroups::new(
-                Group::GROUP_1 | Group::GROUP_2 | Group::GROUP_5,
-                Group::GROUP_1 | Group::GROUP_2 | Group::GROUP_5,
-            ));
-            for projectile_entity in projectile_ball_query.iter() {
-                kinematic_filter = kinematic_filter.exclude_collider(projectile_entity);
+            let mut exclude_entities: HashSet<Entity> = HashSet::default();
+            for (entity, line_type, _) in lines_query.iter() {
+                match line_type {
+                    LineType::GridTop => {}
+                    LineType::GameOver => {
+                        exclude_entities.insert(entity);
+                    }
+                }
             }
+            for projectile_entity in projectile_ball_query.iter() {
+                exclude_entities.insert(projectile_entity);
+            }
+            let spatial_query_filter = SpatialQueryFilter::default()
+                .with_masks([Layer::Walls, Layer::Grid, Layer::Lines])
+                .without_entities(exclude_entities);
+
             let shape = Collider::ball(BALL_RADIUS);
             let mut ray_start = aim_target.aim_pos;
             let mut ray_vel = aim_target.aim_vel.normalize() * CAST_RAY_VELOCITY;
@@ -269,16 +280,24 @@ pub fn draw_aim(
                     warn!(message);
                     break;
                 }
-                if let Some((entity, hit)) = rapier_context.cast_shape(
+                if let Some(ShapeHitData {
+                    entity,
+                    time_of_impact: _,
+                    point1,
+                    point2,
+                    normal1: _,
+                    normal2: _,
+                }) = spatial_query.cast_shape(
+                    &shape,
                     ray_start,
                     0.0,
                     ray_vel,
-                    &shape,
                     CAST_RAY_MAX_TOI,
-                    kinematic_filter,
+                    true,
+                    spatial_query_filter.clone(),
                 ) {
                     if let Ok(_) = wall_query.get(entity) {
-                        let center = (hit.witness1 - hit.witness2).add(Vec2::new(
+                        let center = (point1 - point2).add(Vec2::new(
                             0.0,
                             CAST_RAY_BOUNCE_Y_ADD * ray_vel.normalize().y,
                         ));
@@ -296,7 +315,7 @@ pub fn draw_aim(
                         }
                         ray_vel = Vec2::new(reverse_x_vel, ray_vel.y);
                     } else if let Ok(_) = balls_query.get(entity) {
-                        let center = hit.witness1 - hit.witness2;
+                        let center = point1 - point2;
                         target_transform.translation =
                             center.extend(target_transform.translation.z);
                         commands.spawn(AimBundle::new_line(
@@ -308,7 +327,7 @@ pub fn draw_aim(
                         *target_visibility = Visibility::Visible;
                         break;
                     } else if let Ok(_) = lines_query.get(entity) {
-                        let center = hit.witness1 - hit.witness2;
+                        let center = point1 - point2;
                         target_transform.translation =
                             center.extend(target_transform.translation.z);
                         commands.spawn(AimBundle::new_line(
@@ -359,28 +378,33 @@ pub fn animate_out_ball(
         (
             &mut OutBall,
             &mut Transform,
-            &mut Velocity,
+            &mut LinearVelocity,
             &mut ExternalForce,
             &Handle<ColorMaterial>,
         ),
         With<OutBall>,
     >,
 ) {
-    for (mut grid_ball_out, mut ball_transform, mut ball_velocity, mut ball_force, ball_material) in
-        balls_query.iter_mut()
+    for (
+        mut grid_ball_out,
+        mut ball_transform,
+        mut linear_velocity,
+        mut external_force,
+        ball_material,
+    ) in balls_query.iter_mut()
     {
         if !grid_ball_out.started {
             grid_ball_out.started = true;
             ball_transform.translation.z = 2.0; // slightly on top of grid
             if grid_ball_out.animation_type == OutBallAnimation::FloatingCluster {
-                ball_velocity.linvel = Vec2::new(0.0, fastrand::i32(-200..=0) as f32);
+                linear_velocity.0 = Vec2::new(0.0, fastrand::i32(-200..=0) as f32);
             } else {
-                ball_velocity.linvel = Vec2::new(
+                linear_velocity.0 = Vec2::new(
                     fastrand::i32(-200..=200) as f32,
                     fastrand::i32(-200..=200) as f32,
                 );
             }
-            ball_force.force = Vec2::new(0.0, -100.0);
+            external_force.set_force(Vec2::new(0.0, -100.0));
         } else {
             if let Some(ball_material) = materials.get_mut(&ball_material) {
                 ball_material.color.set_a(ball_material.color.a() - 0.01);

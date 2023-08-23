@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
         info, Assets, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Input,
-        KeyCode, NextState, Query, Res, ResMut, Transform, Vec2, With, Without,
+        KeyCode, NextState, Query, Res, ResMut, Vec2, With, Without,
     },
     sprite::ColorMaterial,
     time::Time,
@@ -9,7 +9,9 @@ use bevy::{
     window::{PrimaryWindow, Window},
 };
 use bevy_pkv::PkvStore;
-use bevy_rapier2d::prelude::{CollisionEvent, ExternalForce, LockedAxes, Velocity};
+use bevy_xpbd_2d::prelude::{
+    CollisionEnded, CollisionStarted, ExternalForce, LinearVelocity, LockedAxes, Position,
+};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -80,7 +82,7 @@ pub fn generate_grid(
             is_last_active,
             false,
             None,
-            true,
+            false,
             true,
         );
     }
@@ -90,7 +92,7 @@ pub fn generate_grid(
 pub fn move_down_grid_balls(
     mut commands: Commands,
     balls_query: Query<
-        (Entity, &Transform, Option<&GridBallPositionAnimate>),
+        (Entity, &Position, Option<&GridBallPositionAnimate>),
         (With<GridBall>, Without<ProjectileBall>),
     >,
     mut move_down_events: EventReader<MoveDownLastActive>,
@@ -100,10 +102,10 @@ pub fn move_down_grid_balls(
     }
     move_down_events.clear();
 
-    for (ball_entity, ball_transform, some_ball_animate) in balls_query.iter() {
+    for (ball_entity, ball_position, some_ball_animate) in balls_query.iter() {
         let position = match some_ball_animate {
             Some(ball_animate) => ball_animate.position,
-            None => ball_transform.translation.truncate(),
+            None => ball_position.0,
         } - Vec2::new(0.0, ROW_HEIGHT);
         commands
             .entity(ball_entity)
@@ -116,10 +118,10 @@ pub fn apply_magnetic_forces(
     mut magnetic_balls_query: Query<
         (
             Entity,
-            &mut Transform,
+            &mut Position,
             &GridBall,
             &mut ExternalForce,
-            &mut Velocity,
+            &mut LinearVelocity,
             Option<&GridBallPositionAnimate>,
             Option<&GridBallScaleAnimate>,
             Option<&LockedAxes>,
@@ -137,14 +139,14 @@ pub fn apply_magnetic_forces(
     let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
     magnetic_balls_query
         .iter()
-        .for_each(|(e, t, gb, _, _, _, _, _)| {
+        .for_each(|(e, position, gb, _, _, _, _, _)| {
             if !gb.is_ready_to_despawn {
-                entities_to_positions.insert(e, t.translation.truncate());
+                entities_to_positions.insert(e, position.0);
             }
         });
     for (
         entity,
-        mut transform,
+        mut position,
         _,
         mut external_force,
         mut velocity,
@@ -159,12 +161,11 @@ pub fn apply_magnetic_forces(
         }
         let mut result_acc_strong = Vec2::ZERO;
         let mut result_acc_weak = Vec2::ZERO;
-        let position = transform.translation.truncate();
         for (neighbour, neighbour_position) in entities_to_positions.iter() {
             if *neighbour == entity {
                 continue;
             }
-            let direction = *neighbour_position - position;
+            let direction = *neighbour_position - position.0;
             let dist = position.distance(*neighbour_position);
             if dist < MAGNETIC_DISTANCE_STRONG {
                 result_acc_strong += direction;
@@ -172,34 +173,38 @@ pub fn apply_magnetic_forces(
                 result_acc_weak += direction;
             }
         }
-        external_force.force = result_acc_strong.normalize_or_zero() * MAGNETIC_FACTOR_STRONG
-            + result_acc_weak.normalize_or_zero() * MAGNETIC_FACTOR_WEAK;
-        velocity.linvel = velocity.linvel.clamp_length_max(MAX_GRID_BALL_SPEED);
+        external_force.set_force(
+            result_acc_strong.normalize_or_zero() * MAGNETIC_FACTOR_STRONG
+                + result_acc_weak.normalize_or_zero() * MAGNETIC_FACTOR_WEAK,
+        );
+        velocity.0 = velocity.0.clamp_length_max(MAX_GRID_BALL_SPEED);
 
         if keyboard_input_key_code.any_pressed([KeyCode::L]) {
             println!(
                 "[len {}] force {} velocity {} position {} last_active_position {}",
                 entities_to_positions.len(),
-                external_force.force,
-                velocity.linvel,
+                external_force.force(),
+                velocity.0,
                 position.y,
                 last_active_position.y
             );
         }
         // confine grid ball position
         if position.y > last_active_position.y {
-            transform.translation.y = last_active_position.y;
+            position.y = last_active_position.y;
         }
         if some_locked_axes.is_none()
-            && last_active_position.y - LOCK_POSITION_TOLERANCE <= transform.translation.y
-            && transform.translation.y <= last_active_position.y + LOCK_POSITION_TOLERANCE
-            && last_active_position.x - LOCK_POSITION_TOLERANCE <= transform.translation.x
-            && transform.translation.x <= last_active_position.x + LOCK_POSITION_TOLERANCE
+            && last_active_position.y - LOCK_POSITION_TOLERANCE <= position.y
+            && position.y <= last_active_position.y + LOCK_POSITION_TOLERANCE
+            && last_active_position.x - LOCK_POSITION_TOLERANCE <= position.x
+            && position.x <= last_active_position.x + LOCK_POSITION_TOLERANCE
         {
-            transform.translation.x = last_active_position.x;
-            transform.translation.y = last_active_position.y;
-            commands.entity(entity).insert(LockedAxes::all());
-            velocity.linvel = Vec2::ZERO;
+            position.x = last_active_position.x;
+            position.y = last_active_position.y;
+            commands
+                .entity(entity)
+                .insert(LockedAxes::TRANSLATION_LOCKED);
+            velocity.0 = Vec2::ZERO;
             println!("Locked entity {:?}", entity);
         }
     }
@@ -221,12 +226,12 @@ pub fn cleanup_grid(
 }
 
 pub fn check_projectile_out_of_grid(
-    projectile_query: Query<(Entity, &Transform, &ProjectileBall), With<ProjectileBall>>,
+    projectile_query: Query<(Entity, &Position, &ProjectileBall), With<ProjectileBall>>,
     grid: Res<Grid>,
     mut writer_snap_projectile: EventWriter<SnapProjectile>,
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
 ) {
-    for (projectile_entity, projectile_transform, projectile_ball) in projectile_query.iter() {
+    for (projectile_entity, projectile_position, projectile_ball) in projectile_query.iter() {
         if !projectile_ball.is_flying {
             return;
         }
@@ -235,7 +240,6 @@ pub fn check_projectile_out_of_grid(
             y: grid.last_active_row,
         };
         let position = grid.layout.hex_to_world_pos(hex);
-        let projectile_position = projectile_transform.translation.truncate();
         if projectile_position.y > position.y {
             info!(
                 "Projectile out of grid snap {} {}",
@@ -252,14 +256,20 @@ pub fn check_projectile_out_of_grid(
 
 pub fn check_collision_events(
     mut commands: Commands,
-    mut collision_events: EventReader<CollisionEvent>,
+    mut collision_started_events: EventReader<CollisionStarted>,
+    mut collision_ended_events: EventReader<CollisionEnded>,
     mut writer_snap_projectile: EventWriter<SnapProjectile>,
     mut projectile_query: Query<
-        (Entity, &mut Transform, &mut Velocity, &mut ProjectileBall),
+        (
+            Entity,
+            &mut Position,
+            &mut LinearVelocity,
+            &mut ProjectileBall,
+        ),
         With<ProjectileBall>,
     >,
     balls_query: Query<
-        (Entity, &Transform),
+        (Entity, &Position),
         (
             With<GridBall>,
             Without<ProjectileBall>,
@@ -271,19 +281,19 @@ pub fn check_collision_events(
     time: Res<Time>,
     mut cluster_check_cooldown: ResMut<ClusterCheckCooldown>,
 ) {
-    for (entity_a, entity_b, started) in collision_events.iter().map(|e| match e {
-        CollisionEvent::Started(a, b, _) => (a, b, true),
-        CollisionEvent::Stopped(a, b, _) => (a, b, false),
-    }) {
-        let some_ball_entity_a = balls_query.get(*entity_a);
-        let some_ball_entity_b = balls_query.get(*entity_b);
+    for CollisionStarted(entity_a, entity_b) in collision_started_events.iter() {
+        let result_ball_entity_a = balls_query.get(*entity_a);
+        let result_ball_entity_b = balls_query.get(*entity_b);
 
-        if some_ball_entity_a.is_ok() && some_ball_entity_b.is_ok() && started {
+        let mut result_projectile = projectile_query.get_mut(*entity_a);
+        if result_projectile.is_err() {
+            result_projectile = projectile_query.get_mut(*entity_b);
+        }
+        if result_ball_entity_a.is_ok() && result_ball_entity_b.is_ok() {
             cluster_check_cooldown.timer.tick(time.delta());
-            cluster_check_cooldown.to_check.extend(vec![
-                some_ball_entity_a.unwrap().0,
-                some_ball_entity_b.unwrap().0,
-            ]);
+            cluster_check_cooldown
+                .to_check
+                .extend(vec![entity_a, entity_b]);
             if cluster_check_cooldown.timer.just_finished() || cluster_check_cooldown.is_ready() {
                 writer_find_cluster.send(FindCluster {
                     to_check: cluster_check_cooldown
@@ -294,56 +304,59 @@ pub fn check_collision_events(
                     move_down_after: false,
                 });
                 cluster_check_cooldown.restart();
-                println!(
-                    "send FindCluster projectile_query len {}",
-                    projectile_query.iter().len()
-                );
             }
-        }
-        if let Ok((_, ball_transform)) = some_ball_entity_a.or(some_ball_entity_b) {
-            let mut p1 = projectile_query.get_mut(*entity_a);
-            if p1.is_err() {
-                p1 = projectile_query.get_mut(*entity_b);
-            }
-
+        } else if let Ok((_, ball_position)) = result_ball_entity_a.or(result_ball_entity_b) {
             if let Ok((
                 projectile_entity,
-                projectile_transform,
+                projectile_position,
                 projectile_velocity,
                 mut projectile_ball,
-            )) = p1
+            )) = result_projectile
             {
-                println!("col {:?}", projectile_entity);
-                // take into account only collision between projectile and grid ball
-                if started {
-                    if projectile_ball.snap_vel == Vec2::ZERO {
-                        // snap with revolute joint only to the first grid ball
-                        let to_pos = ball_transform.translation.truncate();
-                        let from_pos = projectile_transform.translation.truncate();
-                        let diff = (to_pos - from_pos).normalize();
-                        let vel = projectile_velocity.linvel.normalize();
-                        let dot = vel.dot(diff);
-                        if dot > MIN_PROJECTILE_SNAP_DOT {
-                            println!("dot > MIN_PROJECTILE_SNAP_DOT {:?}", projectile_entity);
-                            collision_snap_cooldown.start();
-                            // save first touch position
-                            is_move_reverse(&mut projectile_ball, projectile_velocity.linvel);
-                            commands
-                                .entity(projectile_entity)
-                                .insert(MagneticGridBall {});
-                        }
+                if projectile_ball.snap_vel == Vec2::ZERO {
+                    let to_pos = ball_position.0;
+                    let from_pos = projectile_position.0;
+                    let diff = (to_pos - from_pos).normalize();
+                    let vel = projectile_velocity.0.normalize();
+                    let dot = vel.dot(diff);
+                    if dot > MIN_PROJECTILE_SNAP_DOT {
+                        collision_snap_cooldown.start();
+                        // save first touch position
+                        is_move_reverse(&mut projectile_ball, projectile_velocity.0);
+                        commands
+                            .entity(projectile_entity)
+                            .insert(MagneticGridBall {});
                     }
                 }
+                let is_move_slow_result = is_move_slow(projectile_velocity.0);
                 let is_move_reverse_result =
-                    is_move_reverse(&mut projectile_ball, projectile_velocity.linvel);
-                println!(
-                    "{:?} started {} is_move_slow {} is_move_reverse {}",
-                    projectile_entity,
-                    started,
-                    is_move_slow(projectile_velocity.linvel),
-                    is_move_reverse_result
-                );
-                if is_move_slow(projectile_velocity.linvel) || is_move_reverse_result {
+                    is_move_reverse(&mut projectile_ball, projectile_velocity.0);
+                if is_move_slow_result || is_move_reverse_result {
+                    // if ball turned back
+                    // or ball moves too slow
+                    info!("Projectile too slow so snap");
+                    send_snap_projectile(
+                        collision_snap_cooldown.as_mut(),
+                        &mut writer_snap_projectile,
+                        projectile_entity,
+                    );
+                }
+            }
+        }
+    }
+    for CollisionEnded(entity_a, entity_b) in collision_ended_events.iter() {
+        if let Ok((_, _)) = balls_query.get(*entity_a).or(balls_query.get(*entity_b)) {
+            let mut result_projectile = projectile_query.get_mut(*entity_a);
+            if result_projectile.is_err() {
+                result_projectile = projectile_query.get_mut(*entity_b);
+            }
+            if let Ok((projectile_entity, _, projectile_velocity, mut projectile_ball)) =
+                result_projectile
+            {
+                let is_move_slow_result = is_move_slow(projectile_velocity.0);
+                let is_move_reverse_result =
+                    is_move_reverse(&mut projectile_ball, projectile_velocity.0);
+                if is_move_slow_result || is_move_reverse_result {
                     // if ball turned back
                     // or ball moves too slow
                     info!("Projectile too slow so snap");
@@ -365,19 +378,20 @@ pub fn on_snap_projectile(
     mut projectile_reload_writer: EventWriter<ProjectileReload>,
     mut turn_counter: ResMut<TurnCounter>,
     mut writer_find_cluster: EventWriter<FindCluster>,
-    mut projectile_query: Query<(&mut ProjectileBall, &Transform), With<ProjectileBall>>,
+    mut projectile_query: Query<(&mut ProjectileBall, &Position), With<ProjectileBall>>,
 ) {
     // println!("on_snap_projectile");
     for SnapProjectile { projectile_entity } in snap_projectile_events.iter() {
         println!("SnapProjectile process {:?}", projectile_entity);
-        if let Ok((mut projectile_ball, transform)) = projectile_query.get_mut(*projectile_entity) {
+        if let Ok((mut projectile_ball, projectile_position)) =
+            projectile_query.get_mut(*projectile_entity)
+        {
             // projectile ball can be removed by cluster and never snapped
             if projectile_ball.is_snapped {
                 continue;
             }
             projectile_ball.is_snapped = true;
-            let position = transform.translation.truncate();
-            let snap_hex = grid.layout.world_pos_to_hex(position);
+            let snap_hex = grid.layout.world_pos_to_hex(projectile_position.0);
             let mut offset = snap_hex.to_offset_coordinates(grid.offset_mode);
             let mut entity_commands = commands.entity(*projectile_entity);
             if offset[1] <= grid.last_active_row {
@@ -391,12 +405,12 @@ pub fn on_snap_projectile(
                         corrected_position,
                         false,
                     ))
-                    .insert(LockedAxes::all());
+                    .insert(LockedAxes::TRANSLATION_LOCKED);
             }
             entity_commands.remove::<ProjectileBall>();
             println!(
                 "removed ProjectileBall from {:?} position y {}",
-                projectile_entity, position.y
+                projectile_entity, projectile_position.y
             );
         }
         turn_counter.0 += 1;
@@ -416,7 +430,7 @@ pub fn find_and_remove_clusters(
     mut balls_query: Query<
         (
             Entity,
-            &Transform,
+            &Position,
             &Species,
             &mut GridBall,
             Option<&LockedAxes>,
@@ -437,15 +451,17 @@ pub fn find_and_remove_clusters(
     let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
     let mut entities_to_species: HashMap<Entity, Species> = HashMap::default();
     let mut last_active_entities: HashSet<Entity> = HashSet::default();
-    balls_query.iter().for_each(|(e, t, sp, gb, ila, _)| {
-        if !gb.is_ready_to_despawn {
-            entities_to_positions.insert(e, t.translation.truncate());
-            entities_to_species.insert(e, *sp);
-            if ila.is_some() {
-                last_active_entities.insert(e);
+    balls_query
+        .iter()
+        .for_each(|(e, position, sp, gb, ila, _)| {
+            if !gb.is_ready_to_despawn {
+                entities_to_positions.insert(e, position.0);
+                entities_to_species.insert(e, *sp);
+                if ila.is_some() {
+                    last_active_entities.insert(e);
+                }
             }
-        }
-    });
+        });
     let cells_to_entities = buid_cells_to_entities(&entities_to_positions);
     let mut entities_to_neighbours =
         build_entities_to_neighbours(&entities_to_positions, &cells_to_entities);
@@ -455,7 +471,6 @@ pub fn find_and_remove_clusters(
         move_down_after,
     } in find_cluster_events.iter()
     {
-        println!("FindCluster iter to_check {}", to_check.len());
         for start_from in to_check.iter() {
             let (cluster, _) =
                 find_cluster(*start_from, &entities_to_neighbours, &entities_to_species);
@@ -466,7 +481,7 @@ pub fn find_and_remove_clusters(
                 cluster.iter().for_each(|cluster_entity| {
                     if let Ok((
                         cluster_entity,
-                        cluster_transform,
+                        cluster_position,
                         cluster_species,
                         mut grid_ball,
                         _,
@@ -476,7 +491,7 @@ pub fn find_and_remove_clusters(
                         if !grid_ball.is_ready_to_despawn {
                             grid_ball.is_ready_to_despawn = true;
                             commands.spawn(OutBallBundle::new(
-                                cluster_transform.translation.truncate(),
+                                cluster_position.0,
                                 *cluster_species,
                                 &gameplay_meshes,
                                 &mut materials,
@@ -540,18 +555,21 @@ pub fn update_score_counter(
 pub fn tick_collision_snap_cooldown_timer(
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
     time: Res<Time>,
-    mut projectile_query: Query<(Entity, &mut ProjectileBall, &Velocity), With<ProjectileBall>>,
+    mut projectile_query: Query<
+        (Entity, &mut ProjectileBall, &LinearVelocity),
+        With<ProjectileBall>,
+    >,
     mut writer_snap_projectile: EventWriter<SnapProjectile>,
 ) {
     if !collision_snap_cooldown.timer.paused() {
         collision_snap_cooldown.timer.tick(time.delta());
-        if let Ok((projectile_entity, mut projectile_ball, projectile_velocity)) =
+        if let Ok((projectile_entity, mut projectile_ball, linear_velocity)) =
             projectile_query.get_single_mut()
         {
             if collision_snap_cooldown.is_ready_for_check(|| {
-                println!("is_ready_for_check {}", projectile_velocity.linvel.length());
-                is_move_slow(projectile_velocity.linvel)
-                    || is_move_reverse(&mut projectile_ball, projectile_velocity.linvel)
+                println!("is_ready_for_check {}", linear_velocity.0.length());
+                is_move_slow(linear_velocity.0)
+                    || is_move_reverse(&mut projectile_ball, linear_velocity.0)
             }) {
                 // snap projectile anyway after some time
                 info!("Projectile cooldown snap");
@@ -570,9 +588,9 @@ pub fn animate_grid_ball_position(
     mut grid_balls_query: Query<
         (
             Entity,
-            &mut Transform,
+            &mut Position,
             &mut GridBallPositionAnimate,
-            &mut Velocity,
+            &mut LinearVelocity,
         ),
         With<GridBallPositionAnimate>,
     >,
@@ -584,28 +602,20 @@ pub fn animate_grid_ball_position(
 ) {
     let total_count = grid_balls_query.iter().len();
     let mut completed_count: usize = 0;
-    for (ball_entity, mut grid_ball_transform, mut grid_ball_animate, mut velocity) in
+    for (ball_entity, mut ball_position, mut grid_ball_animate, mut linear_velocity) in
         grid_balls_query.iter_mut()
     {
         grid_ball_animate.timer.tick(time.delta());
-        grid_ball_transform.translation = grid_ball_transform
-            .translation
-            .truncate()
-            .lerp(
-                grid_ball_animate.position,
-                grid_ball_animate.timer.percent(),
-            )
-            .extend(grid_ball_transform.translation.z);
-        if (grid_ball_transform.translation.truncate() - grid_ball_animate.position).length()
-            < MOVE_DOWN_TOLERANCE
-        {
-            grid_ball_transform.translation = grid_ball_animate
-                .position
-                .extend(grid_ball_transform.translation.z);
+        ball_position.0 = ball_position.lerp(
+            grid_ball_animate.position,
+            grid_ball_animate.timer.percent(),
+        );
+        if (ball_position.0 - grid_ball_animate.position).length() < MOVE_DOWN_TOLERANCE {
+            ball_position.0 = grid_ball_animate.position;
             commands
                 .entity(ball_entity)
                 .remove::<GridBallPositionAnimate>();
-            velocity.linvel = Vec2::ZERO;
+            linear_velocity.0 = Vec2::ZERO;
             if grid_ball_animate.move_down_after {
                 completed_count += 1;
             }
@@ -625,7 +635,7 @@ pub fn spawn_new_row(
     gameplay_materials: Res<GameplayMaterials>,
     mut spawn_row_events: EventReader<SpawnRow>,
     mut grid: ResMut<Grid>,
-    mut grid_balls_query: Query<(Entity, &mut Velocity), With<LockedAxes>>,
+    mut grid_balls_query: Query<(Entity, &mut LinearVelocity), With<LockedAxes>>,
 ) {
     if spawn_row_events.is_empty() {
         return;
@@ -657,6 +667,6 @@ pub fn spawn_new_row(
 
     for (ball_entity, mut velocity) in grid_balls_query.iter_mut() {
         commands.entity(ball_entity).remove::<LockedAxes>();
-        velocity.linvel = Vec2::ZERO;
+        velocity.0 = Vec2::ZERO;
     }
 }
