@@ -22,8 +22,8 @@ use crate::{
         constants::{
             APPEAR_TOLERANCE, BALL_RADIUS, CAST_RAY_BOUNCE_Y_ADD, CAST_RAY_MAX_TOI, CAST_RAY_TRIES,
             CAST_RAY_VELOCITY, CAST_RAY_VELOCITY_TOLERANCE, NEXT_PROJECTILE_SPAWN_BOTTOM,
-            NEXT_PROJECTILE_SPAWN_SIDE, PROJECTILE_SHOOT_BOTTOM, PROJECTILE_SPAWN_BOTTOM,
-            PROJECTILE_SPEED,
+            NEXT_PROJECTILE_SPAWN_SIDE, OUT_BALL_GRAVITY, PROJECTILE_SHOOT_BOTTOM,
+            PROJECTILE_SPAWN_BOTTOM, PROJECTILE_SPEED,
         },
         events::ProjectileReload,
         grid::resources::Grid,
@@ -407,7 +407,7 @@ pub fn animate_out_ball(
                     fastrand::i32(100..=200) as f32,
                 );
             }
-            external_force.set_force(Vec2::new(0.0, -100.0));
+            external_force.set_force(Vec2::new(0.0, -OUT_BALL_GRAVITY));
         } else {
             if let Some(ball_material) = materials.get_mut(&ball_material) {
                 ball_material.color.set_a(ball_material.color.a() - 0.01);

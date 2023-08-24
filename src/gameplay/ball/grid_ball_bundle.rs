@@ -3,8 +3,8 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
 };
 use bevy_xpbd_2d::prelude::{
-    AngularDamping, CoefficientCombine, Collider, CollisionLayers, ExternalForce, LinearVelocity,
-    LockedAxes, Position, Restitution, RigidBody,
+    AngularDamping, CoefficientCombine, Collider, CollisionLayers, ExternalForce, LockedAxes,
+    Position, Restitution, RigidBody,
 };
 
 use crate::gameplay::{
@@ -34,10 +34,10 @@ impl GridBallBundle {
                 ..default()
             },
             GridBall::default(),
+            MagneticGridBall {},
             species,
             RigidBody::Dynamic,
             Collider::ball(BALL_RADIUS),
-            LinearVelocity::default(),
             Position(pos),
             Restitution {
                 coefficient: 0.0,
@@ -45,7 +45,6 @@ impl GridBallBundle {
             },
             AngularDamping(0.5),
             CollisionLayers::new([Layer::Grid], [Layer::Walls, Layer::Grid]),
-            ExternalForce::default(),
         )
     }
 
@@ -76,7 +75,6 @@ impl GridBallBundle {
             &gameplay_meshes,
             &gameplay_materials,
         ));
-        entity_commands.insert(MagneticGridBall {});
 
         if is_last_active {
             entity_commands.insert(LockedAxes::TRANSLATION_LOCKED);
@@ -85,7 +83,9 @@ impl GridBallBundle {
             entity_commands.insert(GridBallScaleAnimate::from_scale(Vec2::ONE));
         }
         if is_projectile {
-            entity_commands.insert(ProjectileBall::default());
+            entity_commands
+                .insert(ProjectileBall::default())
+                .insert(ExternalForce::new(Vec2::ONE * 100.0));
         }
         if debug_text {
             entity_commands.with_children(|parent| {

@@ -190,12 +190,15 @@ pub fn confine_grid_ball_position(
 ) -> Option<(Vec2, bool, bool)> {
     let max_side_x = grid.init_cols / 2;
     let snap_hex = grid.layout.world_pos_to_hex(entity_position);
-    let is_even = snap_hex.y % 2 == 0;
     let mut offset = snap_hex.to_offset_coordinates(grid.offset_mode);
     let mut confined_x = false;
     let mut confined_y = false;
     let min_col = -max_side_x;
-    let max_col = match is_even {
+    if (strict_check && offset[1] <= grid.last_active_row) || offset[1] < grid.last_active_row {
+        offset[1] = grid.last_active_row;
+        confined_y = true;
+    }
+    let max_col = match offset[1] % 2 == 0 {
         true => max_side_x,
         false => max_side_x - 1,
     };
@@ -207,10 +210,7 @@ pub fn confine_grid_ball_position(
         offset[0] = max_col;
         confined_x = true;
     }
-    if (strict_check && offset[1] <= grid.last_active_row) || offset[1] < grid.last_active_row {
-        offset[1] = grid.last_active_row;
-        confined_y = true;
-    }
+
     if confined_x || confined_y {
         let corrected_hex = Hex::from_offset_coordinates(offset, grid.offset_mode);
         let all_neighbours = corrected_hex.all_neighbors();

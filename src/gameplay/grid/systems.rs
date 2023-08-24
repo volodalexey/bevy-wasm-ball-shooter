@@ -249,7 +249,6 @@ pub fn check_projectile_out_of_grid(
 }
 
 pub fn check_collision_events(
-    mut commands: Commands,
     mut collision_started_events: EventReader<CollisionStarted>,
     mut collision_ended_events: EventReader<CollisionEnded>,
     mut writer_snap_projectile: EventWriter<SnapProjectile>,
@@ -317,9 +316,6 @@ pub fn check_collision_events(
                         collision_snap_cooldown.start();
                         // save first touch position
                         is_move_reverse(&mut projectile_ball, projectile_velocity.0);
-                        commands
-                            .entity(projectile_entity)
-                            .insert(MagneticGridBall {});
                     }
                 }
                 let is_move_slow_result = is_move_slow(projectile_velocity.0);
