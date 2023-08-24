@@ -182,6 +182,7 @@ pub fn is_move_reverse(projectile_ball: &mut ProjectileBall, projectile_velocity
         let dot = projectile_ball
             .snap_vel
             .dot(projectile_velocity.normalize());
+        println!("dot {}", dot);
         if dot < 0.0 {
             return true;
         }

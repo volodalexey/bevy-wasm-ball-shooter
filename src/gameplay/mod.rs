@@ -1,4 +1,4 @@
-use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, Plugin, Update};
+use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update};
 
 use crate::{components::AppState, ui::systems::interact_with_next_state_button};
 
@@ -15,7 +15,7 @@ use self::{
     meshes::MeshesPlugin,
     panels::PanelsPlugin,
     physics::PhysicsPlugin,
-    systems::{check_game_over, check_game_win, keydown_detect, setup_first_turn},
+    systems::{check_game_over, check_game_win, cleanup_events, keydown_detect, setup_first_turn},
     walls::WallsPlugin,
 };
 
@@ -64,6 +64,7 @@ impl Plugin for GameplayPlugin {
             (check_game_over, check_game_win)
                 .chain()
                 .run_if(in_state(AppState::Gameplay)),
-        );
+        )
+        .add_systems(OnExit(AppState::Gameplay), cleanup_events);
     }
 }

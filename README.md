@@ -23,7 +23,7 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-projectile can not push grid ball more than last active row
+prevent snap to already occupied place
 split to count score system
 shoot multiple projectiles
 responsive layout and scale

@@ -173,6 +173,7 @@ impl CollisionSnapCooldown {
     }
 
     pub fn stop(&mut self) {
+        println!("CollisionSnapCooldown stop");
         self.timer.pause();
     }
 

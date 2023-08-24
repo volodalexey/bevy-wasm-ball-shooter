@@ -159,6 +159,7 @@ pub fn apply_magnetic_forces(
             // other entities can attract to this but this can not attract to other
             continue;
         }
+        let before_force = external_force.force();
         let mut result_acc_strong = Vec2::ZERO;
         let mut result_acc_weak = Vec2::ZERO;
         for (neighbour, neighbour_position) in entities_to_positions.iter() {
@@ -181,8 +182,9 @@ pub fn apply_magnetic_forces(
 
         if keyboard_input_key_code.any_pressed([KeyCode::L]) {
             println!(
-                "[len {}] force {} velocity {} position {} last_active_position {}",
+                "[len {}] before_force {} force {} velocity {} position {} last_active_position {}",
                 entities_to_positions.len(),
+                before_force,
                 external_force.force(),
                 velocity.0,
                 position.y,
@@ -242,8 +244,8 @@ pub fn check_projectile_out_of_grid(
         let position = grid.layout.hex_to_world_pos(hex);
         if projectile_position.y > position.y {
             info!(
-                "Projectile out of grid snap {} {}",
-                position.y, projectile_position.y
+                "Projectile {:?} out of grid snap {} {}",
+                projectile_entity, position.y, projectile_position.y
             );
             send_snap_projectile(
                 collision_snap_cooldown.as_mut(),
@@ -334,7 +336,10 @@ pub fn check_collision_events(
                 if is_move_slow_result || is_move_reverse_result {
                     // if ball turned back
                     // or ball moves too slow
-                    info!("Projectile too slow so snap");
+                    info!(
+                        "Projectile {:?} too slow so snap on collision started",
+                        projectile_entity
+                    );
                     send_snap_projectile(
                         collision_snap_cooldown.as_mut(),
                         &mut writer_snap_projectile,
@@ -359,7 +364,10 @@ pub fn check_collision_events(
                 if is_move_slow_result || is_move_reverse_result {
                     // if ball turned back
                     // or ball moves too slow
-                    info!("Projectile too slow so snap");
+                    info!(
+                        "Projectile {:?} too slow so snap on collision ended",
+                        projectile_entity
+                    );
                     send_snap_projectile(
                         collision_snap_cooldown.as_mut(),
                         &mut writer_snap_projectile,
@@ -380,7 +388,6 @@ pub fn on_snap_projectile(
     mut writer_find_cluster: EventWriter<FindCluster>,
     mut projectile_query: Query<(&mut ProjectileBall, &Position), With<ProjectileBall>>,
 ) {
-    // println!("on_snap_projectile");
     for SnapProjectile { projectile_entity } in snap_projectile_events.iter() {
         println!("SnapProjectile process {:?}", projectile_entity);
         if let Ok((mut projectile_ball, projectile_position)) =
@@ -388,6 +395,7 @@ pub fn on_snap_projectile(
         {
             // projectile ball can be removed by cluster and never snapped
             if projectile_ball.is_snapped {
+                println!("Skip projectile {:?} already snapped", projectile_entity);
                 continue;
             }
             projectile_ball.is_snapped = true;
@@ -412,15 +420,16 @@ pub fn on_snap_projectile(
                 "removed ProjectileBall from {:?} position y {}",
                 projectile_entity, projectile_position.y
             );
-        }
-        turn_counter.0 += 1;
 
-        println!("send ProjectileReload {:?}", projectile_entity);
-        projectile_reload_writer.send(ProjectileReload);
-        writer_find_cluster.send(FindCluster {
-            to_check: vec![*projectile_entity],
-            move_down_after: true,
-        });
+            turn_counter.0 += 1;
+
+            println!("send ProjectileReload {:?}", projectile_entity);
+            projectile_reload_writer.send(ProjectileReload);
+            writer_find_cluster.send(FindCluster {
+                to_check: vec![*projectile_entity],
+                move_down_after: true,
+            });
+        }
     }
 }
 
@@ -441,8 +450,9 @@ pub fn find_and_remove_clusters(
     gameplay_meshes: Res<GameplayMeshes>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut writer_update_cooldown_counter: EventWriter<UpdateScoreCounter>,
-    mut writer_snap_projectile: EventWriter<SnapProjectile>,
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
+    mut turn_counter: ResMut<TurnCounter>,
+    mut projectile_reload_writer: EventWriter<ProjectileReload>,
 ) {
     if find_cluster_events.is_empty() {
         return;
@@ -503,11 +513,9 @@ pub fn find_and_remove_clusters(
                             cluster_score_add += 1;
                             if some_projectile_ball.is_some() {
                                 println!("projectile removed in cluster {:?}", cluster_entity);
-                                send_snap_projectile(
-                                    collision_snap_cooldown.as_mut(),
-                                    &mut writer_snap_projectile,
-                                    cluster_entity,
-                                );
+                                turn_counter.0 += 1;
+                                collision_snap_cooldown.stop();
+                                projectile_reload_writer.send(ProjectileReload);
                             }
                         }
                     }
@@ -572,7 +580,7 @@ pub fn tick_collision_snap_cooldown_timer(
                     || is_move_reverse(&mut projectile_ball, linear_velocity.0)
             }) {
                 // snap projectile anyway after some time
-                info!("Projectile cooldown snap");
+                info!("Projectile {:?} cooldown snap", projectile_entity);
                 send_snap_projectile(
                     collision_snap_cooldown.as_mut(),
                     &mut writer_snap_projectile,

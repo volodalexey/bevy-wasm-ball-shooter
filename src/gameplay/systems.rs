@@ -1,6 +1,7 @@
 use bevy::{
     prelude::{
-        warn, Entity, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut, With, Without,
+        warn, Entity, EventReader, EventWriter, Input, KeyCode, NextState, Query, Res, ResMut,
+        With, Without,
     },
     window::{PrimaryWindow, Window},
 };
@@ -13,7 +14,7 @@ use crate::{components::AppState, resources::LevelCounter, utils::increment_leve
 use super::{
     ball::components::{GridBall, OutBall, ProjectileBall},
     constants::GAME_OVER_BOTTOM,
-    events::ProjectileReload,
+    events::{FindCluster, MoveDownLastActive, ProjectileReload, SnapProjectile, SpawnRow},
     grid::resources::Grid,
     lines::components::LineType,
 };
@@ -85,5 +86,29 @@ pub fn keydown_detect(
     if keyboard_input_key_code.any_just_released([KeyCode::Space]) {
         increment_level(&mut level_counter, &mut pkv);
         app_state_next_state.set(AppState::GameWin);
+    }
+}
+
+pub fn cleanup_events(
+    mut projectile_reload_events: EventReader<ProjectileReload>,
+    mut snap_projectile_events: EventReader<SnapProjectile>,
+    mut move_down_events: EventReader<MoveDownLastActive>,
+    mut spawn_row_events: EventReader<SpawnRow>,
+    mut find_cluster_events: EventReader<FindCluster>,
+) {
+    if projectile_reload_events.len() > 0 {
+        projectile_reload_events.clear();
+    }
+    if snap_projectile_events.len() > 0 {
+        snap_projectile_events.clear();
+    }
+    if move_down_events.len() > 0 {
+        move_down_events.clear();
+    }
+    if spawn_row_events.len() > 0 {
+        spawn_row_events.clear();
+    }
+    if find_cluster_events.len() > 0 {
+        find_cluster_events.clear();
     }
 }

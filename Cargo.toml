@@ -10,8 +10,8 @@ codegen-units = 1
 opt-level = 'z'
 lto = true
 
-[profile.dev.package."*"]
-codegen-units = 1
+[profile.dev.package.bevy_xpbd_2d]
+opt-level = 3
 
 [dependencies]
 bevy = "0.11.0"
