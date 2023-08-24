@@ -27,10 +27,9 @@ use crate::{
             out_ball_bundle::OutBallBundle,
         },
         constants::{
-            FILL_PLAYGROUND_ROWS, LOCK_POSITION_TOLERANCE, MAGNETIC_DISTANCE_STRONG,
-            MAGNETIC_DISTANCE_WEAK, MAGNETIC_FACTOR_STRONG, MAGNETIC_FACTOR_WEAK,
-            MAX_GRID_BALL_SPEED, MIN_CLUSTER_SIZE, MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_TOLERANCE,
-            ROW_HEIGHT,
+            FILL_PLAYGROUND_ROWS, MAGNETIC_DISTANCE_STRONG, MAGNETIC_DISTANCE_WEAK,
+            MAGNETIC_FACTOR_STRONG, MAGNETIC_FACTOR_WEAK, MAX_GRID_BALL_SPEED, MIN_CLUSTER_SIZE,
+            MIN_PROJECTILE_SNAP_DOT, MOVE_DOWN_TOLERANCE, ROW_HEIGHT,
         },
         events::{
             FindCluster, MoveDownLastActive, ProjectileReload, SnapProjectile, SpawnRow,
@@ -50,7 +49,7 @@ use crate::{
 
 use super::{
     resources::{ClusterCheckCooldown, CollisionSnapCooldown, CooldownMoveCounter, Grid},
-    utils::{adjust_grid_layout, is_move_reverse},
+    utils::{adjust_grid_layout, confine_grid_ball_position, is_move_reverse},
 };
 
 pub fn generate_grid(
@@ -124,7 +123,6 @@ pub fn apply_magnetic_forces(
             &mut LinearVelocity,
             Option<&GridBallPositionAnimate>,
             Option<&GridBallScaleAnimate>,
-            Option<&LockedAxes>,
         ),
         (With<MagneticGridBall>, Without<ProjectileBall>),
     >,
@@ -139,7 +137,7 @@ pub fn apply_magnetic_forces(
     let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
     magnetic_balls_query
         .iter()
-        .for_each(|(e, position, gb, _, _, _, _, _)| {
+        .for_each(|(e, position, gb, _, _, _, _)| {
             if !gb.is_ready_to_despawn {
                 entities_to_positions.insert(e, position.0);
             }
@@ -152,7 +150,6 @@ pub fn apply_magnetic_forces(
         mut velocity,
         some_grid_ball_animate_position,
         some_grid_ball_animate_scale,
-        some_locked_axes,
     ) in magnetic_balls_query.iter_mut()
     {
         if some_grid_ball_animate_position.is_some() || some_grid_ball_animate_scale.is_some() {
@@ -191,23 +188,18 @@ pub fn apply_magnetic_forces(
                 last_active_position.y
             );
         }
-        // confine grid ball position
-        if position.y > last_active_position.y {
-            position.y = last_active_position.y;
-        }
-        if some_locked_axes.is_none()
-            && last_active_position.y - LOCK_POSITION_TOLERANCE <= position.y
-            && position.y <= last_active_position.y + LOCK_POSITION_TOLERANCE
-            && last_active_position.x - LOCK_POSITION_TOLERANCE <= position.x
-            && position.x <= last_active_position.x + LOCK_POSITION_TOLERANCE
+        if let Some((confined_position, _, confined_y)) =
+            confine_grid_ball_position(&entities_to_positions, &grid, &entity, position.0, false)
         {
-            position.x = last_active_position.x;
-            position.y = last_active_position.y;
-            commands
-                .entity(entity)
-                .insert(LockedAxes::TRANSLATION_LOCKED);
-            velocity.0 = Vec2::ZERO;
-            println!("Locked entity {:?}", entity);
+            if confined_y {
+                position.x = confined_position.x;
+                position.y = confined_position.y;
+                commands
+                    .entity(entity)
+                    .insert(LockedAxes::TRANSLATION_LOCKED);
+                velocity.0 = Vec2::ZERO;
+                println!("Locked entity {:?}", entity);
+            }
         }
     }
 }
@@ -387,34 +379,44 @@ pub fn on_snap_projectile(
     mut turn_counter: ResMut<TurnCounter>,
     mut writer_find_cluster: EventWriter<FindCluster>,
     mut projectile_query: Query<(&mut ProjectileBall, &Position), With<ProjectileBall>>,
+    balls_query: Query<(Entity, &Position, &GridBall), (With<GridBall>, Without<ProjectileBall>)>,
 ) {
     for SnapProjectile { projectile_entity } in snap_projectile_events.iter() {
-        println!("SnapProjectile process {:?}", projectile_entity);
         if let Ok((mut projectile_ball, projectile_position)) =
             projectile_query.get_mut(*projectile_entity)
         {
+            let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
+            balls_query.iter().for_each(|(e, position, gb)| {
+                if !gb.is_ready_to_despawn {
+                    entities_to_positions.insert(e, position.0);
+                }
+            });
+
+            println!("SnapProjectile process {:?}", projectile_entity);
             // projectile ball can be removed by cluster and never snapped
             if projectile_ball.is_snapped {
                 println!("Skip projectile {:?} already snapped", projectile_entity);
                 continue;
             }
             projectile_ball.is_snapped = true;
-            let snap_hex = grid.layout.world_pos_to_hex(projectile_position.0);
-            let mut offset = snap_hex.to_offset_coordinates(grid.offset_mode);
-            let mut entity_commands = commands.entity(*projectile_entity);
-            if offset[1] <= grid.last_active_row {
-                offset[1] = grid.last_active_row;
-                let corrected_position = grid
-                    .layout
-                    .hex_to_world_pos(Hex::from_offset_coordinates(offset, grid.offset_mode));
 
+            let mut entity_commands = commands.entity(*projectile_entity);
+
+            if let Some((confined_position, _, _)) = confine_grid_ball_position(
+                &entities_to_positions,
+                grid.as_ref(),
+                projectile_entity,
+                projectile_position.0,
+                true,
+            ) {
                 entity_commands
                     .insert(GridBallPositionAnimate::from_position(
-                        corrected_position,
+                        confined_position,
                         false,
                     ))
                     .insert(LockedAxes::TRANSLATION_LOCKED);
             }
+
             entity_commands.remove::<ProjectileBall>();
             println!(
                 "removed ProjectileBall from {:?} position y {}",

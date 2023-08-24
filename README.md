@@ -23,7 +23,6 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
-prevent snap to already occupied place
 split to count score system
 shoot multiple projectiles
 responsive layout and scale

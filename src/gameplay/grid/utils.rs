@@ -10,7 +10,8 @@ use crate::gameplay::{
     ball::components::{ProjectileBall, Species},
     constants::{
         BALL_DIAMETER, CELL_SIZE, CLUSTER_TOLERANCE, EMPTY_PLAYGROUND_HEIGHT,
-        MIN_PROJECTILE_SNAP_VELOCITY, PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
+        LOCK_POSITION_TOLERANCE, MIN_PROJECTILE_REVERSE_VELOCITY, MIN_PROJECTILE_SNAP_VELOCITY,
+        PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
     },
     events::SnapProjectile,
     panels::resources::MoveCounter,
@@ -106,57 +107,6 @@ pub fn find_cluster(
     (cluster, processed)
 }
 
-// pub fn find_floating_clusters(
-//     removed_cluster: &HashSet<Entity>,
-//     entities_to_neighbours: &HashMap<Entity, HashSet<Entity>>,
-//     last_active_entities: &HashSet<Entity>,
-// ) -> Vec<HashSet<Entity>> {
-//     let mut processed: HashSet<Entity> = HashSet::default();
-//     let mut floating_clusters: Vec<HashSet<Entity>> = vec![];
-
-//     for entity in removed_cluster.iter() {
-//         if processed.contains(entity) {
-//             continue;
-//         }
-//         if last_active_entities.contains(entity) {
-//             processed.insert(*entity);
-//             continue;
-//         }
-
-//         let mut to_process: Vec<&Entity> = vec![entity];
-//         let mut processed: HashSet<Entity> = HashSet::default();
-//         let mut any_cluster: HashSet<Entity> = HashSet::default();
-//         let mut found_floating = false;
-//         while let Some(current) = to_process.pop() {
-//             if processed.contains(current) {
-//                 continue;
-//             }
-//             any_cluster.insert(*current);
-//             processed.insert(*current);
-//             if let Some(neighbours) = entities_to_neighbours.get(current) {
-//                 for neighbour in neighbours.iter() {
-//                     // if neighbour is still in the grid and wasn't removed by cluster
-//                     if processed.contains(neighbour) {
-//                         continue;
-//                     }
-//                     to_process.push(neighbour);
-//                     if last_active_entities.contains(neighbour) {
-//                         found_floating = true;
-//                         break;
-//                     }
-//                 }
-//             }
-//         }
-
-//         if found_floating {
-//             continue;
-//         } else if any_cluster.len() > 0 {
-//             floating_clusters.push(any_cluster);
-//         }
-//     }
-//     floating_clusters
-// }
-
 pub fn adjust_grid_layout(
     window_query: &Query<&Window, With<PrimaryWindow>>,
     grid: &mut Grid,
@@ -179,6 +129,9 @@ pub fn is_move_reverse(projectile_ball: &mut ProjectileBall, projectile_velocity
     if projectile_ball.snap_vel == Vec2::ZERO {
         projectile_ball.snap_vel = projectile_velocity.normalize();
     } else {
+        if projectile_velocity.y < MIN_PROJECTILE_REVERSE_VELOCITY {
+            return true;
+        }
         let dot = projectile_ball
             .snap_vel
             .dot(projectile_velocity.normalize());
@@ -226,4 +179,79 @@ pub fn send_snap_projectile(
 ) {
     collision_snap_cooldown.stop();
     writer_snap_projectile.send(SnapProjectile { projectile_entity });
+}
+
+pub fn confine_grid_ball_position(
+    entities_to_positions: &HashMap<Entity, Vec2>,
+    grid: &Grid,
+    entity: &Entity,
+    entity_position: Vec2,
+    strict_check: bool,
+) -> Option<(Vec2, bool, bool)> {
+    let max_side_x = grid.init_cols / 2;
+    let snap_hex = grid.layout.world_pos_to_hex(entity_position);
+    let is_even = snap_hex.y % 2 == 0;
+    let mut offset = snap_hex.to_offset_coordinates(grid.offset_mode);
+    let mut confined_x = false;
+    let mut confined_y = false;
+    let min_col = -max_side_x;
+    let max_col = match is_even {
+        true => max_side_x,
+        false => max_side_x - 1,
+    };
+    if (strict_check && offset[0] <= min_col) || offset[0] < min_col {
+        offset[0] = min_col;
+        confined_x = true;
+    }
+    if (strict_check && offset[0] >= max_col) || offset[0] > max_col {
+        offset[0] = max_col;
+        confined_x = true;
+    }
+    if (strict_check && offset[1] <= grid.last_active_row) || offset[1] < grid.last_active_row {
+        offset[1] = grid.last_active_row;
+        confined_y = true;
+    }
+    if confined_x || confined_y {
+        let corrected_hex = Hex::from_offset_coordinates(offset, grid.offset_mode);
+        let all_neighbours = corrected_hex.all_neighbors();
+        let possible_neighbours = all_neighbours.iter().filter(|hex| {
+            let neighbour_offset = hex.to_offset_coordinates(grid.offset_mode);
+            neighbour_offset[0] >= min_col
+                && neighbour_offset[0] <= max_col
+                && neighbour_offset[1] >= grid.last_active_row
+        });
+        let mut possible_positions: Vec<Vec2> = vec![grid.layout.hex_to_world_pos(corrected_hex)];
+        for possible_neighbour in possible_neighbours {
+            possible_positions.push(grid.layout.hex_to_world_pos(*possible_neighbour));
+        }
+
+        // check that corrected position is free
+        for (ball_entity, ball_position) in entities_to_positions.iter() {
+            if ball_entity == entity {
+                continue;
+            }
+
+            let index = 0;
+            loop {
+                if let Some(check_position) = possible_positions.get(index) {
+                    if ball_position.y - LOCK_POSITION_TOLERANCE <= check_position.y
+                        && check_position.y <= ball_position.y + LOCK_POSITION_TOLERANCE
+                        && ball_position.x - LOCK_POSITION_TOLERANCE <= check_position.x
+                        && check_position.x <= ball_position.x + LOCK_POSITION_TOLERANCE
+                    {
+                        possible_positions.remove(index);
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if let Some(possible_position) = possible_positions.first() {
+            return Some((*possible_position, confined_x, confined_y));
+        }
+    }
+    None
 }

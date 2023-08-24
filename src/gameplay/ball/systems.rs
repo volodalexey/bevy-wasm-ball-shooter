@@ -400,8 +400,11 @@ pub fn animate_out_ball(
                 linear_velocity.0 = Vec2::new(0.0, fastrand::i32(-200..=0) as f32);
             } else {
                 linear_velocity.0 = Vec2::new(
-                    fastrand::i32(-200..=200) as f32,
-                    fastrand::i32(-200..=200) as f32,
+                    match fastrand::bool() {
+                        true => fastrand::i32(-200..=-100) as f32,
+                        false => fastrand::i32(100..=200) as f32,
+                    },
+                    fastrand::i32(100..=200) as f32,
                 );
             }
             external_force.set_force(Vec2::new(0.0, -100.0));
