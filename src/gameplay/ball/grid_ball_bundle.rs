@@ -3,8 +3,8 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
 };
 use bevy_xpbd_2d::prelude::{
-    AngularDamping, CoefficientCombine, Collider, CollisionLayers, ExternalForce, LockedAxes,
-    Position, Restitution, RigidBody,
+    AngularDamping, CoefficientCombine, Collider, ColliderMassProperties, CollisionLayers,
+    LockedAxes, MassPropertiesBundle, Position, Restitution, RigidBody,
 };
 
 use crate::gameplay::{
@@ -38,12 +38,14 @@ impl GridBallBundle {
             species,
             RigidBody::Dynamic,
             Collider::ball(BALL_RADIUS),
+            ColliderMassProperties::ZERO,
+            MassPropertiesBundle::new_computed(&Collider::ball(1.0), 1.0),
             Position(pos),
             Restitution {
                 coefficient: 0.0,
                 combine_rule: CoefficientCombine::Multiply,
             },
-            AngularDamping(0.5),
+            AngularDamping(0.9),
             CollisionLayers::new([Layer::Grid], [Layer::Walls, Layer::Grid]),
         )
     }
@@ -83,9 +85,7 @@ impl GridBallBundle {
             entity_commands.insert(GridBallScaleAnimate::from_scale(Vec2::ONE));
         }
         if is_projectile {
-            entity_commands
-                .insert(ProjectileBall::default())
-                .insert(ExternalForce::new(Vec2::ONE * 100.0));
+            entity_commands.insert(ProjectileBall::default());
         }
         if debug_text {
             entity_commands.with_children(|parent| {

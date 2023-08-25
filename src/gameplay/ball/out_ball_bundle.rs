@@ -3,7 +3,7 @@ use bevy::{
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
 use bevy_xpbd_2d::prelude::{
-    Collider, CollisionLayers, ExternalForce, LinearVelocity, Position, RigidBody,
+    Collider, ColliderMassProperties, CollisionLayers, MassPropertiesBundle, Position, RigidBody,
 };
 
 use crate::gameplay::{
@@ -35,9 +35,9 @@ impl OutBallBundle {
             species,
             RigidBody::Dynamic,
             Collider::ball(BALL_RADIUS),
+            ColliderMassProperties::ZERO,
+            MassPropertiesBundle::new_computed(&Collider::ball(1.0), 1.0),
             Position(pos),
-            ExternalForce::default(),
-            LinearVelocity::default(),
             CollisionLayers::new([Layer::Out], []),
         )
     }

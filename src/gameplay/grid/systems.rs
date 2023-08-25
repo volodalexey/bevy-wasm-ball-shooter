@@ -117,46 +117,42 @@ pub fn apply_magnetic_forces(
     mut magnetic_balls_query: Query<
         (
             Entity,
-            &mut Position,
+            &Position,
             &GridBall,
             &mut ExternalForce,
             &mut LinearVelocity,
             Option<&GridBallPositionAnimate>,
             Option<&GridBallScaleAnimate>,
+            Option<&LockedAxes>,
         ),
         (With<MagneticGridBall>, Without<ProjectileBall>),
     >,
     grid: Res<Grid>,
     keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
-    let hex = Hex {
-        x: 0,
-        y: grid.last_active_row,
-    };
-    let last_active_position = grid.layout.hex_to_world_pos(hex);
     let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
     magnetic_balls_query
         .iter()
-        .for_each(|(e, position, gb, _, _, _, _)| {
+        .for_each(|(e, position, gb, _, _, _, _, _)| {
             if !gb.is_ready_to_despawn {
                 entities_to_positions.insert(e, position.0);
             }
         });
     for (
         entity,
-        mut position,
+        position,
         _,
         mut external_force,
         mut velocity,
         some_grid_ball_animate_position,
         some_grid_ball_animate_scale,
+        some_locked_axes,
     ) in magnetic_balls_query.iter_mut()
     {
         if some_grid_ball_animate_position.is_some() || some_grid_ball_animate_scale.is_some() {
             // other entities can attract to this but this can not attract to other
             continue;
         }
-        let before_force = external_force.force();
         let mut result_acc_strong = Vec2::ZERO;
         let mut result_acc_weak = Vec2::ZERO;
         for (neighbour, neighbour_position) in entities_to_positions.iter() {
@@ -171,34 +167,32 @@ pub fn apply_magnetic_forces(
                 result_acc_weak += direction;
             }
         }
+        let result_strong_normilized = result_acc_strong.normalize_or_zero();
+        let result_weak_normilized = result_acc_weak.normalize_or_zero();
         external_force.set_force(
-            result_acc_strong.normalize_or_zero() * MAGNETIC_FACTOR_STRONG
-                + result_acc_weak.normalize_or_zero() * MAGNETIC_FACTOR_WEAK,
+            result_strong_normilized * MAGNETIC_FACTOR_STRONG
+                + result_weak_normilized * MAGNETIC_FACTOR_WEAK,
         );
         velocity.0 = velocity.0.clamp_length_max(MAX_GRID_BALL_SPEED);
-
-        if keyboard_input_key_code.any_pressed([KeyCode::L]) {
-            println!(
-                "[len {}] before_force {} force {} velocity {} position {} last_active_position {}",
-                entities_to_positions.len(),
-                before_force,
-                external_force.force(),
-                velocity.0,
-                position.y,
-                last_active_position.y
-            );
+        if keyboard_input_key_code.any_just_released([KeyCode::L]) {
+            println!("applied magnetic to entity {:?} result_strong_normilized {} result_weak_normilized {}", entity, result_strong_normilized, result_weak_normilized);
         }
-        if let Some((confined_position, _, confined_y)) =
-            confine_grid_ball_position(&entities_to_positions, &grid, &entity, position.0, false)
-        {
-            if confined_y {
-                position.x = confined_position.x;
-                position.y = confined_position.y;
-                commands
-                    .entity(entity)
-                    .insert(LockedAxes::TRANSLATION_LOCKED);
-                velocity.0 = Vec2::ZERO;
-                println!("Locked entity {:?}", entity);
+
+        if some_locked_axes.is_none() {
+            if let Some((confined_position, _, confined_y)) =
+                confine_grid_ball_position(&entities_to_positions, &grid, &entity, position.0, true)
+            {
+                if confined_y {
+                    commands
+                        .entity(entity)
+                        .insert(GridBallPositionAnimate::from_position(
+                            confined_position,
+                            false,
+                        ))
+                        .insert(LockedAxes::TRANSLATION_LOCKED);
+                    velocity.0 = Vec2::ZERO;
+                    println!("Locked entity {:?}", entity);
+                }
             }
         }
     }

@@ -23,6 +23,9 @@ cargo install wasm-bindgen-cli
 ```
 
 TODO
+do not disable magnetic for move row
+find cluster only when ball velocity is low
+move down shold not depend on success cluster, because success can be achieved some time after
 split to count score system
 shoot multiple projectiles
 responsive layout and scale
