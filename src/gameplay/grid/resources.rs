@@ -42,10 +42,10 @@ pub struct Grid {
     pub offset_mode: OffsetHexMode,
     pub layout: HexLayout,
     pub bounds: Bounds,
+    pub top_kinematic_position: f32,
     pub entities_to_positions: HashMap<Entity, Vec2>,
     pub entities_to_species: HashMap<Entity, Species>,
-    pub cells_to_entities: HashMap<(i32, i32), HashSet<Entity>>,
-    pub entities_to_neighbours: HashMap<Entity, HashSet<Entity>>,
+    pub entities_to_neighbours: HashMap<Entity, Vec<(Entity, f32)>>,
 }
 
 impl Default for Grid {
@@ -64,9 +64,9 @@ impl Default for Grid {
             offset_mode: OffsetHexMode::OddRows,
             layout,
             bounds: Default::default(),
+            top_kinematic_position: f32::MIN,
             entities_to_positions: HashMap::default(),
             entities_to_species: HashMap::default(),
-            cells_to_entities: HashMap::default(),
             entities_to_neighbours: HashMap::default(),
         }
     }

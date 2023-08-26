@@ -10,7 +10,7 @@ use hexx::Hex;
 use crate::gameplay::{
     ball::components::{GridBallPositionAnimate, ProjectileBall, Species},
     constants::{
-        BALL_DIAMETER, CELL_SIZE, EMPTY_PLAYGROUND_HEIGHT, LOCK_POSITION_TOLERANCE,
+        BALL_DIAMETER, EMPTY_PLAYGROUND_HEIGHT, LOCK_POSITION_TOLERANCE,
         MIN_PROJECTILE_REVERSE_VELOCITY, MIN_PROJECTILE_SNAP_VELOCITY,
         NEIGHBOUR_POSITION_TOLERANCE, PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
     },
@@ -20,64 +20,39 @@ use crate::gameplay::{
 
 use super::resources::{CollisionSnapCooldown, Grid};
 
-pub fn buid_cells_to_entities(
-    entities_to_positions: &HashMap<Entity, Vec2>,
-) -> HashMap<(i32, i32), HashSet<Entity>> {
-    let mut cells_to_entities: HashMap<(i32, i32), HashSet<Entity>> =
-        HashMap::with_capacity(entities_to_positions.len());
-    for (entity, position) in entities_to_positions.iter() {
-        // https://leetless.de/posts/spatial-hashing-vs-ecs/
-        // generate storage of balls by cells
-        let cell_index_x: i32 = (position.x / CELL_SIZE).floor() as i32;
-        let cell_index_y: i32 = (position.y / CELL_SIZE).floor() as i32;
-        let key = (cell_index_x, cell_index_y);
-        cells_to_entities
-            .entry(key)
-            .or_insert(default())
-            .insert(*entity);
-    }
-    cells_to_entities
-}
-
 pub fn build_entities_to_neighbours<'a>(
+    entities: &HashSet<Entity>,
     entities_to_positions: &HashMap<Entity, Vec2>,
-    cells_to_entities: &HashMap<(i32, i32), HashSet<Entity>>,
-) -> HashMap<Entity, HashSet<Entity>> {
-    let mut entities_to_neighbours: HashMap<Entity, HashSet<Entity>> =
-        HashMap::with_capacity(entities_to_positions.len());
-    for (entity, position) in entities_to_positions.iter() {
-        // generate storage of connections
-        let cell_index_x: i32 = (position.x / CELL_SIZE).floor() as i32;
-        let cell_index_y: i32 = (position.y / CELL_SIZE).floor() as i32;
-        for cell_y in cell_index_y - 1..=cell_index_y + 1 {
-            for cell_x in cell_index_x - 1..=cell_index_x + 1 {
-                let key = (cell_x, cell_y);
-                if let Some(neighbours) = cells_to_entities.get(&key) {
-                    for neighbour_entity in neighbours {
-                        if let Some(neighbour_position) =
-                            entities_to_positions.get(neighbour_entity)
-                        {
-                            if neighbour_entity != entity
-                                && position.distance(*neighbour_position)
-                                    < NEIGHBOUR_POSITION_TOLERANCE
-                            {
-                                entities_to_neighbours
-                                    .entry(*entity)
-                                    .or_insert(default())
-                                    .insert(*neighbour_entity);
-                            }
-                        }
+) -> HashMap<Entity, Vec<(Entity, f32)>> {
+    let mut entities_to_neighbours: HashMap<Entity, Vec<(Entity, f32)>> =
+        HashMap::with_capacity(entities.len());
+    for entity in entities.iter() {
+        for neighbour_entity in entities.iter() {
+            if neighbour_entity != entity {
+                if let Some(entity_position) = entities_to_positions.get(entity) {
+                    let entry = entities_to_neighbours
+                        .entry(*entity)
+                        .or_insert(Vec::with_capacity(entities_to_positions.len()));
+
+                    if let Some(neighbour_position) = entities_to_positions.get(neighbour_entity) {
+                        entry.push((
+                            *neighbour_entity,
+                            (*entity_position).distance(*neighbour_position),
+                        ));
                     }
                 }
             }
         }
+    }
+    for (_, neighbours) in entities_to_neighbours.iter_mut() {
+        neighbours.sort_by(|(_, distance_a), (_, distance_b)| distance_a.total_cmp(distance_b));
     }
     entities_to_neighbours
 }
 
 pub fn find_cluster(
     start_from: Entity,
-    entities_to_neighbours: &HashMap<Entity, HashSet<Entity>>,
+    entities_to_neighbours: &HashMap<Entity, Vec<(Entity, f32)>>,
     entities_to_species: &HashMap<Entity, Species>,
 ) -> (HashSet<Entity>, HashSet<Entity>) {
     let mut to_process: Vec<&Entity> = vec![&start_from];
@@ -93,10 +68,13 @@ pub fn find_cluster(
         processed.insert(*current);
         if let Some(current_species) = entities_to_species.get(current) {
             if let Some(neighbours) = entities_to_neighbours.get(current) {
-                for neighbour in neighbours.iter() {
+                for (neighbour, distance) in neighbours.iter() {
                     // if neighbour is still in the grid and wasn't removed by cluster
                     if processed.contains(neighbour) {
                         continue;
+                    }
+                    if *distance > NEIGHBOUR_POSITION_TOLERANCE {
+                        break;
                     }
                     if let Some(neighbour_species) = entities_to_species.get(neighbour) {
                         if current_species != neighbour_species {
@@ -186,20 +164,26 @@ pub fn send_snap_projectile(
 }
 
 pub fn confine_grid_ball_position(
-    entities_to_positions: &HashMap<Entity, Vec2>,
     grid: &Grid,
     entity: &Entity,
     entity_position: Vec2,
     strict_check: bool,
 ) -> Option<(Vec2, bool, bool)> {
+    if grid.top_kinematic_position == f32::MIN {
+        return None;
+    }
     let max_side_x = grid.init_cols / 2;
     let snap_hex = grid.layout.world_pos_to_hex(entity_position);
     let mut offset = snap_hex.to_offset_coordinates(grid.offset_mode);
     let mut confined_x = false;
     let mut confined_y = false;
     let min_col = -max_side_x;
-    if (strict_check && offset[1] <= grid.last_active_row) || offset[1] < grid.last_active_row {
-        offset[1] = grid.last_active_row;
+    let last_kinematic_row = grid
+        .layout
+        .world_pos_to_hex(Vec2::new(0.0, grid.top_kinematic_position))
+        .to_offset_coordinates(grid.offset_mode);
+    if (strict_check && offset[1] <= last_kinematic_row[1]) || offset[1] < last_kinematic_row[1] {
+        offset[1] = last_kinematic_row[1];
         confined_y = true;
     }
     let max_col = match offset[1] % 2 == 0 {
@@ -222,7 +206,7 @@ pub fn confine_grid_ball_position(
             let neighbour_offset = hex.to_offset_coordinates(grid.offset_mode);
             neighbour_offset[0] >= min_col
                 && neighbour_offset[0] <= max_col
-                && neighbour_offset[1] >= grid.last_active_row
+                && neighbour_offset[1] >= last_kinematic_row[1]
         });
         let mut possible_positions: Vec<Vec2> = vec![grid.layout.hex_to_world_pos(corrected_hex)];
         for possible_neighbour in possible_neighbours {
@@ -230,7 +214,7 @@ pub fn confine_grid_ball_position(
         }
 
         // check that corrected position is free
-        for (ball_entity, ball_position) in entities_to_positions.iter() {
+        for (ball_entity, ball_position) in grid.entities_to_positions.iter() {
             if ball_entity == entity {
                 continue;
             }

@@ -26,6 +26,7 @@ pub fn cleanup_main_camera(mut commands: Commands, query: Query<Entity, With<Mai
     }
 }
 
+#[allow(dead_code)]
 pub fn control_camera_position(
     keyboard_input_key_code: Res<Input<KeyCode>>,
     mut camera_query: Query<&mut Transform, With<MainCamera>>,

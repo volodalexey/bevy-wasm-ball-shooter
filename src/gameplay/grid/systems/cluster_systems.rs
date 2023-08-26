@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
-        Assets, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Query, Res,
-        ResMut, With,
+        Assets, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Input, KeyCode,
+        Query, Res, ResMut, With,
     },
     sprite::ColorMaterial,
 };
@@ -43,6 +43,7 @@ pub fn find_and_remove_clusters(
     mut turn_counter: ResMut<TurnCounter>,
     mut projectile_reload_writer: EventWriter<ProjectileReload>,
     grid: Res<Grid>,
+    keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
     if find_cluster_events.is_empty() {
         return;
@@ -59,6 +60,9 @@ pub fn find_and_remove_clusters(
                 &grid.entities_to_neighbours,
                 &grid.entities_to_species,
             );
+            if keyboard_input_key_code.any_pressed([KeyCode::C]) {
+                println!("cluster {:?}", cluster);
+            }
 
             let mut cluster_score_add = 0;
             if cluster.len() >= MIN_CLUSTER_SIZE {

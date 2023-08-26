@@ -55,7 +55,6 @@ pub fn on_snap_projectile(
             );
 
             if let Some((confined_position, _, confined_y)) = confine_grid_ball_position(
-                &grid.entities_to_positions,
                 grid.as_ref(),
                 projectile_entity,
                 projectile_position.0,
