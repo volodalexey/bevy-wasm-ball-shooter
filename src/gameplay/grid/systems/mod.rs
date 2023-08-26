@@ -5,4 +5,5 @@ pub mod confine_systems;
 pub mod lifecycle_systems;
 pub mod magnetic_systems;
 pub mod projectile_systems;
+pub mod resource_systems;
 pub mod score_systems;

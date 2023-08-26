@@ -11,7 +11,7 @@ use crate::gameplay::{
     },
 };
 
-pub fn check_projectile_out_of_grid(
+pub fn confine_grid_balls(
     projectile_query: Query<(Entity, &Position, &ProjectileBall), With<ProjectileBall>>,
     grid: Res<Grid>,
     mut writer_snap_projectile: EventWriter<SnapProjectile>,

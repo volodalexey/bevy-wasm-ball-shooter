@@ -1,5 +1,6 @@
 use bevy::prelude::{
-    apply_deferred, in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, Update,
+    apply_deferred, in_state, App, FixedTime, FixedUpdate, IntoSystemConfigs, OnEnter, OnExit,
+    Plugin, Update,
 };
 
 use self::{
@@ -8,15 +9,16 @@ use self::{
         animation_systems::{animate_grid_ball_position, move_down_grid_balls},
         cluster_systems::find_and_remove_clusters,
         collision_systems::{check_collision_events, tick_collision_snap_cooldown_timer},
-        confine_systems::check_projectile_out_of_grid,
+        confine_systems::confine_grid_balls,
         lifecycle_systems::{cleanup_grid, generate_grid, spawn_new_row},
         magnetic_systems::apply_magnetic_forces,
         projectile_systems::on_snap_projectile,
+        resource_systems::update_grid_resources,
         score_systems::update_score_counter,
     },
 };
 
-use super::AppState;
+use super::{constants::FIXED_TIMESTEP, AppState};
 
 pub mod components;
 pub mod resources;
@@ -36,7 +38,7 @@ impl Plugin for GridPlugin {
                 Update,
                 (
                     move_down_grid_balls,
-                    check_projectile_out_of_grid,
+                    confine_grid_balls,
                     check_collision_events,
                     tick_collision_snap_cooldown_timer,
                     animate_grid_ball_position,
@@ -51,6 +53,8 @@ impl Plugin for GridPlugin {
                 // snap projectile generate new grid ball, we need to use this ball in clusters, so wait after commands
                 (on_snap_projectile, apply_deferred, find_and_remove_clusters).chain(),
             )
+            .add_systems(FixedUpdate, update_grid_resources)
+            .insert_resource(FixedTime::new_from_secs(FIXED_TIMESTEP))
             .add_systems(OnExit(AppState::Gameplay), cleanup_grid);
     }
 }

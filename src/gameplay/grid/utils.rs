@@ -10,9 +10,9 @@ use hexx::Hex;
 use crate::gameplay::{
     ball::components::{GridBallPositionAnimate, ProjectileBall, Species},
     constants::{
-        BALL_DIAMETER, CELL_SIZE, CLUSTER_TOLERANCE, EMPTY_PLAYGROUND_HEIGHT,
-        LOCK_POSITION_TOLERANCE, MIN_PROJECTILE_REVERSE_VELOCITY, MIN_PROJECTILE_SNAP_VELOCITY,
-        PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
+        BALL_DIAMETER, CELL_SIZE, EMPTY_PLAYGROUND_HEIGHT, LOCK_POSITION_TOLERANCE,
+        MIN_PROJECTILE_REVERSE_VELOCITY, MIN_PROJECTILE_SNAP_VELOCITY,
+        NEIGHBOUR_POSITION_TOLERANCE, PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
     },
     events::SnapProjectile,
     panels::resources::MoveCounter,
@@ -23,7 +23,8 @@ use super::resources::{CollisionSnapCooldown, Grid};
 pub fn buid_cells_to_entities(
     entities_to_positions: &HashMap<Entity, Vec2>,
 ) -> HashMap<(i32, i32), HashSet<Entity>> {
-    let mut cells_to_entities: HashMap<(i32, i32), HashSet<Entity>> = HashMap::default();
+    let mut cells_to_entities: HashMap<(i32, i32), HashSet<Entity>> =
+        HashMap::with_capacity(entities_to_positions.len());
     for (entity, position) in entities_to_positions.iter() {
         // https://leetless.de/posts/spatial-hashing-vs-ecs/
         // generate storage of balls by cells
@@ -42,7 +43,8 @@ pub fn build_entities_to_neighbours<'a>(
     entities_to_positions: &HashMap<Entity, Vec2>,
     cells_to_entities: &HashMap<(i32, i32), HashSet<Entity>>,
 ) -> HashMap<Entity, HashSet<Entity>> {
-    let mut entities_to_neighbours: HashMap<Entity, HashSet<Entity>> = HashMap::default();
+    let mut entities_to_neighbours: HashMap<Entity, HashSet<Entity>> =
+        HashMap::with_capacity(entities_to_positions.len());
     for (entity, position) in entities_to_positions.iter() {
         // generate storage of connections
         let cell_index_x: i32 = (position.x / CELL_SIZE).floor() as i32;
@@ -55,8 +57,9 @@ pub fn build_entities_to_neighbours<'a>(
                         if let Some(neighbour_position) =
                             entities_to_positions.get(neighbour_entity)
                         {
-                            if neighbour_entity.index() != entity.index()
-                                && position.distance(*neighbour_position) < CLUSTER_TOLERANCE
+                            if neighbour_entity != entity
+                                && position.distance(*neighbour_position)
+                                    < NEIGHBOUR_POSITION_TOLERANCE
                             {
                                 entities_to_neighbours
                                     .entry(*entity)

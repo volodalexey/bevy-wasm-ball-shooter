@@ -1,13 +1,16 @@
 use bevy::{
     prelude::{Entity, Resource, Vec2},
     time::{Timer, TimerMode},
-    utils::{default, HashSet, Instant},
+    utils::{default, HashMap, HashSet, Instant},
 };
 use hexx::{HexLayout, HexOrientation, OffsetHexMode};
 
-use crate::gameplay::constants::{
-    CLUSTER_CHECK_COOLDOWN_TIME, COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS, MAX_LEVEL,
-    SIZE,
+use crate::gameplay::{
+    ball::components::Species,
+    constants::{
+        CLUSTER_CHECK_COOLDOWN_TIME, COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS, MAX_LEVEL,
+        SIZE,
+    },
 };
 
 #[derive(Default, Debug, Copy, Clone)]
@@ -39,6 +42,10 @@ pub struct Grid {
     pub offset_mode: OffsetHexMode,
     pub layout: HexLayout,
     pub bounds: Bounds,
+    pub entities_to_positions: HashMap<Entity, Vec2>,
+    pub entities_to_species: HashMap<Entity, Species>,
+    pub cells_to_entities: HashMap<(i32, i32), HashSet<Entity>>,
+    pub entities_to_neighbours: HashMap<Entity, HashSet<Entity>>,
 }
 
 impl Default for Grid {
@@ -57,6 +64,10 @@ impl Default for Grid {
             offset_mode: OffsetHexMode::OddRows,
             layout,
             bounds: Default::default(),
+            entities_to_positions: HashMap::default(),
+            entities_to_species: HashMap::default(),
+            cells_to_entities: HashMap::default(),
+            entities_to_neighbours: HashMap::default(),
         }
     }
 }

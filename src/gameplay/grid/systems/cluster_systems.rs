@@ -1,10 +1,9 @@
 use bevy::{
     prelude::{
         Assets, Commands, DespawnRecursiveExt, Entity, EventReader, EventWriter, Query, Res,
-        ResMut, Vec2, With,
+        ResMut, With,
     },
     sprite::ColorMaterial,
-    utils::HashMap,
 };
 use bevy_xpbd_2d::prelude::{Position, RigidBody};
 
@@ -16,8 +15,8 @@ use crate::gameplay::{
     constants::MIN_CLUSTER_SIZE,
     events::{FindCluster, ProjectileReload, UpdateScoreCounter},
     grid::{
-        resources::CollisionSnapCooldown,
-        utils::{buid_cells_to_entities, build_entities_to_neighbours, find_cluster},
+        resources::{CollisionSnapCooldown, Grid},
+        utils::find_cluster,
     },
     meshes::resources::GameplayMeshes,
     panels::resources::TurnCounter,
@@ -43,22 +42,11 @@ pub fn find_and_remove_clusters(
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
     mut turn_counter: ResMut<TurnCounter>,
     mut projectile_reload_writer: EventWriter<ProjectileReload>,
+    grid: Res<Grid>,
 ) {
     if find_cluster_events.is_empty() {
         return;
     }
-    // println!("FindCluster len {}", find_cluster_events.iter().len());
-    let mut entities_to_positions: HashMap<Entity, Vec2> = HashMap::default();
-    let mut entities_to_species: HashMap<Entity, Species> = HashMap::default();
-    balls_query.iter().for_each(|(e, position, sp, gb, _, _)| {
-        if !gb.is_ready_to_despawn {
-            entities_to_positions.insert(e, position.0);
-            entities_to_species.insert(e, *sp);
-        }
-    });
-    let cells_to_entities = buid_cells_to_entities(&entities_to_positions);
-    let mut entities_to_neighbours =
-        build_entities_to_neighbours(&entities_to_positions, &cells_to_entities);
 
     for FindCluster {
         to_check,
@@ -66,8 +54,11 @@ pub fn find_and_remove_clusters(
     } in find_cluster_events.iter()
     {
         for start_from in to_check.iter() {
-            let (cluster, _) =
-                find_cluster(*start_from, &entities_to_neighbours, &entities_to_species);
+            let (cluster, _) = find_cluster(
+                *start_from,
+                &grid.entities_to_neighbours,
+                &grid.entities_to_species,
+            );
 
             let mut cluster_score_add = 0;
             if cluster.len() >= MIN_CLUSTER_SIZE {
@@ -93,7 +84,6 @@ pub fn find_and_remove_clusters(
                             ));
                             println!("cluster entity despawned {:?}", cluster_entity);
                             commands.entity(cluster_entity).despawn_recursive();
-                            entities_to_neighbours.remove(&cluster_entity);
                             cluster_score_add += 1;
                             if some_projectile_ball.is_some() {
                                 println!("projectile removed in cluster {:?}", cluster_entity);
