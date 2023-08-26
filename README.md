@@ -27,6 +27,11 @@ cargo install wasm-bindgen-cli
 - Balls with nearest distance have more attraction factor than other
 
 TODO
+UI settings for:
+total_colors_count
+total_rows
+move_down_after
+
 move down shold not depend on success cluster, because success can be achieved some time after
 split to count score system
 shoot multiple projectiles

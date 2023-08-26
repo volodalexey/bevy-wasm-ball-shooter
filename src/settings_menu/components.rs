@@ -11,8 +11,25 @@ pub struct VolumeButton {
 }
 
 #[derive(Component)]
-pub struct LevelButton {
-    pub level: u32,
+pub struct TotalColorsButton {
+    pub value: u8,
+    pub key: String,
+    pub pressed: bool,
+    pub color_type: ColorType,
+}
+
+#[derive(Component)]
+pub struct TotalColumnsButton {
+    pub value: u8,
+    pub key: String,
+    pub pressed: bool,
+    pub color_type: ColorType,
+}
+
+#[derive(Component)]
+pub struct TotalRowsButton {
+    pub value: u8,
+    pub key: String,
     pub pressed: bool,
     pub color_type: ColorType,
 }

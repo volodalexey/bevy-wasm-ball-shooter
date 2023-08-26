@@ -1,1 +1,12 @@
-pub const LEVEL_KEY: &str = "level";
+pub const TOTAL_COLORS_KEY: &str = "total_colors";
+pub const MIN_COLORS_COUNT: u8 = 1;
+pub const MAX_COLORS_COUNT: u8 = 5;
+pub const TOTAL_COLUMNS_KEY: &str = "total_columns";
+pub const MIN_COLUMNS_COUNT: u8 = 4;
+pub const MAX_COLUMNS_COUNT: u8 = 12;
+pub const TOTAL_ROWS_KEY: &str = "total_rows";
+pub const MIN_ROWS_COUNT: u8 = 1;
+pub const MAX_ROWS_COUNT: u8 = u8::MAX;
+pub const MOVE_DOWN_AFTER_KEY: &str = "move_down_after";
+pub const MIN_MOVE_DOWN_AFTER: u8 = 1;
+pub const MAX_MOVE_DOWN_AFTER: u8 = 10;
