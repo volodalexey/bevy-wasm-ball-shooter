@@ -64,7 +64,7 @@ impl Default for Grid {
 impl Grid {
     pub fn calc_init_cols_rows(&mut self, level: u32) {
         self.init_cols = match level > MAX_LEVEL / 2 {
-            false => 7,
+            false => 3,
             true => 9,
         };
         self.init_rows = match level {
@@ -116,9 +116,9 @@ impl Default for CooldownMoveCounter {
 impl CooldownMoveCounter {
     pub fn from_level(level_counter: u32) -> Self {
         let init_value = match level_counter {
-            1 => 10,
-            2 => 9,
-            3 => 8,
+            1 => 2,
+            2 => 2,
+            3 => 2,
             4 => 7,
             5 => 6,
             _ => 2,

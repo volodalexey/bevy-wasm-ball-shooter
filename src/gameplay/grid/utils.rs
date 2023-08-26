@@ -1,13 +1,14 @@
 use bevy::{
-    prelude::{default, ChildBuilder, Color, Entity, EventWriter, Query, Vec2, With},
+    prelude::{default, ChildBuilder, Color, Commands, Entity, EventWriter, Query, Vec2, With},
     text::{Text, Text2dBounds, Text2dBundle, TextSection, TextStyle},
     utils::{HashMap, HashSet},
     window::{PrimaryWindow, Window},
 };
+use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, RigidBody};
 use hexx::Hex;
 
 use crate::gameplay::{
-    ball::components::{ProjectileBall, Species},
+    ball::components::{GridBallPositionAnimate, ProjectileBall, Species},
     constants::{
         BALL_DIAMETER, CELL_SIZE, CLUSTER_TOLERANCE, EMPTY_PLAYGROUND_HEIGHT,
         LOCK_POSITION_TOLERANCE, MIN_PROJECTILE_REVERSE_VELOCITY, MIN_PROJECTILE_SNAP_VELOCITY,
@@ -254,4 +255,20 @@ pub fn confine_grid_ball_position(
         }
     }
     None
+}
+
+pub fn convert_to_kinematic(
+    commands: &mut Commands,
+    entity: &Entity,
+    rigid_body: &mut RigidBody,
+    snap_position: Vec2,
+    linear_velocity: &mut LinearVelocity,
+    angular_velocity: &mut AngularVelocity,
+) {
+    *rigid_body = RigidBody::Kinematic;
+    commands
+        .entity(*entity)
+        .insert(GridBallPositionAnimate::from_position(snap_position, false));
+    linear_velocity.0 = Vec2::ZERO;
+    angular_velocity.0 = 0.0;
 }

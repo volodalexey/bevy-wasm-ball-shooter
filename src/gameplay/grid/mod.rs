@@ -5,10 +5,14 @@ use bevy::prelude::{
 use self::{
     resources::{ClusterCheckCooldown, CollisionSnapCooldown, CooldownMoveCounter, Grid},
     systems::{
-        animate_grid_ball_position, apply_magnetic_forces, check_collision_events,
-        check_projectile_out_of_grid, cleanup_grid, find_and_remove_clusters, generate_grid,
-        move_down_grid_balls, on_snap_projectile, spawn_new_row,
-        tick_collision_snap_cooldown_timer, update_score_counter,
+        animation_systems::{animate_grid_ball_position, move_down_grid_balls},
+        cluster_systems::find_and_remove_clusters,
+        collision_systems::{check_collision_events, tick_collision_snap_cooldown_timer},
+        confine_systems::check_projectile_out_of_grid,
+        lifecycle_systems::{cleanup_grid, generate_grid, spawn_new_row},
+        magnetic_systems::apply_magnetic_forces,
+        projectile_systems::on_snap_projectile,
+        score_systems::update_score_counter,
     },
 };
 

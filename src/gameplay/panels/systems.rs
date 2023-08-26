@@ -6,7 +6,10 @@ use bevy::{
 
 use crate::{
     components::AppState,
-    gameplay::grid::resources::CooldownMoveCounter,
+    gameplay::{
+        constants::FILL_PLAYGROUND_ROWS,
+        grid::resources::{CooldownMoveCounter, Grid},
+    },
     loading::{font_assets::FontAssets, sprite_assets::SpriteAssets},
     resources::LevelCounter,
     ui::{
@@ -91,6 +94,7 @@ pub fn update_ui(
         (With<ScoreText>, Without<TurnText>, Without<LevelText>),
     >,
     turn_counter: Res<TurnCounter>,
+    move_counter: Res<MoveCounter>,
     cooldown_move_counter: Res<CooldownMoveCounter>,
     mut turn_text_query: Query<&mut Text, (With<TurnText>, Without<ScoreText>, Without<LevelText>)>,
     level_counter: Res<LevelCounter>,
@@ -98,14 +102,21 @@ pub fn update_ui(
         &mut Text,
         (With<LevelText>, Without<ScoreText>, Without<TurnText>),
     >,
+    grid: Res<Grid>,
 ) {
     for mut score_text in &mut score_text_query {
         score_text.sections[0].value = format!("Очки: {:?} ", score_counter.0);
     }
     for mut turn_text in &mut turn_text_query {
+        let left_spawn_count = grid.init_rows - FILL_PLAYGROUND_ROWS - move_counter.0 as i32 - 1;
         turn_text.sections[0].value = format!(
-            "Ходов: {} ({})",
-            turn_counter.0, cooldown_move_counter.value
+            "Ходов: {}/{} ({})",
+            turn_counter.0,
+            match left_spawn_count > 0 {
+                true => left_spawn_count,
+                false => 0,
+            },
+            cooldown_move_counter.value
         );
     }
     for mut level_text in &mut level_text_query {

@@ -4,7 +4,7 @@ use bevy::{
 };
 use bevy_xpbd_2d::prelude::{
     AngularDamping, CoefficientCombine, Collider, ColliderMassProperties, CollisionLayers,
-    LockedAxes, MassPropertiesBundle, Position, Restitution, RigidBody,
+    MassPropertiesBundle, Position, Restitution, RigidBody,
 };
 
 use crate::gameplay::{
@@ -36,7 +36,6 @@ impl GridBallBundle {
             GridBall::default(),
             MagneticGridBall {},
             species,
-            RigidBody::Dynamic,
             Collider::ball(BALL_RADIUS),
             ColliderMassProperties::ZERO,
             MassPropertiesBundle::new_computed(&Collider::ball(1.0), 1.0),
@@ -79,7 +78,9 @@ impl GridBallBundle {
         ));
 
         if is_last_active {
-            entity_commands.insert(LockedAxes::TRANSLATION_LOCKED);
+            entity_commands.insert(RigidBody::Kinematic);
+        } else {
+            entity_commands.insert(RigidBody::Dynamic);
         }
         if is_appear_animation {
             entity_commands.insert(GridBallScaleAnimate::from_scale(Vec2::ONE));

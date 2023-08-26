@@ -22,8 +22,11 @@ cargo install wasm-bindgen-cli
 ./wasm/build.sh
 ```
 
+- Magneitic force can be applied only to dynamic rigid bodies
+- Kinematic rigid bodies used as attraction point for rigid bodies
+- Balls with nearest distance have more attraction factor than other
+
 TODO
-do not disable magnetic for move row
 find cluster only when ball velocity is low
 move down shold not depend on success cluster, because success can be achieved some time after
 split to count score system
