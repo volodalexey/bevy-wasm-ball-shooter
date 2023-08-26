@@ -27,7 +27,6 @@ cargo install wasm-bindgen-cli
 - Balls with nearest distance have more attraction factor than other
 
 TODO
-find cluster only when ball velocity is low
 move down shold not depend on success cluster, because success can be achieved some time after
 split to count score system
 shoot multiple projectiles

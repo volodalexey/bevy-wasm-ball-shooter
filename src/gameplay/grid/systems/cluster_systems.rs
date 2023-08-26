@@ -5,14 +5,14 @@ use bevy::{
     },
     sprite::ColorMaterial,
 };
-use bevy_xpbd_2d::prelude::{Position, RigidBody};
+use bevy_xpbd_2d::prelude::{LinearVelocity, Position, RigidBody};
 
 use crate::gameplay::{
     ball::{
         components::{GridBall, ProjectileBall, Species},
         out_ball_bundle::OutBallBundle,
     },
-    constants::MIN_CLUSTER_SIZE,
+    constants::{MIN_CLUSTER_SIZE, MIN_CLUSTER_VELOCITY},
     events::{FindCluster, ProjectileReload, UpdateScoreCounter},
     grid::{
         resources::{CollisionSnapCooldown, Grid},
@@ -29,6 +29,7 @@ pub fn find_and_remove_clusters(
         (
             Entity,
             &Position,
+            &LinearVelocity,
             &Species,
             &mut GridBall,
             &mut RigidBody,
@@ -55,6 +56,11 @@ pub fn find_and_remove_clusters(
     } in find_cluster_events.iter()
     {
         for start_from in to_check.iter() {
+            if let Ok((_, _, linear_velocity, _, _, _, _)) = balls_query.get_mut(*start_from) {
+                if linear_velocity.length() > MIN_CLUSTER_VELOCITY {
+                    continue;
+                }
+            }
             let (cluster, _) = find_cluster(
                 *start_from,
                 &grid.entities_to_neighbours,
@@ -71,6 +77,7 @@ pub fn find_and_remove_clusters(
                     if let Ok((
                         cluster_entity,
                         cluster_position,
+                        _,
                         cluster_species,
                         mut grid_ball,
                         _,
