@@ -21,7 +21,6 @@ use crate::{
         meshes::resources::GameplayMeshes,
         panels::resources::MoveCounter,
     },
-    resources::LevelCounter,
 };
 
 pub fn generate_grid(
@@ -29,14 +28,13 @@ pub fn generate_grid(
     gameplay_meshes: Res<GameplayMeshes>,
     gameplay_materials: Res<GameplayMaterials>,
     mut grid: ResMut<Grid>,
-    level_counter: Res<LevelCounter>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
 ) {
-    grid.calc_init_cols_rows(level_counter.0);
     adjust_grid_layout(&window_query, &mut grid, &MoveCounter(0));
-    let max_side_x = grid.init_cols / 2;
-    for hex in shapes::pointy_rectangle([-max_side_x, max_side_x, -grid.init_rows + 1, 0]) {
+    let max_side_x = (grid.init_cols / 2) as i32;
+    for hex in shapes::pointy_rectangle([-max_side_x, max_side_x, -(grid.total_rows as i32) + 1, 0])
+    {
         let is_even = hex.y % 2 == 0;
         let offset = hex.to_offset_coordinates(grid.offset_mode);
         if (!is_even && offset[0] == max_side_x) || hex.y < grid.last_active_row {
@@ -49,6 +47,7 @@ pub fn generate_grid(
             &mut commands,
             &gameplay_meshes,
             &gameplay_materials,
+            grid.total_colors,
             position,
             is_last_active,
             false,
@@ -97,7 +96,7 @@ pub fn spawn_new_row(
     spawn_row_events.clear();
 
     grid.last_active_row -= 1;
-    let max_side_x = grid.init_cols / 2;
+    let max_side_x = (grid.init_cols / 2) as i32;
     for hex_x in -max_side_x..=max_side_x {
         let is_even = grid.last_active_row % 2 == 0;
         let hex = Hex::from_offset_coordinates([hex_x, grid.last_active_row], grid.offset_mode);
@@ -110,6 +109,7 @@ pub fn spawn_new_row(
             &mut commands,
             &gameplay_meshes,
             &gameplay_materials,
+            grid.total_colors,
             position,
             true,
             false,

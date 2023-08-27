@@ -62,6 +62,7 @@ pub fn cleanup_projectile_ball(
 
 pub fn projectile_reload(
     mut commands: Commands,
+    grid: Res<Grid>,
     gameplay_meshes: Res<GameplayMeshes>,
     gameplay_materials: Res<GameplayMaterials>,
     mut buffer: ResMut<ProjectileBuffer>,
@@ -109,10 +110,10 @@ pub fn projectile_reload(
             {
                 species
             } else {
-                Species::pick_random(&colors_in_grid)
+                Species::pick_random(&colors_in_grid, grid.total_colors)
             }
         }
-        None => Species::pick_random(&colors_in_grid),
+        None => Species::pick_random(&colors_in_grid, grid.total_colors),
     };
 
     let window = window_query.single();
@@ -123,6 +124,7 @@ pub fn projectile_reload(
         &mut commands,
         &gameplay_meshes,
         &gameplay_materials,
+        grid.total_colors,
         Vec2::new(0.0, projectile_spawn_bottom),
         false,
         true,
@@ -135,7 +137,9 @@ pub fn projectile_reload(
         entity, species, projectile_spawn_bottom
     );
 
-    buffer.0.push(Species::pick_random(&colors_in_grid));
+    buffer
+        .0
+        .push(Species::pick_random(&colors_in_grid, grid.total_colors));
 
     cleanup_next_projectile_ball_utils(&mut commands, &next_projectile_query);
     if let Some(species) = buffer.0.last() {

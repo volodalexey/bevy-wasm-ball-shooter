@@ -30,9 +30,9 @@ pub struct GridPlugin;
 impl Plugin for GridPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Grid>()
-            .insert_resource(CollisionSnapCooldown::default())
-            .insert_resource(ClusterCheckCooldown::default())
-            .insert_resource(CooldownMoveCounter::default())
+            .init_resource::<CollisionSnapCooldown>()
+            .init_resource::<ClusterCheckCooldown>()
+            .init_resource::<CooldownMoveCounter>()
             .add_systems(OnEnter(AppState::GameplayInit), generate_grid)
             .add_systems(
                 Update,

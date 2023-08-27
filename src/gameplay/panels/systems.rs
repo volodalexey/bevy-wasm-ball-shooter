@@ -3,15 +3,20 @@ use bevy::{
     text::Text,
     window::{PrimaryWindow, Window},
 };
+use bevy_pkv::PkvStore;
 
 use crate::{
     components::AppState,
+    constants::{MOVE_DOWN_AFTER_KEY, TOTAL_COLORS_KEY, TOTAL_COLUMNS_KEY, TOTAL_ROWS_KEY},
     gameplay::{
         constants::FILL_PLAYGROUND_ROWS,
         grid::resources::{CooldownMoveCounter, Grid},
     },
     loading::{font_assets::FontAssets, sprite_assets::SpriteAssets},
-    resources::LevelCounter,
+    settings_menu::utils::{
+        colors_utils::read_total_colors, columns_utils::read_init_cols,
+        move_down_utils::read_move_down, rows_utils::read_total_rows,
+    },
     ui::{
         components::NextStateButton,
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
@@ -32,12 +37,25 @@ pub fn setup_resources(
     mut turn_counter: ResMut<TurnCounter>,
     mut move_counter: ResMut<MoveCounter>,
     mut score_counter: ResMut<ScoreCounter>,
-    level_counter: Res<LevelCounter>,
+    pkv: Res<PkvStore>,
+    mut grid: ResMut<Grid>,
 ) {
     turn_counter.0 = 0;
     move_counter.0 = 0;
     score_counter.0 = 0;
-    commands.insert_resource(CooldownMoveCounter::from_level(level_counter.0));
+    let move_down_after = read_move_down(MOVE_DOWN_AFTER_KEY, &pkv);
+    commands.insert_resource(CooldownMoveCounter::init(move_down_after));
+
+    grid.total_colors = read_total_colors(TOTAL_COLORS_KEY, &pkv);
+    grid.init_cols = read_init_cols(TOTAL_COLUMNS_KEY, &pkv);
+    grid.total_rows = read_total_rows(TOTAL_ROWS_KEY, &pkv);
+
+    grid.calc_last_active_row();
+
+    println!(
+        "move_down_after {} total_colors {} init_cols {} total_rows {}",
+        move_down_after, grid.total_colors, grid.init_cols, grid.total_rows
+    )
 }
 
 pub fn setup_ui(
@@ -98,7 +116,6 @@ pub fn update_ui(
     move_counter: Res<MoveCounter>,
     cooldown_move_counter: Res<CooldownMoveCounter>,
     mut turn_text_query: Query<&mut Text, (With<TurnText>, Without<ScoreText>, Without<LevelText>)>,
-    level_counter: Res<LevelCounter>,
     mut level_text_query: Query<
         &mut Text,
         (With<LevelText>, Without<ScoreText>, Without<TurnText>),
@@ -109,7 +126,8 @@ pub fn update_ui(
         score_text.sections[0].value = format!("Очки: {:?} ", score_counter.0);
     }
     for mut turn_text in &mut turn_text_query {
-        let left_spawn_count = grid.init_rows - FILL_PLAYGROUND_ROWS - move_counter.0 as i32 - 1;
+        let left_spawn_count =
+            grid.total_rows as i32 - FILL_PLAYGROUND_ROWS as i32 - move_counter.0 as i32 - 1;
         turn_text.sections[0].value = format!(
             "Ходов: {}/{} ({})",
             turn_counter.0,
@@ -121,6 +139,6 @@ pub fn update_ui(
         );
     }
     for mut level_text in &mut level_text_query {
-        level_text.sections[0].value = format!("Уровень: {}", level_counter.0);
+        level_text.sections[0].value = format!("Уровень: ");
     }
 }

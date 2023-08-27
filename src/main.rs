@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{default, App, PluginGroup, Startup},
+    prelude::{default, App, PluginGroup},
     window::{Window, WindowPlugin},
     DefaultPlugins,
 };
@@ -11,7 +11,6 @@ use gameplay::GameplayPlugin;
 use loading::LoadingPlugin;
 use settings_menu::SettingsMenuPlugin;
 use start_menu::StartMenuPlugin;
-use systems::load_saved_level;
 use ui::UIPlugin;
 
 mod components;
@@ -21,12 +20,9 @@ mod game_over_menu;
 mod game_win_menu;
 mod gameplay;
 mod loading;
-mod resources;
 mod settings_menu;
 mod start_menu;
-mod systems;
 mod ui;
-mod utils;
 fn main() {
     App::new()
         .add_plugins((
@@ -50,6 +46,5 @@ fn main() {
             GameOverMenuPlugin,
         ))
         .add_state::<AppState>()
-        .add_systems(Startup, load_saved_level)
         .run();
 }

@@ -4,7 +4,7 @@ use bevy_pkv::PkvStore;
 use crate::{
     constants::DEFAULT_ROWS_COUNT,
     loading::font_assets::FontAssets,
-    settings_menu::components::TotalRowsButton,
+    settings_menu::components::{TotalRowsButton, TotalRowsText},
     ui::{
         components::NoneComponent,
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
@@ -15,6 +15,19 @@ use crate::{
         },
     },
 };
+
+pub fn read_total_rows(key: &str, pkv: &PkvStore) -> u8 {
+    match pkv.get::<String>(key) {
+        Ok(total_rows) => {
+            if let Ok(parsed) = total_rows.parse::<u8>() {
+                parsed
+            } else {
+                DEFAULT_ROWS_COUNT
+            }
+        }
+        Err(_) => DEFAULT_ROWS_COUNT,
+    }
+}
 
 pub fn build_rows_line(
     title: &str,
@@ -40,6 +53,7 @@ pub fn build_rows_line(
                     increment: false,
                     key: key.to_string(),
                     color_type: ColorType::Green,
+                    pressed: false,
                 }),
                 &ColorType::Green,
                 "-",
@@ -48,22 +62,13 @@ pub fn build_rows_line(
                 button_colors,
                 false,
             );
-            let total_rows = match pkv.get::<String>(key) {
-                Ok(total_rows) => {
-                    if let Ok(parsed) = total_rows.parse::<u8>() {
-                        parsed
-                    } else {
-                        DEFAULT_ROWS_COUNT
-                    }
-                }
-                Err(_) => DEFAULT_ROWS_COUNT,
-            };
+            let total_rows = read_total_rows(key, pkv);
             append_large_text(
                 parent,
                 total_rows.to_string().as_str(),
                 font_assets,
                 text_colors,
-                None::<NoneComponent>,
+                Some(TotalRowsText {}),
             );
             append_middle_text_button(
                 parent,
@@ -71,6 +76,7 @@ pub fn build_rows_line(
                     increment: true,
                     key: key.to_string(),
                     color_type: ColorType::Green,
+                    pressed: false,
                 }),
                 &ColorType::Green,
                 "+",

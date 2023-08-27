@@ -8,8 +8,7 @@ use hexx::{HexLayout, HexOrientation, OffsetHexMode};
 use crate::gameplay::{
     ball::components::Species,
     constants::{
-        CLUSTER_CHECK_COOLDOWN_TIME, COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS, MAX_LEVEL,
-        SIZE,
+        CLUSTER_CHECK_COOLDOWN_TIME, COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS, SIZE,
     },
 };
 
@@ -36,8 +35,9 @@ pub struct Bounds {
 
 #[derive(Resource)]
 pub struct Grid {
-    pub init_cols: i32,
-    pub init_rows: i32,
+    pub init_cols: u8,
+    pub total_rows: u8,
+    pub total_colors: u8,
     pub last_active_row: i32,
     pub offset_mode: OffsetHexMode,
     pub layout: HexLayout,
@@ -58,8 +58,9 @@ impl Default for Grid {
             origin: Vec2::ZERO,
         };
         Self {
-            init_cols: 0,
-            init_rows: 0,
+            init_cols: default(),
+            total_rows: default(),
+            total_colors: default(),
             last_active_row: 0,
             offset_mode: OffsetHexMode::OddRows,
             layout,
@@ -73,35 +74,13 @@ impl Default for Grid {
 }
 
 impl Grid {
-    pub fn calc_init_cols_rows(&mut self, level: u32) {
-        self.init_cols = match level > MAX_LEVEL / 2 {
-            false => 3,
-            true => 9,
-        };
-        self.init_rows = match level {
-            1 => 1,
-            2 => 2,
-            3 => 4,
-            4 => 6,
-            5 => 8,
-            6 => 10,
-            7 => 12,
-            8 => 14,
-            9 => 16,
-            10 => 18,
-            11 => 20,
-            12 => 22,
-            13 => 24,
-            14 => 26,
-            15 => 28,
-            MAX_LEVEL => 30,
-            _ => 0,
-        };
+    pub fn calc_last_active_row(&mut self) {
         let fill_rows = FILL_PLAYGROUND_ROWS;
-        self.last_active_row = -(match self.init_rows < fill_rows {
-            true => self.init_rows,
+        self.last_active_row = -(match self.total_rows < fill_rows {
+            true => self.total_rows,
             false => fill_rows,
-        } - 1);
+        } as i32
+            - 1);
     }
 
     pub fn clear(&mut self) {
@@ -111,8 +90,8 @@ impl Grid {
 
 #[derive(Resource)]
 pub struct CooldownMoveCounter {
-    pub value: u32,
-    pub init_value: u32,
+    pub value: u8,
+    pub init_value: u8,
 }
 
 impl Default for CooldownMoveCounter {
@@ -125,17 +104,9 @@ impl Default for CooldownMoveCounter {
 }
 
 impl CooldownMoveCounter {
-    pub fn from_level(level_counter: u32) -> Self {
-        let init_value = match level_counter {
-            1 => 2,
-            2 => 2,
-            3 => 2,
-            4 => 7,
-            5 => 6,
-            _ => 2,
-        };
+    pub fn init(init_value: u8) -> Self {
         Self {
-            value: init_value,
+            value: 0,
             init_value,
         }
     }

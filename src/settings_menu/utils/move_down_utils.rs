@@ -2,7 +2,7 @@ use bevy::prelude::{ChildBuilder, Res};
 use bevy_pkv::PkvStore;
 
 use crate::{
-    constants::{MAX_MOVE_DOWN_AFTER, MIN_MOVE_DOWN_AFTER},
+    constants::{DEFAULT_MOVE_DOWN_AFTER, MAX_MOVE_DOWN_AFTER, MIN_MOVE_DOWN_AFTER},
     loading::font_assets::FontAssets,
     settings_menu::components::MoveDownButton,
     ui::{
@@ -15,6 +15,19 @@ use crate::{
         },
     },
 };
+
+pub fn read_move_down(key: &str, pkv: &Res<PkvStore>) -> u8 {
+    match pkv.get::<String>(key) {
+        Ok(colors_count) => {
+            if let Ok(parsed) = colors_count.parse::<u8>() {
+                parsed
+            } else {
+                DEFAULT_MOVE_DOWN_AFTER
+            }
+        }
+        Err(_) => DEFAULT_MOVE_DOWN_AFTER,
+    }
+}
 
 pub fn build_move_down_line(
     title: &str,
@@ -34,17 +47,9 @@ pub fn build_move_down_line(
             None::<NoneComponent>,
         );
         append_flex_row_evenly(parent, |parent| {
+            let move_down = read_move_down(key, pkv);
             (MIN_MOVE_DOWN_AFTER..=MAX_MOVE_DOWN_AFTER).for_each(|v| {
-                let selected = match pkv.get::<String>(key) {
-                    Ok(colors_count) => {
-                        if let Ok(parsed) = colors_count.parse::<u8>() {
-                            parsed == v
-                        } else {
-                            false
-                        }
-                    }
-                    Err(_) => false,
-                };
+                let selected = move_down == v;
                 append_middle_text_button(
                     parent,
                     Some(MoveDownButton {

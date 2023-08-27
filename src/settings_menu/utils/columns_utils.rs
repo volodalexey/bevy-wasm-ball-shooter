@@ -2,7 +2,7 @@ use bevy::prelude::{ChildBuilder, Res};
 use bevy_pkv::PkvStore;
 
 use crate::{
-    constants::{MAX_COLUMNS_COUNT, MIN_COLUMNS_COUNT},
+    constants::{DEFAULT_COLUMNS_COUNT, MAX_COLUMNS_COUNT, MIN_COLUMNS_COUNT},
     loading::font_assets::FontAssets,
     settings_menu::components::TotalColumnsButton,
     ui::{
@@ -15,6 +15,19 @@ use crate::{
         },
     },
 };
+
+pub fn read_init_cols(key: &str, pkv: &Res<PkvStore>) -> u8 {
+    match pkv.get::<String>(key) {
+        Ok(init_cols) => {
+            if let Ok(parsed) = init_cols.parse::<u8>() {
+                parsed
+            } else {
+                DEFAULT_COLUMNS_COUNT
+            }
+        }
+        Err(_) => DEFAULT_COLUMNS_COUNT,
+    }
+}
 
 pub fn build_columns_line(
     title: &str,
@@ -34,17 +47,9 @@ pub fn build_columns_line(
             None::<NoneComponent>,
         );
         append_flex_row_evenly(parent, |parent| {
+            let init_cols = read_init_cols(key, pkv);
             (MIN_COLUMNS_COUNT..=MAX_COLUMNS_COUNT).for_each(|v| {
-                let selected = match pkv.get::<String>(key) {
-                    Ok(colors_count) => {
-                        if let Ok(parsed) = colors_count.parse::<u8>() {
-                            parsed == v
-                        } else {
-                            false
-                        }
-                    }
-                    Err(_) => false,
-                };
+                let selected = init_cols == v;
                 append_middle_text_button(
                     parent,
                     Some(TotalColumnsButton {

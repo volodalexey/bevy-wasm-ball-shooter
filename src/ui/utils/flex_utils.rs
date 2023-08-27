@@ -34,7 +34,7 @@ pub fn build_flex_column_start(
 ) {
     build_flex_column(parent, children, AlignItems::Start)
 }
-
+#[allow(dead_code)]
 pub fn build_flex_column_stretch(
     parent: &mut ChildBuilder<'_, '_, '_>,
     children: impl FnOnce(&mut ChildBuilder),
@@ -106,7 +106,7 @@ pub fn build_flex_full_row_evenly(
         ))
         .with_children(children);
 }
-
+#[allow(dead_code)]
 pub fn append_flex_row_between(
     parent: &mut ChildBuilder<'_, '_, '_>,
     children: impl FnOnce(&mut ChildBuilder),

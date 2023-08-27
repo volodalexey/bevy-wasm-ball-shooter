@@ -2,7 +2,7 @@ use bevy::prelude::{ChildBuilder, Res};
 use bevy_pkv::PkvStore;
 
 use crate::{
-    constants::{MAX_COLORS_COUNT, MIN_COLORS_COUNT},
+    constants::{DEFAULT_COLORS_COUNT, MAX_COLORS_COUNT, MIN_COLORS_COUNT},
     loading::font_assets::FontAssets,
     settings_menu::components::TotalColorsButton,
     ui::{
@@ -15,6 +15,19 @@ use crate::{
         },
     },
 };
+
+pub fn read_total_colors(key: &str, pkv: &Res<PkvStore>) -> u8 {
+    match pkv.get::<String>(key) {
+        Ok(colors_count) => {
+            if let Ok(parsed) = colors_count.parse::<u8>() {
+                parsed
+            } else {
+                DEFAULT_COLORS_COUNT
+            }
+        }
+        Err(_) => DEFAULT_COLORS_COUNT,
+    }
+}
 
 pub fn build_colors_line(
     title: &str,
@@ -34,17 +47,9 @@ pub fn build_colors_line(
             None::<NoneComponent>,
         );
         append_flex_row_evenly(parent, |parent| {
+            let total_colors = read_total_colors(key, pkv);
             (MIN_COLORS_COUNT..=MAX_COLORS_COUNT).for_each(|v| {
-                let selected = match pkv.get::<String>(key) {
-                    Ok(colors_count) => {
-                        if let Ok(parsed) = colors_count.parse::<u8>() {
-                            parsed == v
-                        } else {
-                            false
-                        }
-                    }
-                    Err(_) => false,
-                };
+                let selected = total_colors == v;
                 append_middle_text_button(
                     parent,
                     Some(TotalColorsButton {

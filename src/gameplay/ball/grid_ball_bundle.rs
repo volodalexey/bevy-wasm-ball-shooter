@@ -53,6 +53,7 @@ impl GridBallBundle {
         commands: &mut Commands,
         gameplay_meshes: &Res<GameplayMeshes>,
         gameplay_materials: &Res<GameplayMaterials>,
+        total_colors: u8,
         position: Vec2,
         is_last_active: bool,
         is_projectile: bool,
@@ -66,7 +67,7 @@ impl GridBallBundle {
         }
         let species = match some_species {
             Some(species) => species,
-            None => Species::random_species(),
+            None => Species::random_species(total_colors),
         };
 
         let mut entity_commands = commands.spawn(Self::new(

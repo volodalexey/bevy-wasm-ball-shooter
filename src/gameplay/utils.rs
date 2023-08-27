@@ -1,9 +1,14 @@
 use bevy::{
-    prelude::{Camera, GlobalTransform, Input, MouseButton, Query, Res, Touches, Vec2, With},
+    prelude::{
+        Camera, GlobalTransform, Input, MouseButton, Query, Res, ResMut, Touches, Vec2, With,
+    },
     window::{PrimaryWindow, Window},
 };
+use bevy_pkv::PkvStore;
 
-use super::main_camera::components::MainCamera;
+use crate::constants::{MAX_ROWS_COUNT, MIN_ROWS_COUNT, TOTAL_ROWS_KEY};
+
+use super::{grid::resources::Grid, main_camera::components::MainCamera};
 
 pub fn detect_pointer_position(
     window_query: &Query<&Window, With<PrimaryWindow>>,
@@ -48,4 +53,13 @@ pub fn detect_pointer_position(
         }
     }
     (pointer_position, is_pressed, is_released, pointer_aquired)
+}
+
+pub fn increment_init_rows(grid: &mut Grid, pkv: &mut ResMut<PkvStore>) {
+    grid.total_rows += 1;
+    if grid.total_rows > MAX_ROWS_COUNT {
+        grid.total_rows = MIN_ROWS_COUNT
+    }
+    pkv.set_string(TOTAL_ROWS_KEY, &grid.total_rows.to_string())
+        .expect("failed to save total rows");
 }

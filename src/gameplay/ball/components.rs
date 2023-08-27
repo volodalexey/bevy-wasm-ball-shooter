@@ -170,27 +170,27 @@ impl Into<ColorMaterial> for Species {
 impl From<u8> for Species {
     fn from(num: u8) -> Self {
         match num {
-            0 => Species::Red,
-            1 => Species::Blue,
-            2 => Species::Green,
-            3 => Species::Yellow,
-            4 => Species::White,
+            1 => Species::Red,
+            2 => Species::Blue,
+            3 => Species::Green,
+            4 => Species::Yellow,
+            5 => Species::White,
             _ => unreachable!(),
         }
     }
 }
 
 impl Species {
-    pub fn random_species() -> Species {
-        Self::from(fastrand::u8(0..5))
+    pub fn random_species(total_colors: u8) -> Species {
+        Self::from(fastrand::u8(1..=total_colors))
     }
 
-    pub fn pick_random(colors_in_grid: &Vec<Species>) -> Species {
+    pub fn pick_random(colors_in_grid: &Vec<Species>, total_colors: u8) -> Species {
         if colors_in_grid.len() > 0 {
             let i = fastrand::usize(..colors_in_grid.len());
             colors_in_grid[i]
         } else {
-            Species::random_species()
+            Species::random_species(total_colors)
         }
     }
 }

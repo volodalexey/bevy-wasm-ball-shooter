@@ -9,7 +9,7 @@ use bevy_pkv::PkvStore;
 use bevy_xpbd_2d::prelude::Position;
 use hexx::Hex;
 
-use crate::{components::AppState, resources::LevelCounter, utils::increment_level};
+use crate::components::AppState;
 
 use super::{
     ball::components::{GridBall, OutBall, ProjectileBall},
@@ -17,6 +17,7 @@ use super::{
     events::{FindCluster, MoveDownLastActive, ProjectileReload, SnapProjectile, SpawnRow},
     grid::resources::Grid,
     lines::components::LineType,
+    utils::increment_init_rows,
 };
 
 pub fn setup_first_turn(mut begin_turn: EventWriter<ProjectileReload>) {
@@ -63,13 +64,13 @@ pub fn check_game_over(
 
 pub fn check_game_win(
     mut app_state_next_state: ResMut<NextState<AppState>>,
-    mut level_counter: ResMut<LevelCounter>,
+    mut grid: ResMut<Grid>,
     mut pkv: ResMut<PkvStore>,
     balls_query: Query<&GridBall, (With<GridBall>, Without<ProjectileBall>)>,
     out_balls_query: Query<&OutBall, With<OutBall>>,
 ) {
     if balls_query.iter().len() == 0 && out_balls_query.iter().count() == 0 {
-        increment_level(&mut level_counter, &mut pkv);
+        increment_init_rows(grid.as_mut(), &mut pkv);
         app_state_next_state.set(AppState::GameWin);
     }
 }
@@ -77,14 +78,14 @@ pub fn check_game_win(
 pub fn keydown_detect(
     mut app_state_next_state: ResMut<NextState<AppState>>,
     keyboard_input_key_code: Res<Input<KeyCode>>,
-    mut level_counter: ResMut<LevelCounter>,
+    mut grid: ResMut<Grid>,
     mut pkv: ResMut<PkvStore>,
 ) {
     if keyboard_input_key_code.any_just_released([KeyCode::Escape]) {
         app_state_next_state.set(AppState::GameOver);
     }
     if keyboard_input_key_code.any_just_released([KeyCode::Space]) {
-        increment_level(&mut level_counter, &mut pkv);
+        increment_init_rows(grid.as_mut(), &mut pkv);
         app_state_next_state.set(AppState::GameWin);
     }
 }

@@ -177,7 +177,7 @@ pub fn confine_grid_ball_position(
     let mut offset = snap_hex.to_offset_coordinates(grid.offset_mode);
     let mut confined_x = false;
     let mut confined_y = false;
-    let min_col = -max_side_x;
+    let min_col = -(max_side_x as i32);
     let last_kinematic_row = grid
         .layout
         .world_pos_to_hex(Vec2::new(0.0, grid.top_kinematic_position))
@@ -189,7 +189,7 @@ pub fn confine_grid_ball_position(
     let max_col = match offset[1] % 2 == 0 {
         true => max_side_x,
         false => max_side_x - 1,
-    };
+    } as i32;
     if (strict_check && offset[0] <= min_col) || offset[0] < min_col {
         offset[0] = min_col;
         confined_x = true;

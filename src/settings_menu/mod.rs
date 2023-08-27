@@ -6,13 +6,18 @@ use crate::{
 };
 
 use self::systems::{
-    keydown_systems::keydown_detect, menu_systems::setup_menu,
+    colors_systems::interact_with_colors_button,
+    columns_systems::interact_with_columns_button,
+    keydown_systems::keydown_detect,
+    menu_systems::setup_menu,
+    move_down_systems::interact_with_move_down_button,
+    rows_systems::{interact_with_rows_button, update_total_rows_text},
     volume_systems::interact_with_volume_button,
 };
 
 mod components;
 mod systems;
-mod utils;
+pub mod utils;
 pub struct SettingsMenuPlugin;
 
 impl Plugin for SettingsMenuPlugin {
@@ -24,6 +29,11 @@ impl Plugin for SettingsMenuPlugin {
                     interact_with_volume_button,
                     keydown_detect,
                     interact_with_next_state_button,
+                    interact_with_colors_button,
+                    interact_with_columns_button,
+                    interact_with_rows_button,
+                    interact_with_move_down_button,
+                    update_total_rows_text,
                 )
                     .run_if(in_state(AppState::Settings)),
             )
