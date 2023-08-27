@@ -30,10 +30,14 @@ pub fn update_score_counter(
             pkv_play_score_audio(&mut commands, &audio_assets, &pkv);
             score_counter.0 += score_add;
         } else if cooldown_move_counter.init_value != 0 && *move_down_after {
+            println!(
+                "init_value {} value {}",
+                cooldown_move_counter.init_value, cooldown_move_counter.value
+            );
             cooldown_move_counter.value -= 1;
             if cooldown_move_counter.value == 0 {
                 move_counter.0 += 1;
-                cooldown_move_counter.value = cooldown_move_counter.init_value;
+                cooldown_move_counter.reset();
                 writer_move_down_last_active.send(MoveDownLastActive {});
             }
         }

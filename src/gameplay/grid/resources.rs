@@ -106,9 +106,13 @@ impl Default for CooldownMoveCounter {
 impl CooldownMoveCounter {
     pub fn init(init_value: u8) -> Self {
         Self {
-            value: 0,
+            value: init_value,
             init_value,
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.value = self.init_value
     }
 }
 

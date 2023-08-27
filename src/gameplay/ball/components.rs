@@ -111,9 +111,11 @@ impl OutBall {
 pub enum Species {
     Red,
     Blue,
+    Blau,
     Green,
     Yellow,
     White,
+    Purple,
 }
 
 impl Display for Species {
@@ -124,9 +126,11 @@ impl Display for Species {
             match self {
                 Species::Red => "Species::Red",
                 Species::Blue => "Species::Blue",
+                Species::Blau => "Species::Blau",
                 Species::Green => "Species::Green",
                 Species::Yellow => "Species::Yellow",
                 Species::White => "Species::White",
+                Species::Purple => "Species::Purple",
             },
         )
     }
@@ -140,9 +144,11 @@ impl Debug for Species {
             match self {
                 Species::Red => "Species::Red",
                 Species::Blue => "Species::Blue",
+                Species::Blau => "Species::Blau",
                 Species::Green => "Species::Green",
                 Species::Yellow => "Species::Yellow",
                 Species::White => "Species::White",
+                Species::Purple => "Species::Purple",
             },
         )
     }
@@ -151,11 +157,13 @@ impl Debug for Species {
 impl Into<Color> for Species {
     fn into(self) -> Color {
         match self {
-            Species::Red => Color::rgb_u8(244, 47, 47),
-            Species::Blue => Color::rgb_u8(0, 93, 234),
-            Species::Green => Color::rgb_u8(0, 197, 171),
-            Species::Yellow => Color::rgb_u8(255, 219, 0),
-            Species::White => Color::ANTIQUE_WHITE,
+            Species::Red => Color::RED,
+            Species::Blue => Color::BLUE,
+            Species::Blau => Color::AQUAMARINE,
+            Species::Green => Color::GREEN,
+            Species::Yellow => Color::YELLOW,
+            Species::White => Color::WHITE,
+            Species::Purple => Color::PURPLE,
         }
     }
 }
@@ -175,6 +183,8 @@ impl From<u8> for Species {
             3 => Species::Green,
             4 => Species::Yellow,
             5 => Species::White,
+            6 => Species::Blau,
+            7 => Species::Purple,
             _ => unreachable!(),
         }
     }

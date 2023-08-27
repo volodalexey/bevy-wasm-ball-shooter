@@ -2,7 +2,7 @@ use bevy::prelude::{ChildBuilder, Res};
 use bevy_pkv::PkvStore;
 
 use crate::{
-    constants::{DEFAULT_MOVE_DOWN_AFTER, MAX_MOVE_DOWN_AFTER, MIN_MOVE_DOWN_AFTER},
+    constants::DEFAULT_MOVE_DOWN_AFTER,
     loading::font_assets::FontAssets,
     settings_menu::components::MoveDownButton,
     ui::{
@@ -48,12 +48,12 @@ pub fn build_move_down_line(
         );
         append_flex_row_evenly(parent, |parent| {
             let move_down = read_move_down(key, pkv);
-            (MIN_MOVE_DOWN_AFTER..=MAX_MOVE_DOWN_AFTER).for_each(|v| {
-                let selected = move_down == v;
+            [1, 2, 3, 5, 10].iter().for_each(|v| {
+                let selected = move_down == *v;
                 append_middle_text_button(
                     parent,
                     Some(MoveDownButton {
-                        value: v,
+                        value: *v,
                         key: key.to_string(),
                         pressed: selected,
                         color_type: ColorType::Green,

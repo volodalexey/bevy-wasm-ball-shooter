@@ -6,9 +6,11 @@ use crate::gameplay::ball::components::Species;
 pub struct GameplayMaterials {
     pub red: Handle<ColorMaterial>,
     pub blue: Handle<ColorMaterial>,
+    pub blau: Handle<ColorMaterial>,
     pub green: Handle<ColorMaterial>,
     pub yellow: Handle<ColorMaterial>,
     pub white: Handle<ColorMaterial>,
+    pub purple: Handle<ColorMaterial>,
     pub side_wall: Handle<ColorMaterial>,
     pub grid_top_line: Handle<ColorMaterial>,
     pub game_over_line: Handle<ColorMaterial>,
@@ -21,9 +23,11 @@ impl Default for GameplayMaterials {
         Self {
             red: Handle::default(),
             blue: Handle::default(),
+            blau: Handle::default(),
             green: Handle::default(),
             yellow: Handle::default(),
             white: Handle::default(),
+            purple: Handle::default(),
             side_wall: Handle::default(),
             grid_top_line: Handle::default(),
             game_over_line: Handle::default(),
@@ -38,9 +42,11 @@ impl GameplayMaterials {
         Self {
             red: materials.add(Species::Red.into()),
             blue: materials.add(Species::Blue.into()),
+            blau: materials.add(Species::Blau.into()),
             green: materials.add(Species::Green.into()),
             yellow: materials.add(Species::Yellow.into()),
             white: materials.add(Species::White.into()),
+            purple: materials.add(Species::Purple.into()),
             side_wall: materials.add(Color::AZURE.with_a(0.2).into()),
             grid_top_line: materials.add(Color::CRIMSON.with_a(0.1).into()),
             game_over_line: materials.add(Color::RED.with_a(0.1).into()),
@@ -53,9 +59,11 @@ impl GameplayMaterials {
         match species {
             Species::Red => self.red.clone(),
             Species::Blue => self.blue.clone(),
+            Species::Blau => self.blau.clone(),
             Species::Green => self.green.clone(),
             Species::Yellow => self.yellow.clone(),
             Species::White => self.white.clone(),
+            Species::Purple => self.purple.clone(),
         }
     }
 }

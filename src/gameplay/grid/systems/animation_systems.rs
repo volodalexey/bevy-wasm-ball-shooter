@@ -112,7 +112,7 @@ pub fn animate_grid_ball_position(
         }
     }
     if completed_count == total_count && completed_count > 0 {
-        if (grid.total_rows - FILL_PLAYGROUND_ROWS) as i32 > move_counter.0 as i32 - 1 {
+        if grid.total_rows as i32 - FILL_PLAYGROUND_ROWS as i32 > move_counter.0 as i32 - 1 {
             writer_spawn_row.send(SpawnRow);
         }
         // TODO find cluster for all static balls
