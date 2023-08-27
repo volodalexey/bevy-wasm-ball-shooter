@@ -33,8 +33,11 @@ pub fn generate_grid(
 ) {
     adjust_grid_layout(&window_query, &mut grid, &MoveCounter(0));
     let max_side_x = (grid.init_cols / 2) as i32;
-    for hex in shapes::pointy_rectangle([-max_side_x, max_side_x, -(grid.total_rows as i32) + 1, 0])
-    {
+    let min_col = -max_side_x;
+    let max_col = max_side_x;
+    let min_row = -(grid.total_rows as i32) + 1;
+    let max_row = 0;
+    for hex in shapes::pointy_rectangle([min_col, max_col, min_row, max_row]) {
         let is_even = hex.y % 2 == 0;
         let offset = hex.to_offset_coordinates(grid.offset_mode);
         if (!is_even && offset[0] == max_side_x) || hex.y < grid.last_active_row {

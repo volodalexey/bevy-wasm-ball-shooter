@@ -51,11 +51,6 @@ pub fn setup_resources(
     grid.total_rows = read_total_rows(TOTAL_ROWS_KEY, &pkv);
 
     grid.calc_last_active_row();
-
-    println!(
-        "move_down_after {} total_colors {} init_cols {} total_rows {}",
-        move_down_after, grid.total_colors, grid.init_cols, grid.total_rows
-    )
 }
 
 pub fn setup_ui(

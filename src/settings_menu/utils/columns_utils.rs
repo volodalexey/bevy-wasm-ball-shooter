@@ -48,24 +48,26 @@ pub fn build_columns_line(
         );
         append_flex_row_evenly(parent, |parent| {
             let init_cols = read_init_cols(key, pkv);
-            (MIN_COLUMNS_COUNT..=MAX_COLUMNS_COUNT).for_each(|v| {
-                let selected = init_cols == v;
-                append_middle_text_button(
-                    parent,
-                    Some(TotalColumnsButton {
-                        value: v,
-                        key: key.to_string(),
-                        pressed: selected,
-                        color_type: ColorType::Green,
-                    }),
-                    &ColorType::Green,
-                    format!("{}/{}", v, v + 1).as_str(),
-                    font_assets,
-                    text_colors,
-                    button_colors,
-                    selected,
-                );
-            });
+            (MIN_COLUMNS_COUNT..=MAX_COLUMNS_COUNT)
+                .step_by(2)
+                .for_each(|v| {
+                    let selected = init_cols == v;
+                    append_middle_text_button(
+                        parent,
+                        Some(TotalColumnsButton {
+                            value: v,
+                            key: key.to_string(),
+                            pressed: selected,
+                            color_type: ColorType::Green,
+                        }),
+                        &ColorType::Green,
+                        format!("{}/{}", v - 1, v).as_str(),
+                        font_assets,
+                        text_colors,
+                        button_colors,
+                        selected,
+                    );
+                });
         });
     });
 }

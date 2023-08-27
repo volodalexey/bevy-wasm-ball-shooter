@@ -4,9 +4,9 @@ pub const DEFAULT_COLORS_COUNT: u8 = 5;
 pub const MAX_COLORS_COUNT: u8 = 5;
 
 pub const TOTAL_COLUMNS_KEY: &str = "total_columns";
-pub const MIN_COLUMNS_COUNT: u8 = 4;
-pub const DEFAULT_COLUMNS_COUNT: u8 = 6;
-pub const MAX_COLUMNS_COUNT: u8 = 8;
+pub const MIN_COLUMNS_COUNT: u8 = 3;
+pub const DEFAULT_COLUMNS_COUNT: u8 = 7;
+pub const MAX_COLUMNS_COUNT: u8 = 9;
 
 pub const TOTAL_ROWS_KEY: &str = "total_rows";
 pub const MIN_ROWS_COUNT: u8 = 1;
