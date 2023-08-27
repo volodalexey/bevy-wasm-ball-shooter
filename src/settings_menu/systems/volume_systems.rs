@@ -12,7 +12,7 @@ use crate::{
     },
     loading::audio_assets::AudioAssets,
     settings_menu::components::VolumeButton,
-    ui::{resources::UIMenuButtonColors, utils::button_color_by_interaction},
+    ui::{resources::UIMenuButtonColors, utils::button_utils::button_color_by_interaction},
 };
 
 pub fn interact_with_volume_button(

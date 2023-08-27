@@ -19,7 +19,7 @@ use super::{
     components::{NextStateButton, ResponsiveText, UICamera, UIFullRow, UIMenu},
     constants::{LARGE_FONT_SIZE, MIDDLE_FONT_SIZE},
     resources::{PointerCooldown, UIMenuButtonColors},
-    utils::{button_color_by_interaction, is_mobile},
+    utils::{button_utils::button_color_by_interaction, responsive_utils::is_mobile},
 };
 use crate::components::AppState;
 

@@ -12,9 +12,12 @@ use crate::{
         volume_utils::build_volume_line,
     },
     ui::{
-        components::NextStateButton,
+        components::{NextStateButton, NoneComponent},
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
-        utils::{append_middle_text_button, build_large_text, build_menu, build_ui_camera},
+        utils::{
+            button_utils::append_middle_text_button, camera_utils::build_ui_camera,
+            menu_utils::build_menu, text_utils::append_large_text,
+        },
     },
 };
 
@@ -27,7 +30,13 @@ pub fn setup_menu(
 ) {
     build_ui_camera(&mut commands);
     build_menu(&mut commands, |parent| {
-        build_large_text(parent, "Настройки", &font_assets, &text_colors);
+        append_large_text(
+            parent,
+            "Настройки",
+            &font_assets,
+            &text_colors,
+            None::<NoneComponent>,
+        );
         build_volume_line(
             "Фоновый звук",
             MAIN_SOUND_VOLUME_KEY,
@@ -84,10 +93,10 @@ pub fn setup_menu(
         );
         append_middle_text_button(
             parent,
-            NextStateButton {
+            Some(NextStateButton {
                 color_type: ColorType::Gray,
                 next_state: AppState::StartMenu,
-            },
+            }),
             &ColorType::Gray,
             "Назад",
             &font_assets,

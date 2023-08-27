@@ -4,11 +4,13 @@ use crate::{
     components::AppState,
     loading::font_assets::FontAssets,
     ui::{
-        components::NextStateButton,
+        components::{NextStateButton, NoneComponent},
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
         utils::{
-            append_large_text_button, append_middle_text_button, build_large_text, build_menu,
-            build_ui_camera,
+            button_utils::{append_large_text_button, append_middle_text_button},
+            camera_utils::build_ui_camera,
+            menu_utils::build_menu,
+            text_utils::append_large_text,
         },
     },
 };
@@ -21,13 +23,19 @@ pub fn setup_menu(
 ) {
     build_ui_camera(&mut commands);
     build_menu(&mut commands, |parent| {
-        build_large_text(parent, "Игра окончена", &font_assets, &text_colors);
+        append_large_text(
+            parent,
+            "Игра окончена",
+            &font_assets,
+            &text_colors,
+            None::<NoneComponent>,
+        );
         append_large_text_button(
             parent,
-            NextStateButton {
+            Some(NextStateButton {
                 color_type: ColorType::Blue,
                 next_state: AppState::GameplayInit,
-            },
+            }),
             &ColorType::Blue,
             "Заново",
             &font_assets,
@@ -37,10 +45,10 @@ pub fn setup_menu(
         );
         append_middle_text_button(
             parent,
-            NextStateButton {
+            Some(NextStateButton {
                 color_type: ColorType::Gray,
                 next_state: AppState::StartMenu,
-            },
+            }),
             &ColorType::Gray,
             "Главное меню",
             &font_assets,

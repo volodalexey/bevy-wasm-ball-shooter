@@ -4,12 +4,14 @@ use bevy_pkv::PkvStore;
 use crate::{
     constants::{MAX_MOVE_DOWN_AFTER, MIN_MOVE_DOWN_AFTER},
     loading::font_assets::FontAssets,
-    settings_menu::components::TotalRowsButton,
+    settings_menu::components::MoveDownButton,
     ui::{
+        components::NoneComponent,
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
         utils::{
-            append_flex_row_evenly, append_middle_text_button, build_flex_column_start,
-            build_middle_text,
+            button_utils::append_middle_text_button,
+            flex_utils::{append_flex_row_evenly, build_flex_column_start},
+            text_utils::append_middle_text,
         },
     },
 };
@@ -24,7 +26,13 @@ pub fn build_move_down_line(
     pkv: &Res<PkvStore>,
 ) {
     build_flex_column_start(parent, |parent| {
-        build_middle_text(parent, title, font_assets, text_colors);
+        append_middle_text(
+            parent,
+            title,
+            font_assets,
+            text_colors,
+            None::<NoneComponent>,
+        );
         append_flex_row_evenly(parent, |parent| {
             (MIN_MOVE_DOWN_AFTER..=MAX_MOVE_DOWN_AFTER).for_each(|v| {
                 let selected = match pkv.get::<String>(key) {
@@ -39,12 +47,12 @@ pub fn build_move_down_line(
                 };
                 append_middle_text_button(
                     parent,
-                    TotalRowsButton {
+                    Some(MoveDownButton {
                         value: v,
                         key: key.to_string(),
                         pressed: selected,
                         color_type: ColorType::Green,
-                    },
+                    }),
                     &ColorType::Green,
                     v.to_string().as_str(),
                     font_assets,

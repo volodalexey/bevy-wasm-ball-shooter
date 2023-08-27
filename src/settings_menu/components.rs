@@ -28,6 +28,13 @@ pub struct TotalColumnsButton {
 
 #[derive(Component)]
 pub struct TotalRowsButton {
+    pub increment: bool,
+    pub key: String,
+    pub color_type: ColorType,
+}
+
+#[derive(Component)]
+pub struct MoveDownButton {
     pub value: u8,
     pub key: String,
     pub pressed: bool,

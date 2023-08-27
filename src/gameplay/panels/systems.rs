@@ -13,10 +13,11 @@ use crate::{
     loading::{font_assets::FontAssets, sprite_assets::SpriteAssets},
     resources::LevelCounter,
     ui::{
-        components::{NextStateButton, ResponsiveText},
+        components::NextStateButton,
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
         utils::{
-            append_middle_icon_button, build_flex_full_row_evenly, build_responsive_text_component,
+            button_utils::append_middle_icon_button, flex_utils::build_flex_full_row_evenly,
+            text_utils::append_responsive_text,
         },
     },
 };
@@ -60,29 +61,29 @@ pub fn setup_ui(
             &button_colors,
             false,
         );
-        build_responsive_text_component(
-            window_width,
+        append_responsive_text(
             parent,
+            window_width,
             "",
             &font_assets,
             &text_colors,
-            (ScoreText {}, ResponsiveText {}),
+            Some(ScoreText {}),
         );
-        build_responsive_text_component(
-            window_width,
+        append_responsive_text(
             parent,
+            window_width,
             "",
             &font_assets,
             &text_colors,
-            (TurnText {}, ResponsiveText {}),
+            Some(TurnText {}),
         );
-        build_responsive_text_component(
-            window_width,
+        append_responsive_text(
             parent,
+            window_width,
             "",
             &font_assets,
             &text_colors,
-            (LevelText {}, ResponsiveText {}),
+            Some(LevelText {}),
         );
     });
 }
