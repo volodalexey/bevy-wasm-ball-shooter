@@ -99,7 +99,7 @@ pub fn adjust_grid_layout(
     let init_layout_y = spawn_bottom_world_y + EMPTY_PLAYGROUND_HEIGHT;
     let move_layout_y = move_counter.0 as f32 * ROW_HEIGHT;
     grid.layout.origin.y = init_layout_y - move_layout_y;
-    println!("grid.layout.origin.y {}", grid.layout.origin.y);
+    println!("Adjust Grid Layout y {}", grid.layout.origin.y);
 }
 
 pub fn is_move_slow(velocity: Vec2) -> bool {

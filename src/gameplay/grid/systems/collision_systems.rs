@@ -63,7 +63,6 @@ pub fn check_collision_events(
                         .clone()
                         .into_iter()
                         .collect(),
-                    move_down_after: false,
                 });
                 cluster_check_cooldown.restart();
             }

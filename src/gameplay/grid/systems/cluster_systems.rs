@@ -50,11 +50,7 @@ pub fn find_and_remove_clusters(
         return;
     }
 
-    for FindCluster {
-        to_check,
-        move_down_after,
-    } in find_cluster_events.iter()
-    {
+    for FindCluster { to_check } in find_cluster_events.iter() {
         for start_from in to_check.iter() {
             if let Ok((_, _, linear_velocity, _, _, _, _)) = balls_query.get_mut(*start_from) {
                 if linear_velocity.length() > MIN_CLUSTER_VELOCITY {
@@ -109,7 +105,6 @@ pub fn find_and_remove_clusters(
 
             writer_update_cooldown_counter.send(UpdateScoreCounter {
                 score_add: cluster_score_add,
-                move_down_after: *move_down_after,
             });
         }
     }

@@ -12,7 +12,10 @@ use crate::gameplay::{
     ball::components::{GridBall, GridBallPositionAnimate, ProjectileBall},
     constants::{FILL_PLAYGROUND_ROWS, MOVE_DOWN_TOLERANCE, ROW_HEIGHT},
     events::{MoveDownLastActive, SpawnRow},
-    grid::{resources::Grid, utils::adjust_grid_layout},
+    grid::{
+        resources::{CooldownMoveCounter, Grid},
+        utils::adjust_grid_layout,
+    },
     panels::resources::MoveCounter,
 };
 
@@ -30,23 +33,30 @@ pub fn move_down_grid_balls(
     mut move_down_events: EventReader<MoveDownLastActive>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut grid: ResMut<Grid>,
-    move_counter: Res<MoveCounter>,
+    mut move_counter: ResMut<MoveCounter>,
+    mut cooldown_move_counter: ResMut<CooldownMoveCounter>,
 ) {
     if move_down_events.is_empty() {
         return;
     }
     move_down_events.clear();
 
-    adjust_grid_layout(&window_query, &mut grid, &move_counter);
-    for (ball_entity, ball_position, rigid_body, some_ball_animate) in balls_query.iter() {
-        if rigid_body.is_kinematic() {
-            let position = match some_ball_animate {
-                Some(ball_animate) => ball_animate.position,
-                None => ball_position.0,
-            } - Vec2::new(0.0, ROW_HEIGHT);
-            commands
-                .entity(ball_entity)
-                .insert(GridBallPositionAnimate::from_position(position, true));
+    cooldown_move_counter.value -= 1;
+    if cooldown_move_counter.value == 0 {
+        move_counter.0 += 1;
+        cooldown_move_counter.reset();
+
+        adjust_grid_layout(&window_query, &mut grid, &move_counter);
+        for (ball_entity, ball_position, rigid_body, some_ball_animate) in balls_query.iter() {
+            if rigid_body.is_kinematic() {
+                let position = match some_ball_animate {
+                    Some(ball_animate) => ball_animate.position,
+                    None => ball_position.0,
+                } - Vec2::new(0.0, ROW_HEIGHT);
+                commands
+                    .entity(ball_entity)
+                    .insert(GridBallPositionAnimate::from_position(position, true));
+            }
         }
     }
 }

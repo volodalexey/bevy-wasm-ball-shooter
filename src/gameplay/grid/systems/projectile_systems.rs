@@ -3,7 +3,7 @@ use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody
 
 use crate::gameplay::{
     ball::components::ProjectileBall,
-    events::{FindCluster, ProjectileReload, SnapProjectile},
+    events::{FindCluster, MoveDownLastActive, ProjectileReload, SnapProjectile},
     grid::{
         resources::Grid,
         utils::{confine_grid_ball_position, convert_to_kinematic},
@@ -28,6 +28,7 @@ pub fn on_snap_projectile(
         ),
         With<ProjectileBall>,
     >,
+    mut writer_move_down_last_active: EventWriter<MoveDownLastActive>,
 ) {
     for SnapProjectile { projectile_entity } in snap_projectile_events.iter() {
         if let Ok((
@@ -78,8 +79,8 @@ pub fn on_snap_projectile(
             projectile_reload_writer.send(ProjectileReload);
             writer_find_cluster.send(FindCluster {
                 to_check: vec![*projectile_entity],
-                move_down_after: true,
             });
+            writer_move_down_last_active.send(MoveDownLastActive {});
         }
     }
 }
