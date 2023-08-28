@@ -4,8 +4,8 @@ use bevy_xpbd_2d::prelude::{ExternalForce, LinearVelocity, Position, RigidBody};
 use crate::gameplay::{
     ball::components::{GridBall, GridBallScaleAnimate, MagneticGridBall, ProjectileBall},
     constants::{
-        MAGNETIC_DISTANCE_STRONG, MAGNETIC_DISTANCE_WEAK, MAGNETIC_FACTOR_STRONG,
-        MAGNETIC_FACTOR_WEAK, MAX_GRID_BALL_SPEED,
+        LOG_KEYCODE_MAGNETIC, MAGNETIC_DISTANCE_STRONG, MAGNETIC_DISTANCE_WEAK,
+        MAGNETIC_FACTOR_STRONG, MAGNETIC_FACTOR_WEAK, MAX_GRID_BALL_SPEED,
     },
     grid::resources::Grid,
 };
@@ -68,7 +68,7 @@ pub fn apply_magnetic_forces(
             external_force.set_force(result_magnetic_force);
             linear_velocity.0 = linear_velocity.0.clamp_length_max(MAX_GRID_BALL_SPEED);
 
-            if keyboard_input_key_code.any_just_pressed([KeyCode::M]) {
+            if keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_MAGNETIC]) {
                 println!("applied magnetic to entity {:?} result_strong_normilized {} result_weak_normilized {}", entity, result_strong_normilized, result_weak_normilized);
             }
         }

@@ -12,7 +12,7 @@ use crate::gameplay::{
         components::{GridBall, ProjectileBall, Species},
         out_ball_bundle::OutBallBundle,
     },
-    constants::{MIN_CLUSTER_SIZE, MIN_CLUSTER_VELOCITY},
+    constants::{LOG_KEYCODE_CLUSTER, MIN_CLUSTER_SIZE},
     events::{FindCluster, ProjectileReload, UpdateScoreCounter},
     grid::{
         resources::{CollisionSnapCooldown, Grid},
@@ -52,17 +52,12 @@ pub fn find_and_remove_clusters(
 
     for FindCluster { to_check } in find_cluster_events.iter() {
         for start_from in to_check.iter() {
-            if let Ok((_, _, linear_velocity, _, _, _, _)) = balls_query.get_mut(*start_from) {
-                if linear_velocity.length() > MIN_CLUSTER_VELOCITY {
-                    continue;
-                }
-            }
             let (cluster, _) = find_cluster(
                 *start_from,
                 &grid.entities_to_neighbours,
                 &grid.entities_to_species,
             );
-            if keyboard_input_key_code.any_pressed([KeyCode::C]) {
+            if keyboard_input_key_code.any_pressed([LOG_KEYCODE_CLUSTER]) {
                 println!("cluster {:?}", cluster);
             }
 

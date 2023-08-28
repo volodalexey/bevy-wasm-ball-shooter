@@ -1,3 +1,5 @@
+use bevy::prelude::KeyCode;
+
 pub const CAMERA_SPEED: f32 = 10.0;
 pub const CAMERA_ROTATION_SPEED: f32 = 0.05;
 pub const CAMERA_SCALE: f32 = 0.01;
@@ -11,7 +13,6 @@ pub const EMPTY_PLAYGROUND_HEIGHT: f32 = ROW_HEIGHT * EMPTY_PLAYGROUND_ROWS as f
 pub const PROJECTILE_SPEED: f32 = 1000.;
 pub const MIN_PROJECTILE_SNAP_VELOCITY: f32 = 10.0;
 pub const MIN_PROJECTILE_REVERSE_VELOCITY: f32 = -1.0;
-pub const MIN_CLUSTER_VELOCITY: f32 = 2.0;
 pub const MIN_PROJECTILE_SNAP_DOT: f32 = 0.1;
 pub const INNER_RADIUS_COEFF: f32 = 0.866025404; // √3 / 2
 pub const BALL_RADIUS: f32 = INNER_RADIUS_COEFF * SIZE;
@@ -39,7 +40,7 @@ pub const MOVE_DOWN_TIME: f32 = 2.0;
 pub const MOVE_DOWN_TOLERANCE: f32 = 0.1;
 pub const MAX_APPEAR_TIME: f32 = 2.0;
 pub const APPEAR_TOLERANCE: f32 = 0.1;
-pub const NEIGHBOUR_POSITION_TOLERANCE: f32 = BALL_DIAMETER + 3.0;
+pub const NEIGHBOUR_POSITION_TOLERANCE: f32 = BALL_DIAMETER + BALL_RADIUS / 2.0;
 pub const MAGNETIC_DISTANCE_STRONG: f32 = BALL_DIAMETER * 1.1;
 pub const MAGNETIC_FACTOR_STRONG: f32 = 1000.0;
 pub const MAGNETIC_DISTANCE_WEAK: f32 = BALL_DIAMETER * 4.0;
@@ -49,3 +50,9 @@ pub const MAX_GRID_BALL_SPEED: f32 = 30.0;
 pub const LOCK_POSITION_TOLERANCE: f32 = 1.0;
 pub const OUT_BALL_GRAVITY: f32 = 1000.0;
 pub const FIXED_TIMESTEP: f32 = 0.5;
+
+pub const LOG_KEYCODE_MOVE_DOWN: KeyCode = KeyCode::N;
+pub const LOG_KEYCODE_CLUSTER: KeyCode = KeyCode::C;
+pub const LOG_KEYCODE_CONFINE: KeyCode = KeyCode::X;
+pub const LOG_KEYCODE_MAGNETIC: KeyCode = KeyCode::M;
+pub const LOG_KEYCODE_RESOURCES: KeyCode = KeyCode::B;

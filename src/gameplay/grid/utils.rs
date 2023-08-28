@@ -168,6 +168,7 @@ pub fn confine_grid_ball_position(
     entity: &Entity,
     entity_position: Vec2,
     strict_check: bool,
+    log_debug: bool,
 ) -> Option<(Vec2, bool, bool)> {
     if grid.top_kinematic_position == f32::MIN {
         return None;
@@ -197,6 +198,12 @@ pub fn confine_grid_ball_position(
     if (strict_check && offset[0] >= max_col) || offset[0] > max_col {
         offset[0] = max_col;
         confined_x = true;
+    }
+    if log_debug {
+        println!(
+            "snap_hex {:?} last_kinematic_row {} confined({}|{})",
+            snap_hex, last_kinematic_row[1], confined_x, confined_y
+        );
     }
 
     if confined_x || confined_y {

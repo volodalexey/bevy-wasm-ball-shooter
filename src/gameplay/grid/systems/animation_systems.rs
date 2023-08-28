@@ -10,7 +10,7 @@ use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody
 
 use crate::gameplay::{
     ball::components::{GridBall, GridBallPositionAnimate, ProjectileBall},
-    constants::{FILL_PLAYGROUND_ROWS, MOVE_DOWN_TOLERANCE, ROW_HEIGHT},
+    constants::{FILL_PLAYGROUND_ROWS, LOG_KEYCODE_MOVE_DOWN, MOVE_DOWN_TOLERANCE, ROW_HEIGHT},
     events::{MoveDownLastActive, SpawnRow},
     grid::{
         resources::{CooldownMoveCounter, Grid},
@@ -104,7 +104,7 @@ pub fn animate_grid_ball_position(
         //     "animate {:?} ball_position {} animate_position {} position_diff_length {} linear_velocity {}",
         //     ball_entity, ball_position.0, grid_ball_animate.position, position_diff_length, linear_velocity.0
         // );
-        if keyboard_input_key_code.any_just_released([KeyCode::K]) {
+        if keyboard_input_key_code.any_just_released([LOG_KEYCODE_MOVE_DOWN]) {
             println!(
                 "move down entity {:?} linear_velocity {} position_diff_length {}",
                 ball_entity, linear_velocity.0, position_diff_length

@@ -27,7 +27,6 @@ cargo install wasm-bindgen-cli
 - Balls with nearest distance have more attraction factor than other
 
 TODO
-cluster only when all balls in cluster in calm state
 split to count score system
 shoot multiple projectiles
 responsive layout and scale

@@ -60,6 +60,7 @@ pub fn on_snap_projectile(
                 projectile_entity,
                 projectile_position.0,
                 true,
+                false,
             ) {
                 if confined_y {
                     convert_to_kinematic(

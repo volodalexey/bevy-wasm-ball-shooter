@@ -1,8 +1,11 @@
-use bevy::prelude::{info, Commands, Entity, EventWriter, Query, Res, ResMut, With, Without};
+use bevy::prelude::{
+    info, Commands, Entity, EventWriter, Input, KeyCode, Query, Res, ResMut, With, Without,
+};
 use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody};
 
 use crate::gameplay::{
     ball::components::{GridBall, ProjectileBall},
+    constants::LOG_KEYCODE_CONFINE,
     events::SnapProjectile,
     grid::{
         resources::{CollisionSnapCooldown, Grid},
@@ -26,6 +29,7 @@ pub fn confine_grid_balls(
         ),
         (With<GridBall>, Without<ProjectileBall>),
     >,
+    keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
     for (projectile_entity, projectile_position, projectile_ball) in projectile_query.iter() {
         if !projectile_ball.is_flying {
@@ -44,12 +48,19 @@ pub fn confine_grid_balls(
             );
         }
     }
+    if keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_CONFINE]) {
+        println!("balls_query len {}", balls_query.iter().len());
+    }
     for (entity, position, mut rigid_body, mut linear_velocity, mut angular_velocity) in
         balls_query.iter_mut()
     {
-        if let Some((confined_position, _, confined_y)) =
-            confine_grid_ball_position(&grid, &entity, position.0, true)
-        {
+        if let Some((confined_position, _, confined_y)) = confine_grid_ball_position(
+            &grid,
+            &entity,
+            position.0,
+            true,
+            keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_CONFINE]),
+        ) {
             if confined_y {
                 convert_to_kinematic(
                     &mut commands,
