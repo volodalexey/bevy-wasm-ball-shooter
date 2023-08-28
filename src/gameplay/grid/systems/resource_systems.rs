@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{Entity, Input, KeyCode, Query, Res, ResMut, Vec2, With},
+    prelude::{Entity, Input, KeyCode, Query, Res, ResMut, Vec2, With, Without},
     utils::{HashMap, HashSet},
 };
 use bevy_xpbd_2d::prelude::{Position, RigidBody};
@@ -13,15 +13,8 @@ use crate::gameplay::{
 pub fn update_grid_resources(
     mut grid: ResMut<Grid>,
     balls_query: Query<
-        (
-            Entity,
-            &Position,
-            &Species,
-            &mut GridBall,
-            &mut RigidBody,
-            Option<&ProjectileBall>,
-        ),
-        With<GridBall>,
+        (Entity, &Position, &Species, &mut GridBall, &mut RigidBody),
+        (With<GridBall>, Without<ProjectileBall>),
     >,
     keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
@@ -32,7 +25,7 @@ pub fn update_grid_resources(
     let mut entities_to_species: HashMap<Entity, Species> = HashMap::with_capacity(total);
     balls_query
         .iter()
-        .for_each(|(entity, position, species, grid_ball, rigid_body, _)| {
+        .for_each(|(entity, position, species, grid_ball, rigid_body)| {
             if !grid_ball.is_ready_to_despawn {
                 entities.insert(entity);
                 entities_to_positions.insert(entity, position.0);

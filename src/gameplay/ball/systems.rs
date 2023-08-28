@@ -130,6 +130,7 @@ pub fn projectile_reload(
         true,
         Some(species),
         true,
+        false,
         true,
     );
     println!(
@@ -219,7 +220,10 @@ pub fn shoot_projectile(
             let aim_direction = target_position - projectile_position.0;
             linear_velocity.0 = aim_direction.normalize() * PROJECTILE_SPEED;
 
-            println!("SHOOOOOT {:?}", projectile_entity);
+            println!(
+                "SHOOOOOT {:?} linear_velocity {} position {}",
+                projectile_entity, linear_velocity.0, projectile_position.0
+            );
             projectile_ball.is_flying = true;
 
             pkv_play_shoot_audio(&mut commands, &audio_assets, &pkv);
@@ -444,12 +448,18 @@ pub fn cleanup_next_projectile_ball(
 pub fn animate_grid_ball_scale(
     mut commands: Commands,
     mut grid_balls_query: Query<
-        (Entity, &mut Transform, &mut GridBallScaleAnimate),
+        (
+            Entity,
+            &mut Transform,
+            &mut GridBallScaleAnimate,
+            &mut Collider,
+        ),
         With<GridBallScaleAnimate>,
     >,
     time: Res<Time>,
 ) {
-    for (ball_entity, mut grid_ball_transform, mut grid_ball_animate) in grid_balls_query.iter_mut()
+    for (ball_entity, mut grid_ball_transform, mut grid_ball_animate, mut collider) in
+        grid_balls_query.iter_mut()
     {
         grid_ball_animate.timer.tick(time.delta());
         grid_ball_transform.scale = grid_ball_transform
@@ -464,6 +474,7 @@ pub fn animate_grid_ball_scale(
             commands
                 .entity(ball_entity)
                 .remove::<GridBallScaleAnimate>();
+            *collider = Collider::ball(BALL_RADIUS);
         }
     }
 }

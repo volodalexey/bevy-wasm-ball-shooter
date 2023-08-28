@@ -11,7 +11,7 @@ use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody
 
 use crate::gameplay::{
     ball::components::{GridBall, GridBallPositionAnimate, ProjectileBall},
-    constants::{LOG_KEYCODE_MOVE_DOWN, MOVE_DOWN_TOLERANCE, ROW_HEIGHT},
+    constants::{BALL_RADIUS, LOG_KEYCODE_MOVE_DOWN, MOVE_DOWN_TOLERANCE, ROW_HEIGHT},
     events::{FindCluster, MoveDownLastActive, SpawnRow},
     grid::{
         resources::{CooldownMoveCounter, Grid},
@@ -101,21 +101,17 @@ pub fn animate_grid_ball_position(
     ) in grid_balls_query.iter_mut()
     {
         grid_ball_animate.timer.tick(time.delta());
-        // linear_velocity.0 = ball_position.lerp(
-        //     grid_ball_animate.position,
-        //     grid_ball_animate.timer.percent(),
-        // );
         linear_velocity.0 = grid_ball_animate.position - ball_position.0;
-        // linear_velocity.0 += diff_normilized * 2.0;
+        let relation = linear_velocity.length() / BALL_RADIUS;
+        match relation >= 1.0 {
+            true => linear_velocity.0 *= relation * 2.0,
+            false => {}
+        }
         let position_diff_length = (ball_position.0 - grid_ball_animate.position).length();
-        // println!(
-        //     "animate {:?} ball_position {} animate_position {} position_diff_length {} linear_velocity {}",
-        //     ball_entity, ball_position.0, grid_ball_animate.position, position_diff_length, linear_velocity.0
-        // );
-        if keyboard_input_key_code.any_just_released([LOG_KEYCODE_MOVE_DOWN]) {
+        if keyboard_input_key_code.any_pressed([LOG_KEYCODE_MOVE_DOWN]) {
             println!(
-                "move down entity {:?} linear_velocity {} position_diff_length {}",
-                ball_entity, linear_velocity.0, position_diff_length
+                "move down entity {:?} linear_velocity {} position_diff_length {} relation {}",
+                ball_entity, linear_velocity.0, position_diff_length, relation
             );
         }
         if position_diff_length < MOVE_DOWN_TOLERANCE {

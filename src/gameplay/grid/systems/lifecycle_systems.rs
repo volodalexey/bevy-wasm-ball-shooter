@@ -56,6 +56,7 @@ pub fn generate_grid(
             false,
             None,
             true,
+            false,
             true,
         );
     }
@@ -86,6 +87,7 @@ pub fn spawn_new_row(
     mut grid_balls_query: Query<
         (
             Entity,
+            &GridBall,
             &mut LinearVelocity,
             &mut AngularVelocity,
             &mut RigidBody,
@@ -122,14 +124,18 @@ pub fn spawn_new_row(
                 None,
                 true,
                 true,
+                true,
             );
         }
 
-        for (_, mut velocity, mut angular_velocity, mut rigid_body) in grid_balls_query.iter_mut() {
-            if rigid_body.is_kinematic() {
+        for (entity, grid_ball, mut velocity, mut angular_velocity, mut rigid_body) in
+            grid_balls_query.iter_mut()
+        {
+            if !grid_ball.is_ready_to_despawn && rigid_body.is_kinematic() {
                 *rigid_body = RigidBody::Dynamic;
                 velocity.0 = Vec2::ZERO;
                 angular_velocity.0 = 0.0;
+                println!("Converted to dynamic {:?}", entity);
             }
         }
     }

@@ -36,7 +36,6 @@ impl GridBallBundle {
             GridBall::default(),
             MagneticGridBall {},
             species,
-            Collider::ball(BALL_RADIUS),
             ColliderMassProperties::ZERO,
             MassPropertiesBundle::new_computed(&Collider::ball(1.0), 1.0),
             Position(pos),
@@ -59,6 +58,7 @@ impl GridBallBundle {
         is_projectile: bool,
         some_species: Option<Species>,
         is_appear_animation: bool,
+        is_appear_small: bool,
         debug_text: bool,
     ) -> (Entity, Species) {
         let mut transform = Transform::default();
@@ -82,6 +82,11 @@ impl GridBallBundle {
             entity_commands.insert(RigidBody::Kinematic);
         } else {
             entity_commands.insert(RigidBody::Dynamic);
+        }
+        if is_appear_small {
+            entity_commands.insert(Collider::ball(BALL_RADIUS / 10.0));
+        } else {
+            entity_commands.insert(Collider::ball(BALL_RADIUS));
         }
         if is_appear_animation {
             entity_commands.insert(GridBallScaleAnimate::from_scale(Vec2::ONE));

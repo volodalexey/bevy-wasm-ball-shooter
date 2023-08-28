@@ -45,7 +45,10 @@ pub fn on_snap_projectile(
             println!("SnapProjectile process {:?}", projectile_entity);
             // projectile ball can be removed by cluster and never snapped
             if projectile_ball.is_snapped {
-                println!("Skip projectile {:?} already snapped", projectile_entity);
+                println!(
+                    "Skip projectile {:?} already snapped {:?}",
+                    projectile_entity, projectile_position.0
+                );
                 continue;
             }
             projectile_ball.is_snapped = true;

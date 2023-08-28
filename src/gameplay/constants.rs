@@ -43,8 +43,7 @@ pub const APPEAR_TOLERANCE: f32 = 0.1;
 pub const NEIGHBOUR_POSITION_TOLERANCE: f32 = BALL_DIAMETER + BALL_RADIUS / 2.0;
 pub const MAGNETIC_DISTANCE_STRONG: f32 = BALL_DIAMETER * 1.1;
 pub const MAGNETIC_FACTOR_STRONG: f32 = 1000.0;
-pub const MAGNETIC_DISTANCE_WEAK: f32 = BALL_DIAMETER * 4.0;
-pub const MAGNETIC_FACTOR_WEAK: f32 = 1000.0;
+pub const MAGNETIC_FACTOR_WEAK: f32 = 500.0;
 pub const CLUSTER_CHECK_COOLDOWN_TIME: f32 = 1.0; // seconds
 pub const MAX_GRID_BALL_SPEED: f32 = 30.0;
 pub const LOCK_POSITION_TOLERANCE: f32 = 1.0;
@@ -53,6 +52,7 @@ pub const FIXED_TIMESTEP: f32 = 0.5;
 
 pub const LOG_KEYCODE_MOVE_DOWN: KeyCode = KeyCode::N;
 pub const LOG_KEYCODE_CLUSTER: KeyCode = KeyCode::C;
+pub const LOG_KEYCODE_CONFINE_ALL: KeyCode = KeyCode::X;
 pub const LOG_KEYCODE_CONFINE: KeyCode = KeyCode::Z;
 pub const LOG_KEYCODE_MAGNETIC: KeyCode = KeyCode::M;
 pub const LOG_KEYCODE_RESOURCES: KeyCode = KeyCode::B;

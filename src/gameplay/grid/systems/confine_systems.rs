@@ -5,7 +5,7 @@ use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody
 
 use crate::gameplay::{
     ball::components::{GridBall, ProjectileBall},
-    constants::LOG_KEYCODE_CONFINE,
+    constants::{LOG_KEYCODE_CONFINE, LOG_KEYCODE_CONFINE_ALL, MAX_GRID_BALL_SPEED},
     events::SnapProjectile,
     grid::{
         resources::{CollisionSnapCooldown, Grid},
@@ -52,7 +52,7 @@ pub fn confine_grid_balls(
     for (entity, position, grid_ball, mut rigid_body, mut linear_velocity, mut angular_velocity) in
         balls_query.iter_mut()
     {
-        if keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_CONFINE]) {
+        if keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_CONFINE_ALL]) {
             println!(
                 "Try Confine {:?} is_ready_to_despawn {} rigid_body({}|{})",
                 entity,
@@ -62,6 +62,7 @@ pub fn confine_grid_balls(
             );
         }
         if !grid_ball.is_ready_to_despawn && rigid_body.is_dynamic() {
+            linear_velocity.0 = linear_velocity.0.clamp_length_max(MAX_GRID_BALL_SPEED);
             if let Some((confined_position, _, confined_y)) = confine_grid_ball_position(
                 &grid,
                 &entity,
