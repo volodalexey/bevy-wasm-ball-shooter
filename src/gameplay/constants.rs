@@ -53,6 +53,6 @@ pub const FIXED_TIMESTEP: f32 = 0.5;
 
 pub const LOG_KEYCODE_MOVE_DOWN: KeyCode = KeyCode::N;
 pub const LOG_KEYCODE_CLUSTER: KeyCode = KeyCode::C;
-pub const LOG_KEYCODE_CONFINE: KeyCode = KeyCode::X;
+pub const LOG_KEYCODE_CONFINE: KeyCode = KeyCode::Z;
 pub const LOG_KEYCODE_MAGNETIC: KeyCode = KeyCode::M;
 pub const LOG_KEYCODE_RESOURCES: KeyCode = KeyCode::B;

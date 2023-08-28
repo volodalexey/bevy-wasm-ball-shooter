@@ -1,4 +1,7 @@
-use bevy::prelude::{Commands, EventReader, EventWriter, Query, Res, ResMut, With};
+use bevy::{
+    prelude::{Commands, EventReader, EventWriter, Query, Res, ResMut, With},
+    utils::HashSet,
+};
 use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody};
 
 use crate::gameplay::{
@@ -79,7 +82,7 @@ pub fn on_snap_projectile(
             println!("send ProjectileReload {:?}", projectile_entity);
             projectile_reload_writer.send(ProjectileReload);
             writer_find_cluster.send(FindCluster {
-                to_check: vec![*projectile_entity],
+                to_check: HashSet::from([*projectile_entity]),
             });
             writer_move_down_last_active.send(MoveDownLastActive {});
         }

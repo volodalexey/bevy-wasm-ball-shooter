@@ -8,7 +8,8 @@ use hexx::{HexLayout, HexOrientation, OffsetHexMode};
 use crate::gameplay::{
     ball::components::Species,
     constants::{
-        CLUSTER_CHECK_COOLDOWN_TIME, COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS, SIZE,
+        CLUSTER_CHECK_COOLDOWN_TIME, COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS,
+        MOVE_DOWN_TIME, SIZE,
     },
 };
 
@@ -92,6 +93,7 @@ impl Grid {
 pub struct CooldownMoveCounter {
     pub value: u8,
     pub init_value: u8,
+    pub timer: Timer,
 }
 
 impl Default for CooldownMoveCounter {
@@ -99,20 +101,26 @@ impl Default for CooldownMoveCounter {
         Self {
             value: 0,
             init_value: 0,
+            timer: Timer::default(),
         }
     }
 }
 
 impl CooldownMoveCounter {
     pub fn init(init_value: u8) -> Self {
+        let mut timer = Timer::from_seconds(MOVE_DOWN_TIME, TimerMode::Repeating);
+        timer.pause();
         Self {
             value: init_value,
             init_value,
+            timer,
         }
     }
 
     pub fn reset(&mut self) {
-        self.value = self.init_value
+        self.value = self.init_value;
+        self.timer.unpause();
+        self.timer.reset();
     }
 }
 

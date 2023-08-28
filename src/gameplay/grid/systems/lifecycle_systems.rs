@@ -19,7 +19,7 @@ use crate::{
         grid::{resources::Grid, utils::adjust_grid_layout},
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
-        panels::resources::MoveCounter,
+        panels::resources::{MoveDownCounter, SpawnRowsLeft},
     },
 };
 
@@ -31,7 +31,7 @@ pub fn generate_grid(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
 ) {
-    adjust_grid_layout(&window_query, &mut grid, &MoveCounter(0));
+    adjust_grid_layout(&window_query, &mut grid, &MoveDownCounter(0));
     let max_side_x = (grid.init_cols / 2) as i32;
     let min_col = -max_side_x;
     let max_col = max_side_x;
@@ -92,41 +92,45 @@ pub fn spawn_new_row(
         ),
         With<RigidBody>,
     >,
+    mut spawn_rows_left: ResMut<SpawnRowsLeft>,
 ) {
     if spawn_row_events.is_empty() {
         return;
     }
     spawn_row_events.clear();
 
-    grid.last_active_row -= 1;
-    let max_side_x = (grid.init_cols / 2) as i32;
-    for hex_x in -max_side_x..=max_side_x {
-        let is_even = grid.last_active_row % 2 == 0;
-        let hex = Hex::from_offset_coordinates([hex_x, grid.last_active_row], grid.offset_mode);
-        let offset = hex.to_offset_coordinates(grid.offset_mode);
-        if (!is_even && offset[0] == max_side_x) || hex.y < grid.last_active_row {
-            continue;
+    if spawn_rows_left.0 > 0 {
+        spawn_rows_left.0 -= 1;
+        grid.last_active_row -= 1;
+        let max_side_x = (grid.init_cols / 2) as i32;
+        for hex_x in -max_side_x..=max_side_x {
+            let is_even = grid.last_active_row % 2 == 0;
+            let hex = Hex::from_offset_coordinates([hex_x, grid.last_active_row], grid.offset_mode);
+            let offset = hex.to_offset_coordinates(grid.offset_mode);
+            if (!is_even && offset[0] == max_side_x) || hex.y < grid.last_active_row {
+                continue;
+            }
+            let position = grid.layout.hex_to_world_pos(hex);
+            GridBallBundle::spawn(
+                &mut commands,
+                &gameplay_meshes,
+                &gameplay_materials,
+                grid.total_colors,
+                position,
+                true,
+                false,
+                None,
+                true,
+                true,
+            );
         }
-        let position = grid.layout.hex_to_world_pos(hex);
-        GridBallBundle::spawn(
-            &mut commands,
-            &gameplay_meshes,
-            &gameplay_materials,
-            grid.total_colors,
-            position,
-            true,
-            false,
-            None,
-            true,
-            true,
-        );
-    }
 
-    for (_, mut velocity, mut angular_velocity, mut rigid_body) in grid_balls_query.iter_mut() {
-        if rigid_body.is_kinematic() {
-            *rigid_body = RigidBody::Dynamic;
-            velocity.0 = Vec2::ZERO;
-            angular_velocity.0 = 0.0;
+        for (_, mut velocity, mut angular_velocity, mut rigid_body) in grid_balls_query.iter_mut() {
+            if rigid_body.is_kinematic() {
+                *rigid_body = RigidBody::Dynamic;
+                velocity.0 = Vec2::ZERO;
+                angular_velocity.0 = 0.0;
+            }
         }
     }
 }

@@ -15,7 +15,7 @@ use crate::gameplay::{
         NEIGHBOUR_POSITION_TOLERANCE, PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
     },
     events::SnapProjectile,
-    panels::resources::MoveCounter,
+    panels::resources::MoveDownCounter,
 };
 
 use super::resources::{CollisionSnapCooldown, Grid};
@@ -92,7 +92,7 @@ pub fn find_cluster(
 pub fn adjust_grid_layout(
     window_query: &Query<&Window, With<PrimaryWindow>>,
     grid: &mut Grid,
-    move_counter: &MoveCounter,
+    move_counter: &MoveDownCounter,
 ) {
     let window = window_query.single();
     let spawn_bottom_world_y = -(window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0);
@@ -201,8 +201,8 @@ pub fn confine_grid_ball_position(
     }
     if log_debug {
         println!(
-            "snap_hex {:?} last_kinematic_row {} confined({}|{})",
-            snap_hex, last_kinematic_row[1], confined_x, confined_y
+            "entity {:?} snap_hex {:?} last_kinematic_row {} confined({}|{})",
+            entity, snap_hex, last_kinematic_row[1], confined_x, confined_y
         );
     }
 
@@ -262,7 +262,7 @@ pub fn convert_to_kinematic(
     *rigid_body = RigidBody::Kinematic;
     commands
         .entity(*entity)
-        .insert(GridBallPositionAnimate::from_position(snap_position, false));
+        .insert(GridBallPositionAnimate::from_position(snap_position));
     linear_velocity.0 = Vec2::ZERO;
     angular_velocity.0 = 0.0;
 }

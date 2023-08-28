@@ -3,7 +3,7 @@ use bevy::prelude::{in_state, App, IntoSystemConfigs, OnEnter, OnExit, Plugin, U
 use crate::{components::AppState, ui::systems::cleanup_full_row};
 
 use self::{
-    resources::{MoveCounter, ScoreCounter, TurnCounter},
+    resources::{MoveDownCounter, ScoreCounter, SpawnRowsLeft, TurnCounter},
     systems::{setup_resources, setup_ui, update_ui},
 };
 
@@ -15,9 +15,10 @@ pub struct PanelsPlugin;
 
 impl Plugin for PanelsPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(TurnCounter(0))
-            .insert_resource(MoveCounter(0))
-            .insert_resource(ScoreCounter(0))
+        app.init_resource::<TurnCounter>()
+            .init_resource::<MoveDownCounter>()
+            .init_resource::<ScoreCounter>()
+            .init_resource::<SpawnRowsLeft>()
             .add_systems(OnEnter(AppState::GameplayInit), (setup_resources, setup_ui))
             .add_systems(Update, update_ui.run_if(in_state(AppState::Gameplay)))
             .add_systems(OnExit(AppState::Gameplay), cleanup_full_row);

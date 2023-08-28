@@ -29,14 +29,15 @@ use crate::{
 
 use super::{
     components::{LevelText, ScoreText, TurnText},
-    resources::{MoveCounter, ScoreCounter, TurnCounter},
+    resources::{MoveDownCounter, ScoreCounter, SpawnRowsLeft, TurnCounter},
 };
 
 pub fn setup_resources(
     mut commands: Commands,
     mut turn_counter: ResMut<TurnCounter>,
-    mut move_counter: ResMut<MoveCounter>,
+    mut move_counter: ResMut<MoveDownCounter>,
     mut score_counter: ResMut<ScoreCounter>,
+    mut spawn_rows_left: ResMut<SpawnRowsLeft>,
     pkv: Res<PkvStore>,
     mut grid: ResMut<Grid>,
 ) {
@@ -51,6 +52,12 @@ pub fn setup_resources(
     grid.total_rows = read_total_rows(TOTAL_ROWS_KEY, &pkv);
 
     grid.calc_last_active_row();
+
+    let left_rows = grid.total_rows as i32 - FILL_PLAYGROUND_ROWS as i32;
+    spawn_rows_left.0 = match left_rows > 0 {
+        true => left_rows as u32,
+        false => 0,
+    };
 }
 
 pub fn setup_ui(
@@ -108,29 +115,21 @@ pub fn update_ui(
         (With<ScoreText>, Without<TurnText>, Without<LevelText>),
     >,
     turn_counter: Res<TurnCounter>,
-    move_counter: Res<MoveCounter>,
+    spawn_rows_left: Res<SpawnRowsLeft>,
     cooldown_move_counter: Res<CooldownMoveCounter>,
     mut turn_text_query: Query<&mut Text, (With<TurnText>, Without<ScoreText>, Without<LevelText>)>,
     mut level_text_query: Query<
         &mut Text,
         (With<LevelText>, Without<ScoreText>, Without<TurnText>),
     >,
-    grid: Res<Grid>,
 ) {
     for mut score_text in &mut score_text_query {
         score_text.sections[0].value = format!("Очки: {:?} ", score_counter.0);
     }
     for mut turn_text in &mut turn_text_query {
-        let left_spawn_count =
-            grid.total_rows as i32 - FILL_PLAYGROUND_ROWS as i32 - move_counter.0 as i32 - 1;
         turn_text.sections[0].value = format!(
             "Ходов: {}/{} ({})",
-            turn_counter.0,
-            match left_spawn_count > 0 {
-                true => left_spawn_count,
-                false => 0,
-            },
-            cooldown_move_counter.value
+            turn_counter.0, spawn_rows_left.0, cooldown_move_counter.value
         );
     }
     for mut level_text in &mut level_text_query {

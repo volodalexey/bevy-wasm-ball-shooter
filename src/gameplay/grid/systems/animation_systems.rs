@@ -4,19 +4,20 @@ use bevy::{
         Without,
     },
     time::Time,
+    utils::HashSet,
     window::{PrimaryWindow, Window},
 };
 use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody};
 
 use crate::gameplay::{
     ball::components::{GridBall, GridBallPositionAnimate, ProjectileBall},
-    constants::{FILL_PLAYGROUND_ROWS, LOG_KEYCODE_MOVE_DOWN, MOVE_DOWN_TOLERANCE, ROW_HEIGHT},
-    events::{MoveDownLastActive, SpawnRow},
+    constants::{LOG_KEYCODE_MOVE_DOWN, MOVE_DOWN_TOLERANCE, ROW_HEIGHT},
+    events::{FindCluster, MoveDownLastActive, SpawnRow},
     grid::{
         resources::{CooldownMoveCounter, Grid},
         utils::adjust_grid_layout,
     },
-    panels::resources::MoveCounter,
+    panels::resources::MoveDownCounter,
 };
 
 pub fn move_down_grid_balls(
@@ -26,6 +27,7 @@ pub fn move_down_grid_balls(
             Entity,
             &Position,
             &RigidBody,
+            &GridBall,
             Option<&GridBallPositionAnimate>,
         ),
         (With<GridBall>, Without<ProjectileBall>),
@@ -33,9 +35,19 @@ pub fn move_down_grid_balls(
     mut move_down_events: EventReader<MoveDownLastActive>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut grid: ResMut<Grid>,
-    mut move_counter: ResMut<MoveCounter>,
+    mut move_counter: ResMut<MoveDownCounter>,
     mut cooldown_move_counter: ResMut<CooldownMoveCounter>,
+    time: Res<Time>,
+    mut writer_spawn_row: EventWriter<SpawnRow>,
 ) {
+    if !cooldown_move_counter.timer.paused() {
+        cooldown_move_counter.timer.tick(time.delta());
+    }
+    if cooldown_move_counter.timer.finished() {
+        cooldown_move_counter.timer.pause();
+        cooldown_move_counter.timer.reset();
+        writer_spawn_row.send(SpawnRow);
+    }
     if move_down_events.is_empty() {
         return;
     }
@@ -47,15 +59,17 @@ pub fn move_down_grid_balls(
         cooldown_move_counter.reset();
 
         adjust_grid_layout(&window_query, &mut grid, &move_counter);
-        for (ball_entity, ball_position, rigid_body, some_ball_animate) in balls_query.iter() {
-            if rigid_body.is_kinematic() {
+        for (ball_entity, ball_position, rigid_body, grid_ball, some_ball_animate) in
+            balls_query.iter()
+        {
+            if !grid_ball.is_ready_to_despawn && rigid_body.is_kinematic() {
                 let position = match some_ball_animate {
                     Some(ball_animate) => ball_animate.position,
                     None => ball_position.0,
                 } - Vec2::new(0.0, ROW_HEIGHT);
                 commands
                     .entity(ball_entity)
-                    .insert(GridBallPositionAnimate::from_position(position, true));
+                    .insert(GridBallPositionAnimate::from_position(position));
             }
         }
     }
@@ -74,13 +88,10 @@ pub fn animate_grid_ball_position(
         With<GridBallPositionAnimate>,
     >,
     time: Res<Time>,
-    grid: Res<Grid>,
-    move_counter: Res<MoveCounter>,
-    mut writer_spawn_row: EventWriter<SpawnRow>,
+    mut writer_find_cluster: EventWriter<FindCluster>,
     keyboard_input_key_code: Res<Input<KeyCode>>,
 ) {
-    let mut total_count: u32 = 0;
-    let mut completed_count: u32 = 0;
+    let mut to_check: HashSet<Entity> = HashSet::default();
     for (
         ball_entity,
         ball_position,
@@ -89,9 +100,6 @@ pub fn animate_grid_ball_position(
         mut angular_velocity,
     ) in grid_balls_query.iter_mut()
     {
-        if grid_ball_animate.move_down_after {
-            total_count += 1;
-        }
         grid_ball_animate.timer.tick(time.delta());
         // linear_velocity.0 = ball_position.lerp(
         //     grid_ball_animate.position,
@@ -116,15 +124,10 @@ pub fn animate_grid_ball_position(
             commands
                 .entity(ball_entity)
                 .remove::<GridBallPositionAnimate>();
-            if grid_ball_animate.move_down_after {
-                completed_count += 1;
-            }
+            to_check.insert(ball_entity);
         }
     }
-    if completed_count == total_count && completed_count > 0 {
-        if grid.total_rows as i32 - FILL_PLAYGROUND_ROWS as i32 > move_counter.0 as i32 - 1 {
-            writer_spawn_row.send(SpawnRow);
-        }
-        // TODO find cluster for all static balls
+    if to_check.len() > 0 {
+        writer_find_cluster.send(FindCluster { to_check });
     }
 }

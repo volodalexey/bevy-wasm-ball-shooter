@@ -23,6 +23,7 @@ pub fn confine_grid_balls(
         (
             Entity,
             &Position,
+            &GridBall,
             &mut RigidBody,
             &mut LinearVelocity,
             &mut AngularVelocity,
@@ -33,7 +34,7 @@ pub fn confine_grid_balls(
 ) {
     for (projectile_entity, projectile_position, projectile_ball) in projectile_query.iter() {
         if !projectile_ball.is_flying {
-            return;
+            break;
         }
 
         if projectile_position.y > grid.top_kinematic_position {
@@ -48,28 +49,39 @@ pub fn confine_grid_balls(
             );
         }
     }
-    if keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_CONFINE]) {
-        println!("balls_query len {}", balls_query.iter().len());
-    }
-    for (entity, position, mut rigid_body, mut linear_velocity, mut angular_velocity) in
+    for (entity, position, grid_ball, mut rigid_body, mut linear_velocity, mut angular_velocity) in
         balls_query.iter_mut()
     {
-        if let Some((confined_position, _, confined_y)) = confine_grid_ball_position(
-            &grid,
-            &entity,
-            position.0,
-            true,
-            keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_CONFINE]),
-        ) {
-            if confined_y {
-                convert_to_kinematic(
-                    &mut commands,
-                    &entity,
-                    rigid_body.as_mut(),
-                    confined_position,
-                    linear_velocity.as_mut(),
-                    angular_velocity.as_mut(),
-                );
+        if keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_CONFINE]) {
+            println!(
+                "Try Confine {:?} is_ready_to_despawn {} rigid_body({}|{})",
+                entity,
+                grid_ball.is_ready_to_despawn,
+                rigid_body.is_dynamic(),
+                rigid_body.is_kinematic()
+            );
+        }
+        if !grid_ball.is_ready_to_despawn && rigid_body.is_dynamic() {
+            if let Some((confined_position, _, confined_y)) = confine_grid_ball_position(
+                &grid,
+                &entity,
+                position.0,
+                true,
+                keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_CONFINE]),
+            ) {
+                if confined_y {
+                    convert_to_kinematic(
+                        &mut commands,
+                        &entity,
+                        rigid_body.as_mut(),
+                        confined_position,
+                        linear_velocity.as_mut(),
+                        angular_velocity.as_mut(),
+                    );
+                    if keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_CONFINE]) {
+                        println!("Confined {:?}", entity);
+                    }
+                }
             }
         }
     }
