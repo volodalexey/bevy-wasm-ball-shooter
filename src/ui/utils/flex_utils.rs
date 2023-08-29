@@ -8,38 +8,42 @@ use crate::ui::{
     constants::{COLUMN_ROW_GAP, ROW_COLUMN_GAP},
 };
 
-fn build_flex_column(
+fn build_flex_col(align_items: AlignItems) -> NodeBundle {
+    NodeBundle {
+        style: Style {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(COLUMN_ROW_GAP),
+            justify_content: JustifyContent::Center,
+            align_items,
+            ..default()
+        },
+        ..default()
+    }
+}
+
+fn append_flex_column(
     parent: &mut ChildBuilder<'_, '_, '_>,
     children: impl FnOnce(&mut ChildBuilder),
     align_items: AlignItems,
 ) {
     parent
-        .spawn(NodeBundle {
-            style: Style {
-                display: Display::Flex,
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(COLUMN_ROW_GAP),
-                justify_content: JustifyContent::Center,
-                align_items,
-                ..default()
-            },
-            ..default()
-        })
+        .spawn(build_flex_col(align_items))
         .with_children(children);
 }
 
-pub fn build_flex_column_start(
+pub fn append_flex_column_start(
     parent: &mut ChildBuilder<'_, '_, '_>,
     children: impl FnOnce(&mut ChildBuilder),
 ) {
-    build_flex_column(parent, children, AlignItems::Start)
+    append_flex_column(parent, children, AlignItems::Start)
 }
 #[allow(dead_code)]
-pub fn build_flex_column_stretch(
+pub fn spawn_flex_column_stretch(
     parent: &mut ChildBuilder<'_, '_, '_>,
     children: impl FnOnce(&mut ChildBuilder),
 ) {
-    build_flex_column(parent, children, AlignItems::Stretch)
+    append_flex_column(parent, children, AlignItems::Stretch)
 }
 
 fn build_flex_row(

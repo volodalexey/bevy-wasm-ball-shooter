@@ -11,7 +11,9 @@ use self::systems::{
     keydown_systems::keydown_detect,
     menu_systems::setup_menu,
     move_down_systems::interact_with_move_down_button,
-    rows_systems::{interact_with_rows_button, update_total_rows_text},
+    rows_systems::{
+        interact_with_init_rows_button, interact_with_total_rows_button, update_rows_text,
+    },
     volume_systems::interact_with_volume_button,
 };
 
@@ -31,9 +33,10 @@ impl Plugin for SettingsMenuPlugin {
                     interact_with_next_state_button,
                     interact_with_colors_button,
                     interact_with_columns_button,
-                    interact_with_rows_button,
+                    interact_with_init_rows_button,
+                    interact_with_total_rows_button,
                     interact_with_move_down_button,
-                    update_total_rows_text,
+                    update_rows_text,
                 )
                     .run_if(in_state(AppState::Settings)),
             )

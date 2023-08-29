@@ -6,10 +6,9 @@ use bevy::prelude::{
 use self::{
     resources::{ClusterCheckCooldown, CollisionSnapCooldown, CooldownMoveCounter, Grid},
     systems::{
-        animation_systems::{animate_grid_ball_position, move_down_grid_balls},
+        animation_systems::move_down_top_wall,
         cluster_systems::find_and_remove_clusters,
         collision_systems::{check_collision_events, tick_collision_snap_cooldown_timer},
-        confine_systems::confine_grid_balls,
         lifecycle_systems::{cleanup_grid, generate_grid, spawn_new_row},
         magnetic_systems::apply_magnetic_forces,
         projectile_systems::on_snap_projectile,
@@ -37,11 +36,9 @@ impl Plugin for GridPlugin {
             .add_systems(
                 Update,
                 (
-                    move_down_grid_balls,
-                    confine_grid_balls,
+                    move_down_top_wall,
                     check_collision_events,
                     tick_collision_snap_cooldown_timer,
-                    animate_grid_ball_position,
                     update_score_counter,
                     spawn_new_row,
                     apply_magnetic_forces,

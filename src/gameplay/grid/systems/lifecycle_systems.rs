@@ -5,7 +5,7 @@ use bevy::{
     },
     window::{PrimaryWindow, Window},
 };
-use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, RigidBody};
+use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody};
 use hexx::{shapes, Hex};
 
 use crate::{
@@ -15,11 +15,13 @@ use crate::{
             components::{GridBall, OutBall},
             grid_ball_bundle::GridBallBundle,
         },
+        constants::ROW_HEIGHT,
         events::SpawnRow,
         grid::{resources::Grid, utils::adjust_grid_layout},
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
-        panels::resources::{MoveDownCounter, SpawnRowsLeft},
+        panels::resources::SpawnRowsLeft,
+        walls::components::TopWall,
     },
 };
 
@@ -31,7 +33,7 @@ pub fn generate_grid(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
 ) {
-    adjust_grid_layout(&window_query, &mut grid, &MoveDownCounter(0));
+    adjust_grid_layout(&window_query, &mut grid, 0);
     let max_side_x = (grid.init_cols / 2) as i32;
     let min_col = -max_side_x;
     let max_col = max_side_x;
@@ -56,7 +58,6 @@ pub fn generate_grid(
             false,
             None,
             true,
-            false,
             true,
         );
     }
@@ -95,6 +96,7 @@ pub fn spawn_new_row(
         With<RigidBody>,
     >,
     mut spawn_rows_left: ResMut<SpawnRowsLeft>,
+    mut top_wall_query: Query<&mut Position, With<TopWall>>,
 ) {
     if spawn_row_events.is_empty() {
         return;
@@ -104,6 +106,11 @@ pub fn spawn_new_row(
     if spawn_rows_left.0 > 0 {
         spawn_rows_left.0 -= 1;
         grid.last_active_row -= 1;
+
+        for mut position in top_wall_query.iter_mut() {
+            position.y = position.y + ROW_HEIGHT; // jump to release place for next row
+        }
+
         let max_side_x = (grid.init_cols / 2) as i32;
         for hex_x in -max_side_x..=max_side_x {
             let is_even = grid.last_active_row % 2 == 0;
@@ -122,7 +129,6 @@ pub fn spawn_new_row(
                 true,
                 false,
                 None,
-                true,
                 true,
                 true,
             );

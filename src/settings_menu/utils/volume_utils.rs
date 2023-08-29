@@ -9,7 +9,7 @@ use crate::{
         resources::{ColorType, UIMenuButtonColors, UIMenuTextColors},
         utils::{
             button_utils::append_middle_text_button,
-            flex_utils::{append_flex_row_evenly, build_flex_column_start},
+            flex_utils::{append_flex_column_start, append_flex_row_evenly},
             text_utils::append_middle_text,
         },
     },
@@ -24,7 +24,7 @@ pub fn build_volume_line(
     text_colors: &Res<UIMenuTextColors>,
     pkv: &Res<PkvStore>,
 ) {
-    build_flex_column_start(parent, |parent| {
+    append_flex_column_start(parent, |parent| {
         append_middle_text(
             parent,
             title,

@@ -19,12 +19,6 @@ pub fn setup_level_lines(
         let width = (grid.init_cols as f32 * BALL_DIAMETER + BALL_RADIUS) * 2.0;
         commands.spawn(LineBundle::new(
             width,
-            LineType::GridTop,
-            &mut meshes,
-            &gameplay_materials,
-        ));
-        commands.spawn(LineBundle::new(
-            width,
             LineType::GameOver,
             &mut meshes,
             &gameplay_materials,

@@ -7,15 +7,16 @@ use bevy_pkv::PkvStore;
 
 use crate::{
     components::AppState,
-    constants::{MOVE_DOWN_AFTER_KEY, TOTAL_COLORS_KEY, TOTAL_COLUMNS_KEY, TOTAL_ROWS_KEY},
-    gameplay::{
-        constants::FILL_PLAYGROUND_ROWS,
-        grid::resources::{CooldownMoveCounter, Grid},
+    constants::{
+        INIT_ROWS_KEY, MOVE_DOWN_AFTER_KEY, TOTAL_COLORS_KEY, TOTAL_COLUMNS_KEY, TOTAL_ROWS_KEY,
     },
+    gameplay::grid::resources::{CooldownMoveCounter, Grid},
     loading::{font_assets::FontAssets, sprite_assets::SpriteAssets},
     settings_menu::utils::{
-        colors_utils::read_total_colors, columns_utils::read_init_cols,
-        move_down_utils::read_move_down, rows_utils::read_total_rows,
+        colors_utils::read_total_colors,
+        columns_utils::read_init_cols,
+        move_down_utils::read_move_down,
+        rows_utils::{read_init_rows, read_total_rows},
     },
     ui::{
         components::NextStateButton,
@@ -49,11 +50,12 @@ pub fn setup_resources(
 
     grid.total_colors = read_total_colors(TOTAL_COLORS_KEY, &pkv);
     grid.init_cols = read_init_cols(TOTAL_COLUMNS_KEY, &pkv);
+    grid.init_rows = read_init_rows(INIT_ROWS_KEY, &pkv);
     grid.total_rows = read_total_rows(TOTAL_ROWS_KEY, &pkv);
 
     grid.calc_last_active_row();
 
-    let left_rows = grid.total_rows as i32 - FILL_PLAYGROUND_ROWS as i32;
+    let left_rows = grid.total_rows as i32 - grid.init_rows as i32;
     spawn_rows_left.0 = match left_rows > 0 {
         true => left_rows as u32,
         false => 0,

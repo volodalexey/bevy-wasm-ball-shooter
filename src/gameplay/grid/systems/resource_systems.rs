@@ -39,7 +39,6 @@ pub fn update_grid_resources(
     grid.entities_to_positions = entities_to_positions;
     grid.entities_to_species = entities_to_species;
     grid.entities_to_neighbours = entities_to_neighbours;
-    grid.top_kinematic_position = top_kinematic_position;
     if keyboard_input_key_code.any_pressed([LOG_KEYCODE_RESOURCES]) {
         println!(
             "entities_to_positions {:?}\nentities_to_neighbours {:?}",

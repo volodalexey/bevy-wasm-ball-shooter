@@ -5,7 +5,7 @@ use crate::{components::AppState, ui::systems::interact_with_next_state_button};
 use self::{
     ball::ProjectilePlugin,
     events::{
-        FindCluster, MoveDownLastActive, ProjectileReload, SnapProjectile, SpawnRow,
+        FindCluster, MoveDownTopWall, ProjectileReload, SnapProjectile, SpawnRow,
         UpdateScoreCounter,
     },
     grid::GridPlugin,
@@ -51,7 +51,7 @@ impl Plugin for GameplayPlugin {
         .add_event::<ProjectileReload>()
         .add_event::<SnapProjectile>()
         .add_event::<UpdateScoreCounter>()
-        .add_event::<MoveDownLastActive>()
+        .add_event::<MoveDownTopWall>()
         .add_event::<SpawnRow>()
         .add_event::<FindCluster>()
         .add_systems(OnEnter(AppState::Gameplay), setup_first_turn)

@@ -130,7 +130,6 @@ pub fn projectile_reload(
         true,
         Some(species),
         true,
-        false,
         true,
     );
     println!(
@@ -235,11 +234,10 @@ pub fn draw_aim(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     gameplay_materials: Res<GameplayMaterials>,
-    wall_query: Query<Entity, With<WallType>>,
+    wall_query: Query<(Entity, &WallType), With<WallType>>,
     balls_query: Query<Entity, With<GridBall>>,
     spatial_query: SpatialQuery,
     aim_line_query: Query<Entity, With<AimLine>>,
-    lines_query: Query<(Entity, &LineType, &Transform), With<LineType>>,
     mut aim_target_query: Query<
         (&mut AimTarget, &mut Transform, &mut Visibility),
         (With<AimTarget>, Without<LineType>),
@@ -261,19 +259,11 @@ pub fn draw_aim(
 
             cleanup_aim_line_utils(&mut commands, &aim_line_query);
             let mut exclude_entities: HashSet<Entity> = HashSet::default();
-            for (entity, line_type, _) in lines_query.iter() {
-                match line_type {
-                    LineType::GridTop => {}
-                    LineType::GameOver => {
-                        exclude_entities.insert(entity);
-                    }
-                }
-            }
             for projectile_entity in projectile_ball_query.iter() {
                 exclude_entities.insert(projectile_entity);
             }
             let spatial_query_filter = SpatialQueryFilter::default()
-                .with_masks([Layer::Walls, Layer::Grid, Layer::Lines])
+                .with_masks([Layer::Walls, Layer::Grid])
                 .without_entities(exclude_entities);
 
             let shape = Collider::ball(BALL_RADIUS);
@@ -304,17 +294,27 @@ pub fn draw_aim(
                     true,
                     spatial_query_filter.clone(),
                 ) {
-                    if let Ok(_) = wall_query.get(entity) {
-                        let center = (point1 - point2).add(Vec2::new(
-                            0.0,
-                            CAST_RAY_BOUNCE_Y_ADD * ray_vel.normalize().y,
-                        ));
+                    if let Ok((_, wall_type)) = wall_query.get(entity) {
+                        let mut center = point1 - point2;
+                        if wall_type.is_side() {
+                            center = center.add(Vec2::new(
+                                0.0,
+                                CAST_RAY_BOUNCE_Y_ADD * ray_vel.normalize().y,
+                            ));
+                        } else {
+                            target_transform.translation =
+                                center.extend(target_transform.translation.z);
+                            *target_visibility = Visibility::Visible;
+                        }
                         commands.spawn(AimBundle::new_line(
                             ray_start,
                             center,
                             &mut meshes,
                             &gameplay_materials,
                         ));
+                        if wall_type.is_top() {
+                            break;
+                        }
                         ray_start = center;
                         let mut reverse_x_vel = -ray_vel.x;
                         match reverse_x_vel.signum() > 0.0 {
@@ -323,18 +323,6 @@ pub fn draw_aim(
                         }
                         ray_vel = Vec2::new(reverse_x_vel, ray_vel.y);
                     } else if let Ok(_) = balls_query.get(entity) {
-                        let center = point1 - point2;
-                        target_transform.translation =
-                            center.extend(target_transform.translation.z);
-                        commands.spawn(AimBundle::new_line(
-                            ray_start,
-                            center,
-                            &mut meshes,
-                            &gameplay_materials,
-                        ));
-                        *target_visibility = Visibility::Visible;
-                        break;
-                    } else if let Ok(_) = lines_query.get(entity) {
                         let center = point1 - point2;
                         target_transform.translation =
                             center.extend(target_transform.translation.z);
@@ -448,18 +436,12 @@ pub fn cleanup_next_projectile_ball(
 pub fn animate_grid_ball_scale(
     mut commands: Commands,
     mut grid_balls_query: Query<
-        (
-            Entity,
-            &mut Transform,
-            &mut GridBallScaleAnimate,
-            &mut Collider,
-        ),
+        (Entity, &mut Transform, &mut GridBallScaleAnimate),
         With<GridBallScaleAnimate>,
     >,
     time: Res<Time>,
 ) {
-    for (ball_entity, mut grid_ball_transform, mut grid_ball_animate, mut collider) in
-        grid_balls_query.iter_mut()
+    for (ball_entity, mut grid_ball_transform, mut grid_ball_animate) in grid_balls_query.iter_mut()
     {
         grid_ball_animate.timer.tick(time.delta());
         grid_ball_transform.scale = grid_ball_transform
@@ -474,7 +456,6 @@ pub fn animate_grid_ball_scale(
             commands
                 .entity(ball_entity)
                 .remove::<GridBallScaleAnimate>();
-            *collider = Collider::ball(BALL_RADIUS);
         }
     }
 }

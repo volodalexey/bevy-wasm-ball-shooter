@@ -7,10 +7,7 @@ use hexx::{HexLayout, HexOrientation, OffsetHexMode};
 
 use crate::gameplay::{
     ball::components::Species,
-    constants::{
-        CLUSTER_CHECK_COOLDOWN_TIME, COLLISION_SNAP_COOLDOWN_TIME, FILL_PLAYGROUND_ROWS,
-        MOVE_DOWN_TIME, SIZE,
-    },
+    constants::{CLUSTER_CHECK_COOLDOWN_TIME, COLLISION_SNAP_COOLDOWN_TIME, SIZE},
 };
 
 #[derive(Default, Debug, Copy, Clone)]
@@ -37,13 +34,13 @@ pub struct Bounds {
 #[derive(Resource)]
 pub struct Grid {
     pub init_cols: u8,
+    pub init_rows: u8,
     pub total_rows: u8,
     pub total_colors: u8,
     pub last_active_row: i32,
     pub offset_mode: OffsetHexMode,
     pub layout: HexLayout,
     pub bounds: Bounds,
-    pub top_kinematic_position: f32,
     pub entities_to_positions: HashMap<Entity, Vec2>,
     pub entities_to_species: HashMap<Entity, Species>,
     pub entities_to_neighbours: HashMap<Entity, Vec<(Entity, f32)>>,
@@ -60,13 +57,13 @@ impl Default for Grid {
         };
         Self {
             init_cols: default(),
+            init_rows: default(),
             total_rows: default(),
             total_colors: default(),
             last_active_row: 0,
             offset_mode: OffsetHexMode::OddRows,
             layout,
             bounds: Default::default(),
-            top_kinematic_position: f32::MIN,
             entities_to_positions: HashMap::default(),
             entities_to_species: HashMap::default(),
             entities_to_neighbours: HashMap::default(),
@@ -76,10 +73,9 @@ impl Default for Grid {
 
 impl Grid {
     pub fn calc_last_active_row(&mut self) {
-        let fill_rows = FILL_PLAYGROUND_ROWS;
-        self.last_active_row = -(match self.total_rows < fill_rows {
+        self.last_active_row = -(match self.total_rows < self.init_rows {
             true => self.total_rows,
-            false => fill_rows,
+            false => self.init_rows,
         } as i32
             - 1);
     }
@@ -93,7 +89,6 @@ impl Grid {
 pub struct CooldownMoveCounter {
     pub value: u8,
     pub init_value: u8,
-    pub timer: Timer,
 }
 
 impl Default for CooldownMoveCounter {
@@ -101,26 +96,20 @@ impl Default for CooldownMoveCounter {
         Self {
             value: 0,
             init_value: 0,
-            timer: Timer::default(),
         }
     }
 }
 
 impl CooldownMoveCounter {
     pub fn init(init_value: u8) -> Self {
-        let mut timer = Timer::from_seconds(MOVE_DOWN_TIME, TimerMode::Repeating);
-        timer.pause();
         Self {
             value: init_value,
             init_value,
-            timer,
         }
     }
 
     pub fn reset(&mut self) {
         self.value = self.init_value;
-        self.timer.unpause();
-        self.timer.reset();
     }
 }
 

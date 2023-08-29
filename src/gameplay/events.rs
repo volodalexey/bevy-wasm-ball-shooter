@@ -17,7 +17,7 @@ pub struct UpdateScoreCounter {
 }
 
 #[derive(Event)]
-pub struct MoveDownLastActive;
+pub struct MoveDownTopWall;
 
 #[derive(Event)]
 pub struct SpawnRow;

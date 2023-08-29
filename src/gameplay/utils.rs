@@ -6,7 +6,7 @@ use bevy::{
 };
 use bevy_pkv::PkvStore;
 
-use crate::constants::{MAX_ROWS_COUNT, MIN_ROWS_COUNT, TOTAL_ROWS_KEY};
+use crate::constants::{MAX_TOTAL_ROWS_COUNT, MIN_TOTAL_ROWS_COUNT, TOTAL_ROWS_KEY};
 
 use super::{grid::resources::Grid, main_camera::components::MainCamera};
 
@@ -57,8 +57,8 @@ pub fn detect_pointer_position(
 
 pub fn increment_init_rows(grid: &mut Grid, pkv: &mut ResMut<PkvStore>) {
     grid.total_rows += 1;
-    if grid.total_rows > MAX_ROWS_COUNT {
-        grid.total_rows = MIN_ROWS_COUNT
+    if grid.total_rows > MAX_TOTAL_ROWS_COUNT {
+        grid.total_rows = MIN_TOTAL_ROWS_COUNT
     }
     pkv.set_string(TOTAL_ROWS_KEY, &grid.total_rows.to_string())
         .expect("failed to save total rows");

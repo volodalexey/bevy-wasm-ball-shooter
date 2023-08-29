@@ -26,10 +26,7 @@ impl LineBundle {
                 mesh: meshes
                     .add(shape::Quad::new(Vec2::new(width, LINE_WIDTH)).into())
                     .into(),
-                material: match line_type {
-                    LineType::GridTop => gameplay_materials.grid_top_line.clone(),
-                    LineType::GameOver => gameplay_materials.game_over_line.clone(),
-                },
+                material: gameplay_materials.game_over_line.clone(),
                 transform: Transform::from_translation(Vec2::ZERO.extend(LINE_Z_INDEX)),
                 ..Default::default()
             },

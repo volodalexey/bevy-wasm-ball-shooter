@@ -1,21 +1,19 @@
 use bevy::{
-    prelude::{default, ChildBuilder, Color, Commands, Entity, EventWriter, Query, Vec2, With},
+    prelude::{default, ChildBuilder, Color, Entity, EventWriter, Query, Vec2, With},
     text::{Text, Text2dBounds, Text2dBundle, TextSection, TextStyle},
     utils::{HashMap, HashSet},
     window::{PrimaryWindow, Window},
 };
-use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, RigidBody};
 use hexx::Hex;
 
 use crate::gameplay::{
-    ball::components::{GridBallPositionAnimate, ProjectileBall, Species},
+    ball::components::{ProjectileBall, Species},
     constants::{
-        BALL_DIAMETER, EMPTY_PLAYGROUND_HEIGHT, LOCK_POSITION_TOLERANCE,
-        MIN_PROJECTILE_REVERSE_VELOCITY, MIN_PROJECTILE_SNAP_VELOCITY,
-        NEIGHBOUR_POSITION_TOLERANCE, PROJECTILE_SPAWN_BOTTOM, ROW_HEIGHT,
+        BALL_DIAMETER, EMPTY_PLAYGROUND_HEIGHT, MIN_PROJECTILE_REVERSE_VELOCITY,
+        MIN_PROJECTILE_SNAP_VELOCITY, NEIGHBOUR_POSITION_TOLERANCE, PROJECTILE_SPAWN_BOTTOM,
+        ROW_HEIGHT,
     },
     events::SnapProjectile,
-    panels::resources::MoveDownCounter,
 };
 
 use super::resources::{CollisionSnapCooldown, Grid};
@@ -92,12 +90,13 @@ pub fn find_cluster(
 pub fn adjust_grid_layout(
     window_query: &Query<&Window, With<PrimaryWindow>>,
     grid: &mut Grid,
-    move_counter: &MoveDownCounter,
+    move_count: u32,
 ) {
     let window = window_query.single();
-    let spawn_bottom_world_y = -(window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0);
-    let init_layout_y = spawn_bottom_world_y + EMPTY_PLAYGROUND_HEIGHT;
-    let move_layout_y = move_counter.0 as f32 * ROW_HEIGHT;
+    let spawn_projectile_world_y =
+        -(window.height() - PROJECTILE_SPAWN_BOTTOM - window.height() / 2.0);
+    let init_layout_y = spawn_projectile_world_y + EMPTY_PLAYGROUND_HEIGHT;
+    let move_layout_y = move_count as f32 * ROW_HEIGHT;
     grid.layout.origin.y = init_layout_y - move_layout_y;
     println!("Adjust Grid Layout y {}", grid.layout.origin.y);
 }
@@ -161,108 +160,4 @@ pub fn send_snap_projectile(
 ) {
     collision_snap_cooldown.stop();
     writer_snap_projectile.send(SnapProjectile { projectile_entity });
-}
-
-pub fn confine_grid_ball_position(
-    grid: &Grid,
-    entity: &Entity,
-    entity_position: Vec2,
-    strict_check: bool,
-    log_debug: bool,
-) -> Option<(Vec2, bool, bool)> {
-    if grid.top_kinematic_position == f32::MIN {
-        return None;
-    }
-    let max_side_x = grid.init_cols / 2;
-    let snap_hex = grid.layout.world_pos_to_hex(entity_position);
-    let mut offset = snap_hex.to_offset_coordinates(grid.offset_mode);
-    let mut confined_x = false;
-    let mut confined_y = false;
-    let min_col = -(max_side_x as i32);
-    let last_kinematic_row = grid
-        .layout
-        .world_pos_to_hex(Vec2::new(0.0, grid.top_kinematic_position))
-        .to_offset_coordinates(grid.offset_mode);
-    if (strict_check && offset[1] <= last_kinematic_row[1]) || offset[1] < last_kinematic_row[1] {
-        offset[1] = last_kinematic_row[1];
-        confined_y = true;
-    }
-    let max_col = match offset[1] % 2 == 0 {
-        true => max_side_x,
-        false => max_side_x - 1,
-    } as i32;
-    if (strict_check && offset[0] <= min_col) || offset[0] < min_col {
-        offset[0] = min_col;
-        confined_x = true;
-    }
-    if (strict_check && offset[0] >= max_col) || offset[0] > max_col {
-        offset[0] = max_col;
-        confined_x = true;
-    }
-    if log_debug {
-        println!(
-            "entity {:?} snap_hex {:?} last_kinematic_row {} confined({}|{})",
-            entity, snap_hex, last_kinematic_row[1], confined_x, confined_y
-        );
-    }
-
-    if confined_x || confined_y {
-        let corrected_hex = Hex::from_offset_coordinates(offset, grid.offset_mode);
-        let all_neighbours = corrected_hex.all_neighbors();
-        let possible_neighbours = all_neighbours.iter().filter(|hex| {
-            let neighbour_offset = hex.to_offset_coordinates(grid.offset_mode);
-            neighbour_offset[0] >= min_col
-                && neighbour_offset[0] <= max_col
-                && neighbour_offset[1] >= last_kinematic_row[1]
-        });
-        let mut possible_positions: Vec<Vec2> = vec![grid.layout.hex_to_world_pos(corrected_hex)];
-        for possible_neighbour in possible_neighbours {
-            possible_positions.push(grid.layout.hex_to_world_pos(*possible_neighbour));
-        }
-
-        // check that corrected position is free
-        for (ball_entity, ball_position) in grid.entities_to_positions.iter() {
-            if ball_entity == entity {
-                continue;
-            }
-
-            let index = 0;
-            loop {
-                if let Some(check_position) = possible_positions.get(index) {
-                    if ball_position.y - LOCK_POSITION_TOLERANCE <= check_position.y
-                        && check_position.y <= ball_position.y + LOCK_POSITION_TOLERANCE
-                        && ball_position.x - LOCK_POSITION_TOLERANCE <= check_position.x
-                        && check_position.x <= ball_position.x + LOCK_POSITION_TOLERANCE
-                    {
-                        possible_positions.remove(index);
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-        }
-
-        if let Some(possible_position) = possible_positions.first() {
-            return Some((*possible_position, confined_x, confined_y));
-        }
-    }
-    None
-}
-
-pub fn convert_to_kinematic(
-    commands: &mut Commands,
-    entity: &Entity,
-    rigid_body: &mut RigidBody,
-    snap_position: Vec2,
-    linear_velocity: &mut LinearVelocity,
-    angular_velocity: &mut AngularVelocity,
-) {
-    *rigid_body = RigidBody::Kinematic;
-    commands
-        .entity(*entity)
-        .insert(GridBallPositionAnimate::from_position(snap_position));
-    linear_velocity.0 = Vec2::ZERO;
-    angular_velocity.0 = 0.0;
 }

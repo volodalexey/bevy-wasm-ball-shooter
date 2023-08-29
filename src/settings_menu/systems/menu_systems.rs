@@ -3,7 +3,9 @@ use bevy_pkv::PkvStore;
 
 use crate::{
     components::AppState,
-    constants::{MOVE_DOWN_AFTER_KEY, TOTAL_COLORS_KEY, TOTAL_COLUMNS_KEY, TOTAL_ROWS_KEY},
+    constants::{
+        INIT_ROWS_KEY, MOVE_DOWN_AFTER_KEY, TOTAL_COLORS_KEY, TOTAL_COLUMNS_KEY, TOTAL_ROWS_KEY,
+    },
     game_audio::constants::{MAIN_SOUND_VOLUME_KEY, SFX_SOUND_VOLUME_KEY},
     loading::font_assets::FontAssets,
     settings_menu::utils::{
@@ -74,6 +76,8 @@ pub fn setup_menu(
             &pkv,
         );
         build_rows_line(
+            "Рядов вначале",
+            INIT_ROWS_KEY,
             "Всего рядов",
             TOTAL_ROWS_KEY,
             parent,

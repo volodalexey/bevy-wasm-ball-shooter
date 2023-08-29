@@ -3,7 +3,10 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
 };
 
-use crate::gameplay::{materials::resources::GameplayMaterials, meshes::resources::GameplayMeshes};
+use crate::gameplay::{
+    constants::NEXT_PROJECTILE_Z_INDEX, materials::resources::GameplayMaterials,
+    meshes::resources::GameplayMeshes,
+};
 
 use super::components::{NextProjectileBall, Species};
 
@@ -20,7 +23,11 @@ impl NextProjectileBallBundle {
             MaterialMesh2dBundle {
                 mesh: gameplay_meshes.next_projectile_ball.clone().into(),
                 material: gameplay_materials.from_species(species),
-                transform: Transform::from_translation(Vec3::new(pos.x, pos.y, 0.0)),
+                transform: Transform::from_translation(Vec3::new(
+                    pos.x,
+                    pos.y,
+                    NEXT_PROJECTILE_Z_INDEX,
+                )),
                 ..default()
             },
             NextProjectileBall {},

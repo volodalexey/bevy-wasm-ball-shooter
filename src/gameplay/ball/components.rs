@@ -6,7 +6,7 @@ use bevy::{
     time::{Timer, TimerMode},
 };
 
-use crate::gameplay::constants::{MAX_APPEAR_TIME, MOVE_DOWN_TIME};
+use crate::gameplay::constants::MAX_APPEAR_TIME;
 
 #[derive(Component)]
 pub struct ProjectileBall {
@@ -43,21 +43,6 @@ impl Default for GridBall {
 
 #[derive(Component)]
 pub struct MagneticGridBall {}
-
-#[derive(Component)]
-pub struct GridBallPositionAnimate {
-    pub position: Vec2,
-    pub timer: Timer,
-}
-
-impl GridBallPositionAnimate {
-    pub fn from_position(position: Vec2) -> Self {
-        Self {
-            position,
-            timer: Timer::from_seconds(MOVE_DOWN_TIME, TimerMode::Once),
-        }
-    }
-}
 
 #[derive(Component)]
 pub struct GridBallScaleAnimate {

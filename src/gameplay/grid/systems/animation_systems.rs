@@ -1,129 +1,89 @@
 use bevy::{
-    prelude::{
-        Commands, Entity, EventReader, EventWriter, Input, KeyCode, Query, Res, ResMut, Vec2, With,
-        Without,
-    },
-    time::Time,
-    utils::HashSet,
+    prelude::{Commands, Entity, EventReader, EventWriter, Query, ResMut, Vec2, With, Without},
     window::{PrimaryWindow, Window},
 };
-use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody};
+use bevy_xpbd_2d::prelude::{LinearVelocity, Position, RigidBody};
 
 use crate::gameplay::{
-    ball::components::{GridBall, GridBallPositionAnimate, ProjectileBall},
-    constants::{BALL_RADIUS, LOG_KEYCODE_MOVE_DOWN, MOVE_DOWN_TOLERANCE, ROW_HEIGHT},
-    events::{FindCluster, MoveDownLastActive, SpawnRow},
+    ball::components::GridBall,
+    constants::{MOVE_DOWN_TOLERANCE, ROW_HEIGHT},
+    events::{MoveDownTopWall, SpawnRow},
     grid::{
         resources::{CooldownMoveCounter, Grid},
         utils::adjust_grid_layout,
     },
     panels::resources::MoveDownCounter,
+    walls::components::{TopWall, TopWallPositionAnimate},
 };
 
-pub fn move_down_grid_balls(
+pub fn move_down_top_wall(
     mut commands: Commands,
-    balls_query: Query<
+    mut top_wall_query: Query<
         (
             Entity,
-            &Position,
-            &RigidBody,
-            &GridBall,
-            Option<&GridBallPositionAnimate>,
+            &mut Position,
+            Option<&TopWallPositionAnimate>,
+            &mut LinearVelocity,
         ),
-        (With<GridBall>, Without<ProjectileBall>),
+        With<TopWall>,
     >,
-    mut move_down_events: EventReader<MoveDownLastActive>,
+    mut balls_query: Query<
+        (&RigidBody, &mut Position, &mut LinearVelocity),
+        (With<GridBall>, Without<TopWall>),
+    >,
+    mut move_down_events: EventReader<MoveDownTopWall>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut grid: ResMut<Grid>,
     mut move_counter: ResMut<MoveDownCounter>,
     mut cooldown_move_counter: ResMut<CooldownMoveCounter>,
-    time: Res<Time>,
     mut writer_spawn_row: EventWriter<SpawnRow>,
 ) {
-    if !cooldown_move_counter.timer.paused() {
-        cooldown_move_counter.timer.tick(time.delta());
-    }
-    if cooldown_move_counter.timer.finished() {
-        cooldown_move_counter.timer.pause();
-        cooldown_move_counter.timer.reset();
-        writer_spawn_row.send(SpawnRow);
-    }
-    if move_down_events.is_empty() {
-        return;
-    }
-    move_down_events.clear();
+    if let Some(_) = move_down_events.iter().next() {
+        cooldown_move_counter.value -= 1;
+        if cooldown_move_counter.value == 0 {
+            move_counter.0 += 1;
+            cooldown_move_counter.reset();
 
-    cooldown_move_counter.value -= 1;
-    if cooldown_move_counter.value == 0 {
-        move_counter.0 += 1;
-        cooldown_move_counter.reset();
-
-        adjust_grid_layout(&window_query, &mut grid, &move_counter);
-        for (ball_entity, ball_position, rigid_body, grid_ball, some_ball_animate) in
-            balls_query.iter()
-        {
-            if !grid_ball.is_ready_to_despawn && rigid_body.is_kinematic() {
-                let position = match some_ball_animate {
-                    Some(ball_animate) => ball_animate.position,
-                    None => ball_position.0,
+            adjust_grid_layout(&window_query, &mut grid, move_counter.0);
+            for (wall_entity, wall_position, some_wall_animate, _) in top_wall_query.iter() {
+                let position = match some_wall_animate {
+                    Some(wall_animate) => wall_animate.position,
+                    None => wall_position.0,
                 } - Vec2::new(0.0, ROW_HEIGHT);
                 commands
-                    .entity(ball_entity)
-                    .insert(GridBallPositionAnimate::from_position(position));
+                    .entity(wall_entity)
+                    .insert(TopWallPositionAnimate { position });
             }
         }
     }
-}
-
-pub fn animate_grid_ball_position(
-    mut commands: Commands,
-    mut grid_balls_query: Query<
-        (
-            Entity,
-            &Position,
-            &mut GridBallPositionAnimate,
-            &mut LinearVelocity,
-            &mut AngularVelocity,
-        ),
-        With<GridBallPositionAnimate>,
-    >,
-    time: Res<Time>,
-    mut writer_find_cluster: EventWriter<FindCluster>,
-    keyboard_input_key_code: Res<Input<KeyCode>>,
-) {
-    let mut to_check: HashSet<Entity> = HashSet::default();
-    for (
-        ball_entity,
-        ball_position,
-        mut grid_ball_animate,
-        mut linear_velocity,
-        mut angular_velocity,
-    ) in grid_balls_query.iter_mut()
+    for (wall_entity, mut wall_position, some_wall_animate, mut wall_linear_velocity) in
+        top_wall_query.iter_mut()
     {
-        grid_ball_animate.timer.tick(time.delta());
-        linear_velocity.0 = grid_ball_animate.position - ball_position.0;
-        let relation = linear_velocity.length() / BALL_RADIUS;
-        match relation >= 1.0 {
-            true => linear_velocity.0 *= relation * 2.0,
-            false => {}
+        if let Some(wall_animate) = some_wall_animate {
+            wall_linear_velocity.0 = wall_animate.position - wall_position.0;
+            for (rigid_body, _, mut ball_linear_velocity) in balls_query.iter_mut() {
+                if rigid_body.is_kinematic() {
+                    ball_linear_velocity.0 = wall_linear_velocity.0
+                }
+            }
+            let position_diff_length = (wall_position.0 - wall_animate.position).length();
+            if position_diff_length < MOVE_DOWN_TOLERANCE {
+                wall_linear_velocity.0 = Vec2::ZERO;
+                commands
+                    .entity(wall_entity)
+                    .remove::<TopWallPositionAnimate>();
+                wall_position.0 = wall_animate.position;
+
+                writer_spawn_row.send(SpawnRow);
+                for (rigid_body, mut ball_position, mut ball_linear_velocity) in
+                    balls_query.iter_mut()
+                {
+                    if rigid_body.is_kinematic() {
+                        ball_linear_velocity.0 = Vec2::ZERO;
+                        ball_position.y = wall_animate.position.y - ROW_HEIGHT;
+                    }
+                }
+            }
         }
-        let position_diff_length = (ball_position.0 - grid_ball_animate.position).length();
-        if keyboard_input_key_code.any_pressed([LOG_KEYCODE_MOVE_DOWN]) {
-            println!(
-                "move down entity {:?} linear_velocity {} position_diff_length {} relation {}",
-                ball_entity, linear_velocity.0, position_diff_length, relation
-            );
-        }
-        if position_diff_length < MOVE_DOWN_TOLERANCE {
-            linear_velocity.0 = Vec2::ZERO;
-            angular_velocity.0 = 0.0;
-            commands
-                .entity(ball_entity)
-                .remove::<GridBallPositionAnimate>();
-            to_check.insert(ball_entity);
-        }
-    }
-    if to_check.len() > 0 {
-        writer_find_cluster.send(FindCluster { to_check });
     }
 }

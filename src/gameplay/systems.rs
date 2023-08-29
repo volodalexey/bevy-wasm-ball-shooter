@@ -7,14 +7,13 @@ use bevy::{
 };
 use bevy_pkv::PkvStore;
 use bevy_xpbd_2d::prelude::Position;
-use hexx::Hex;
 
 use crate::components::AppState;
 
 use super::{
     ball::components::{GridBall, OutBall, ProjectileBall},
     constants::GAME_OVER_BOTTOM,
-    events::{FindCluster, MoveDownLastActive, ProjectileReload, SnapProjectile, SpawnRow},
+    events::{FindCluster, MoveDownTopWall, ProjectileReload, SnapProjectile, SpawnRow},
     grid::resources::Grid,
     lines::components::LineType,
     utils::increment_init_rows,
@@ -25,10 +24,9 @@ pub fn setup_first_turn(mut begin_turn: EventWriter<ProjectileReload>) {
 }
 
 pub fn check_game_over(
-    grid: Res<Grid>,
     mut app_state_next_state: ResMut<NextState<AppState>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
-    mut lines_query: Query<(&LineType, &mut Position), With<LineType>>,
+    mut lines_query: Query<&mut Position, With<LineType>>,
     balls_query: Query<
         (Entity, &Position),
         (With<GridBall>, Without<ProjectileBall>, Without<LineType>),
@@ -37,17 +35,8 @@ pub fn check_game_over(
     let window = window_query.single();
     let game_over_bottom = -(window.height() - GAME_OVER_BOTTOM - window.height() / 2.0);
 
-    let hex = Hex {
-        x: 0,
-        y: grid.last_active_row,
-    };
-    let position = grid.layout.hex_to_world_pos(hex);
-
-    for (line_type, mut line_position) in lines_query.iter_mut() {
-        match line_type {
-            LineType::GridTop => line_position.y = position.y,
-            LineType::GameOver => line_position.y = game_over_bottom,
-        }
+    for mut line_position in lines_query.iter_mut() {
+        line_position.y = game_over_bottom
     }
 
     for (ball_entity, ball_position) in balls_query.iter() {
@@ -93,7 +82,7 @@ pub fn keydown_detect(
 pub fn cleanup_events(
     mut projectile_reload_events: EventReader<ProjectileReload>,
     mut snap_projectile_events: EventReader<SnapProjectile>,
-    mut move_down_events: EventReader<MoveDownLastActive>,
+    mut move_down_events: EventReader<MoveDownTopWall>,
     mut spawn_row_events: EventReader<SpawnRow>,
     mut find_cluster_events: EventReader<FindCluster>,
 ) {
