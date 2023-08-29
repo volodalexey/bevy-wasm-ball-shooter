@@ -27,7 +27,6 @@ cargo install wasm-bindgen-cli
 - Balls with nearest distance have more attraction factor than other
 
 TODO
-all balls have small attraction force to the top
 ClusterCheckCooldown should accumulate inside resource and timer tick inside system
 split to count score system
 shoot multiple projectiles

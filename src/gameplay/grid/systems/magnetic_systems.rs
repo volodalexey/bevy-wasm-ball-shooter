@@ -42,8 +42,6 @@ pub fn apply_magnetic_forces(
 
             let mut result_acc_strong = Vec2::ZERO;
             let mut strong_count: Vec<Entity> = vec![];
-            let mut result_acc_weak = Vec2::ZERO;
-            let mut weak_count: Vec<Entity> = vec![];
 
             for (neighbour, distance) in neighbours.iter() {
                 let is_strong_range = *distance < MAGNETIC_DISTANCE_STRONG;
@@ -53,20 +51,19 @@ pub fn apply_magnetic_forces(
                         result_acc_strong += direction;
                         strong_count.push(*neighbour);
                     } else {
-                        result_acc_weak += direction;
-                        weak_count.push(*neighbour);
+                        break;
                     }
                 }
             }
             let result_strong_normilized = result_acc_strong.normalize_or_zero();
-            let result_weak_normilized = result_acc_weak.normalize_or_zero();
+            let result_weak_normilized = Vec2::Y;
             let result_magnetic_force = result_strong_normilized * MAGNETIC_FACTOR_STRONG
                 + result_weak_normilized * MAGNETIC_FACTOR_WEAK;
             external_force.set_force(result_magnetic_force);
 
             if keyboard_input_key_code.any_just_pressed([LOG_KEYCODE_MAGNETIC]) {
-                println!("applied magnetic to entity {:?} result_strong_normilized {} result_weak_normilized {} strong_count {:?} weak_count {:?}", 
-                entity, result_strong_normilized, result_weak_normilized, strong_count, weak_count);
+                println!("applied magnetic to entity {:?} result_strong_normilized {} result_weak_normilized {} strong_count {:?}", 
+                entity, result_strong_normilized, result_weak_normilized, strong_count);
             }
         }
     }
