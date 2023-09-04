@@ -4,7 +4,7 @@ use bevy::{
 };
 use bevy_xpbd_2d::prelude::{
     AngularDamping, CoefficientCombine, Collider, ColliderMassProperties, CollisionLayers,
-    MassPropertiesBundle, Position, Restitution, RigidBody,
+    Friction, MassPropertiesBundle, Position, Restitution, RigidBody,
 };
 
 use crate::gameplay::{
@@ -47,6 +47,7 @@ impl GridBallBundle {
                 coefficient: 0.0,
                 combine_rule: CoefficientCombine::Multiply,
             },
+            Friction::ZERO,
             AngularDamping(0.9),
             CollisionLayers::new([Layer::Grid], [Layer::Walls, Layer::Grid]),
         )

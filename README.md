@@ -24,10 +24,13 @@ cargo install wasm-bindgen-cli
 
 - Magneitic force can be applied only to dynamic rigid bodies
 - Kinematic rigid bodies used as attraction point for rigid bodies
-- Balls with nearest distance have more attraction factor than other
+- Dynamic rigid bodies used as attraction point for other dynamic rigid bodies
+- Balls within nearest distance have attraction
+- Each dynamic ball have small to-top attraction force also
+- Whenever collision between balls start - I send FindCluster event
+- System for find clusters accumulates entities from events and run find cluster from time to time
 
 TODO
-ClusterCheckCooldown should accumulate inside resource and timer tick inside system
 split to count score system
 shoot multiple projectiles
 responsive layout and scale
