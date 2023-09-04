@@ -67,7 +67,7 @@ pub fn projectile_reload(
     gameplay_materials: Res<GameplayMaterials>,
     mut buffer: ResMut<ProjectileBuffer>,
     mut projectile_reload_events: EventReader<ProjectileReload>,
-    grid_balls_query: Query<&Species, (With<GridBall>, Without<ProjectileBall>)>,
+    grid_balls_query: Query<Entity, (With<GridBall>, Without<ProjectileBall>)>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     next_projectile_query: Query<Entity, With<NextProjectileBall>>,
     projectile_query: Query<Entity, With<ProjectileBall>>,
@@ -83,37 +83,18 @@ pub fn projectile_reload(
         return;
     }
     projectile_reload_events.clear();
-    println!("received ProjectileReload");
-
-    let mut cache: HashSet<&Species> = HashSet::with_capacity(5);
-    for species in grid_balls_query.iter() {
-        if cache.len() == 5 {
-            break;
-        }
-        if let None = cache.get(species) {
-            cache.insert(species);
-        }
-    }
-
-    let mut colors_in_grid: Vec<Species> = Vec::with_capacity(cache.len());
-    for key in cache.iter() {
-        colors_in_grid.push(**key);
-    }
 
     let species = match buffer.0.pop() {
         Some(species) => {
             // if picked from buffer color is absent in grid
             // generate the new one
-            if let Some(_) = colors_in_grid
-                .iter()
-                .find(|grid_species| **grid_species == species)
-            {
+            if let Some(_) = grid.active_species.get(&species) {
                 species
             } else {
-                Species::pick_random(&colors_in_grid, grid.total_colors)
+                Species::pick_random(&grid.active_species, grid.total_colors)
             }
         }
-        None => Species::pick_random(&colors_in_grid, grid.total_colors),
+        None => Species::pick_random(&grid.active_species, grid.total_colors),
     };
 
     let window = window_query.single();
@@ -137,9 +118,10 @@ pub fn projectile_reload(
         entity, species, projectile_spawn_bottom
     );
 
-    buffer
-        .0
-        .push(Species::pick_random(&colors_in_grid, grid.total_colors));
+    buffer.0.push(Species::pick_random(
+        &grid.active_species,
+        grid.total_colors,
+    ));
 
     cleanup_next_projectile_ball_utils(&mut commands, &next_projectile_query);
     if let Some(species) = buffer.0.last() {
@@ -159,6 +141,35 @@ pub fn projectile_reload(
             &gameplay_meshes,
             &gameplay_materials,
         ));
+    }
+}
+
+pub fn check_projectile_species(
+    mut projectile_query: Query<
+        (&ProjectileBall, &mut Species, &Handle<ColorMaterial>),
+        With<ProjectileBall>,
+    >,
+    grid: Res<Grid>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    for (projectile_ball, mut projectile_species, handle_projectile_material) in
+        projectile_query.iter_mut()
+    {
+        if !projectile_ball.is_flying && grid.active_species.len() > 0 {
+            if let None = grid.active_species.get(projectile_species.as_ref()) {
+                if let Some(projectile_material) = materials.get_mut(&handle_projectile_material) {
+                    let new_species = Species::pick_random(&grid.active_species, grid.total_colors);
+                    println!(
+                        "Change projectile color from {} into {}",
+                        projectile_species.as_ref(),
+                        new_species
+                    );
+                    *projectile_species = new_species;
+                    // change material
+                    projectile_material.color = new_species.into();
+                }
+            }
+        }
     }
 }
 

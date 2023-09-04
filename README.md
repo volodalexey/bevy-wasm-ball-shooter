@@ -31,7 +31,6 @@ cargo install wasm-bindgen-cli
 - System for find clusters accumulates entities from events and run find cluster from time to time
 
 TODO
-split to count score system
 shoot multiple projectiles
 responsive layout and scale
 show first row partially

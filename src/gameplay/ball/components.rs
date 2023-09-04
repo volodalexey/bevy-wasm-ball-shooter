@@ -4,6 +4,7 @@ use bevy::{
     prelude::{Color, Component, Vec2},
     sprite::ColorMaterial,
     time::{Timer, TimerMode},
+    utils::HashSet,
 };
 
 use crate::gameplay::constants::MAX_APPEAR_TIME;
@@ -178,10 +179,11 @@ impl Species {
         Self::from(fastrand::u8(1..=total_colors))
     }
 
-    pub fn pick_random(colors_in_grid: &Vec<Species>, total_colors: u8) -> Species {
-        if colors_in_grid.len() > 0 {
+    pub fn pick_random(active_species: &HashSet<Species>, total_colors: u8) -> Species {
+        if active_species.len() > 0 {
+            let colors_in_grid: Vec<&Species> = active_species.into_iter().collect();
             let i = fastrand::usize(..colors_in_grid.len());
-            colors_in_grid[i]
+            *colors_in_grid[i]
         } else {
             Species::random_species(total_colors)
         }

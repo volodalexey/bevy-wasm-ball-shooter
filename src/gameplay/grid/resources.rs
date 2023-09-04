@@ -43,6 +43,7 @@ pub struct Grid {
     pub bounds: Bounds,
     pub entities_to_positions: HashMap<Entity, Vec2>,
     pub entities_to_species: HashMap<Entity, Species>,
+    pub active_species: HashSet<Species>,
     pub entities_to_neighbours: HashMap<Entity, Vec<(Entity, f32)>>,
 }
 
@@ -66,6 +67,7 @@ impl Default for Grid {
             bounds: Default::default(),
             entities_to_positions: HashMap::default(),
             entities_to_species: HashMap::default(),
+            active_species: HashSet::default(),
             entities_to_neighbours: HashMap::default(),
         }
     }
