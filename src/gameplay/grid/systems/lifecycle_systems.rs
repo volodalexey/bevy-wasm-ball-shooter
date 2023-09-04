@@ -3,6 +3,7 @@ use bevy::{
         Commands, DespawnRecursiveExt, Entity, EventReader, NextState, Query, Res, ResMut, Vec2,
         With,
     },
+    utils::HashSet,
     window::{PrimaryWindow, Window},
 };
 use bevy_xpbd_2d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody};
@@ -17,7 +18,10 @@ use crate::{
         },
         constants::ROW_HEIGHT,
         events::SpawnRow,
-        grid::{resources::Grid, utils::adjust_grid_layout},
+        grid::{
+            resources::{ClusterCheckCooldown, Grid},
+            utils::adjust_grid_layout,
+        },
         materials::resources::GameplayMaterials,
         meshes::resources::GameplayMeshes,
         panels::resources::SpawnRowsLeft,
@@ -69,6 +73,7 @@ pub fn cleanup_grid(
     mut grid: ResMut<Grid>,
     grid_balls_query: Query<Entity, With<GridBall>>,
     out_balls_query: Query<Entity, With<OutBall>>,
+    mut cluster_check_cooldown: ResMut<ClusterCheckCooldown>,
 ) {
     for entity in grid_balls_query.iter() {
         commands.entity(entity).despawn_recursive();
@@ -76,6 +81,8 @@ pub fn cleanup_grid(
     for entity in out_balls_query.iter() {
         commands.entity(entity).despawn_recursive();
     }
+    cluster_check_cooldown.timer.reset();
+    cluster_check_cooldown.to_check = HashSet::default();
     grid.clear();
 }
 

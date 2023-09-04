@@ -11,7 +11,7 @@ use crate::gameplay::{
     constants::MIN_PROJECTILE_SNAP_DOT,
     events::{FindCluster, SnapProjectile},
     grid::{
-        resources::{ClusterCheckCooldown, CollisionSnapCooldown},
+        resources::CollisionSnapCooldown,
         utils::{is_move_reverse, is_move_slow, send_snap_projectile},
     },
 };
@@ -40,8 +40,6 @@ pub fn check_collision_events(
     >,
     mut collision_snap_cooldown: ResMut<CollisionSnapCooldown>,
     mut writer_find_cluster: EventWriter<FindCluster>,
-    time: Res<Time>,
-    mut cluster_check_cooldown: ResMut<ClusterCheckCooldown>,
 ) {
     for CollisionStarted(entity_a, entity_b) in collision_started_events.iter() {
         let result_ball_entity_a = balls_query.get(*entity_a);
@@ -51,21 +49,15 @@ pub fn check_collision_events(
         if result_projectile.is_err() {
             result_projectile = projectile_query.get_mut(*entity_b);
         }
-        if result_ball_entity_a.is_ok() && result_ball_entity_b.is_ok() {
-            cluster_check_cooldown.timer.tick(time.delta());
-            cluster_check_cooldown
-                .to_check
-                .extend(vec![entity_a, entity_b]);
-            if cluster_check_cooldown.timer.just_finished() || cluster_check_cooldown.is_ready() {
-                writer_find_cluster.send(FindCluster {
-                    to_check: cluster_check_cooldown
-                        .to_check
-                        .clone()
-                        .into_iter()
-                        .collect(),
-                });
-                cluster_check_cooldown.restart();
-            }
+        if let (Ok((ball_entity_a, _)), Ok((ball_entity_b, _))) =
+            (result_ball_entity_a, result_ball_entity_b)
+        {
+            writer_find_cluster.send(FindCluster {
+                to_check: ball_entity_a,
+            });
+            writer_find_cluster.send(FindCluster {
+                to_check: ball_entity_b,
+            });
         } else if let Ok((_, ball_position)) = result_ball_entity_a.or(result_ball_entity_b) {
             if let Ok((
                 projectile_entity,

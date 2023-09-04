@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{Entity, Resource, Vec2},
     time::{Timer, TimerMode},
-    utils::{default, HashMap, HashSet, Instant},
+    utils::{default, HashMap, HashSet},
 };
 use hexx::{HexLayout, HexOrientation, OffsetHexMode};
 
@@ -191,7 +191,6 @@ impl CollisionSnapCooldown {
 pub struct ClusterCheckCooldown {
     pub timer: Timer,
     pub to_check: HashSet<Entity>,
-    pub last_send: Instant,
 }
 
 impl Default for ClusterCheckCooldown {
@@ -199,23 +198,6 @@ impl Default for ClusterCheckCooldown {
         Self {
             timer: Timer::from_seconds(CLUSTER_CHECK_COOLDOWN_TIME, TimerMode::Repeating),
             to_check: default(),
-            last_send: Instant::now(),
         }
-    }
-}
-
-impl ClusterCheckCooldown {
-    pub fn update_last_send(&mut self) {
-        self.last_send = Instant::now()
-    }
-
-    pub fn is_ready(&self) -> bool {
-        (Instant::now() - self.last_send).as_secs() > CLUSTER_CHECK_COOLDOWN_TIME as u64
-    }
-
-    pub fn restart(&mut self) {
-        self.update_last_send();
-        self.timer.reset();
-        self.to_check = default();
     }
 }

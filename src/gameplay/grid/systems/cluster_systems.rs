@@ -4,6 +4,8 @@ use bevy::{
         Query, Res, ResMut, With,
     },
     sprite::ColorMaterial,
+    time::Time,
+    utils::HashSet,
 };
 use bevy_xpbd_2d::prelude::{LinearVelocity, Position, RigidBody};
 
@@ -15,7 +17,7 @@ use crate::gameplay::{
     constants::{LOG_KEYCODE_CLUSTER, MIN_CLUSTER_SIZE},
     events::{FindCluster, ProjectileReload, UpdateScoreCounter},
     grid::{
-        resources::{CollisionSnapCooldown, Grid},
+        resources::{ClusterCheckCooldown, CollisionSnapCooldown, Grid},
         utils::find_cluster,
     },
     meshes::resources::GameplayMeshes,
@@ -45,13 +47,30 @@ pub fn find_and_remove_clusters(
     mut projectile_reload_writer: EventWriter<ProjectileReload>,
     grid: Res<Grid>,
     keyboard_input_key_code: Res<Input<KeyCode>>,
+    time: Res<Time>,
+    mut cluster_check_cooldown: ResMut<ClusterCheckCooldown>,
 ) {
-    if find_cluster_events.is_empty() {
-        return;
+    let is_paused = cluster_check_cooldown.timer.paused();
+    if !is_paused {
+        cluster_check_cooldown.timer.tick(time.delta());
+    }
+    let mut flush_checks = false;
+    for FindCluster { to_check } in find_cluster_events.iter() {
+        cluster_check_cooldown.to_check.insert(*to_check);
+        if is_paused {
+            flush_checks = true;
+            cluster_check_cooldown.timer.unpause();
+        }
     }
 
-    for FindCluster { to_check } in find_cluster_events.iter() {
-        for start_from in to_check.iter() {
+    if cluster_check_cooldown.timer.just_finished() {
+        flush_checks = true;
+        cluster_check_cooldown.timer.reset();
+        cluster_check_cooldown.timer.pause();
+    }
+
+    if flush_checks {
+        for start_from in cluster_check_cooldown.to_check.iter() {
             let (cluster, _) = find_cluster(
                 *start_from,
                 &grid.entities_to_neighbours,
@@ -102,5 +121,6 @@ pub fn find_and_remove_clusters(
                 score_add: cluster_score_add,
             });
         }
+        cluster_check_cooldown.to_check = HashSet::default();
     }
 }

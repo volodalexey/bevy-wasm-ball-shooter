@@ -1,7 +1,4 @@
-use bevy::{
-    prelude::{Entity, Event},
-    utils::HashSet,
-};
+use bevy::prelude::{Entity, Event};
 
 #[derive(Event)]
 pub struct ProjectileReload;
@@ -24,5 +21,5 @@ pub struct SpawnRow;
 
 #[derive(Event)]
 pub struct FindCluster {
-    pub to_check: HashSet<Entity>,
+    pub to_check: Entity,
 }

@@ -48,9 +48,14 @@ impl Plugin for GridPlugin {
             .add_systems(
                 Update,
                 // snap projectile generate new grid ball, we need to use this ball in clusters, so wait after commands
-                (on_snap_projectile, apply_deferred, find_and_remove_clusters).chain(),
+                (on_snap_projectile, apply_deferred, find_and_remove_clusters)
+                    .chain()
+                    .run_if(in_state(AppState::Gameplay)),
             )
-            .add_systems(FixedUpdate, update_grid_resources)
+            .add_systems(
+                FixedUpdate,
+                update_grid_resources.run_if(in_state(AppState::Gameplay)),
+            )
             .insert_resource(FixedTime::new_from_secs(FIXED_TIMESTEP))
             .add_systems(OnExit(AppState::Gameplay), cleanup_grid);
     }
