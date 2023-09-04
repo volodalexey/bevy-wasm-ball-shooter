@@ -83,7 +83,7 @@ impl Grid {
     }
 
     pub fn clear(&mut self) {
-        self.layout.origin = hexx::Vec2::ZERO;
+        *self = Self::default();
     }
 }
 

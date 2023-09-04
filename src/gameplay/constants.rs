@@ -43,6 +43,7 @@ pub const MAGNETIC_FACTOR_WEAK: f32 = 500.0;
 pub const CLUSTER_CHECK_COOLDOWN_TIME: f32 = 1.0; // seconds
 pub const OUT_BALL_GRAVITY: f32 = 1000.0;
 pub const FIXED_TIMESTEP: f32 = 0.5;
+pub const PROJECTILE_RELOAD_TIME: f32 = 1.0; // seconds
 
 pub const GRID_BALL_Z_INDEX: f32 = 2.0;
 pub const AIM_TARGET_Z_INDEX: f32 = 0.0;

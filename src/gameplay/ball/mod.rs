@@ -5,12 +5,15 @@ use bevy::prelude::{
 use crate::components::AppState;
 
 use self::{
-    resources::ProjectileBuffer,
+    resources::ProjectileHelper,
     systems::{
-        animate_grid_ball_scale, animate_out_ball, check_out_ball_for_delete,
-        check_projectile_species, cleanup_aim_lines, cleanup_aim_target,
-        cleanup_next_projectile_ball, cleanup_projectile_ball, draw_aim, projectile_reload,
-        setup_aim_target, shoot_projectile,
+        aim_systems::{cleanup_aim_lines, cleanup_aim_target, draw_aim, setup_aim_target},
+        out_ball_systems::{animate_out_ball, check_out_ball_for_delete},
+        projectile_systems::{
+            check_projectile_species, cleanup_next_projectile_ball, cleanup_projectile_ball,
+            projectile_reload, shoot_projectile,
+        },
+        scale_systems::animate_grid_ball_scale,
     },
 };
 
@@ -26,7 +29,7 @@ pub struct ProjectilePlugin;
 
 impl Plugin for ProjectilePlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(ProjectileBuffer(vec![]))
+        app.init_resource::<ProjectileHelper>()
             .add_systems(OnEnter(AppState::Gameplay), setup_aim_target)
             .add_systems(
                 Update,
