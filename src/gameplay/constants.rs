@@ -50,6 +50,7 @@ pub const AIM_LINE_Z_INDEX: f32 = 0.0;
 pub const LINE_Z_INDEX: f32 = 0.0;
 pub const NEXT_PROJECTILE_Z_INDEX: f32 = 1.0;
 pub const WALL_Z_INDEX: f32 = 1.0;
+pub const OUT_BALL_Z_INDEX: f32 = 3.0;
 
 pub const LOG_KEYCODE_CLUSTER: KeyCode = KeyCode::C;
 pub const LOG_KEYCODE_MAGNETIC: KeyCode = KeyCode::M;

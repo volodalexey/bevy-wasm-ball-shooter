@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{default, Assets, Bundle, Res, ResMut, Vec2},
+    prelude::{default, Assets, Bundle, Res, ResMut, Transform, Vec2},
     sprite::{ColorMaterial, MaterialMesh2dBundle},
 };
 use bevy_xpbd_2d::prelude::{
@@ -7,7 +7,9 @@ use bevy_xpbd_2d::prelude::{
 };
 
 use crate::gameplay::{
-    constants::BALL_RADIUS, meshes::resources::GameplayMeshes, physics::layers::Layer,
+    constants::{BALL_RADIUS, OUT_BALL_Z_INDEX},
+    meshes::resources::GameplayMeshes,
+    physics::layers::Layer,
 };
 
 use super::components::{OutBall, Species};
@@ -26,6 +28,7 @@ impl OutBallBundle {
             MaterialMesh2dBundle {
                 mesh: gameplay_meshes.grid_ball.clone().into(),
                 material: materials.add(species.into()),
+                transform: Transform::from_translation(pos.extend(OUT_BALL_Z_INDEX)),
                 ..default()
             },
             match is_floating {
